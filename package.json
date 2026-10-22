@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
-    "@tabler/icons-webfont": "^3.49.0",
+    "@tabler/icons-react": "^3.49.0",
     "dompurify": "^3.4.17",
     "jose": "^6.2.13",
     "marked": "^18.1.1",

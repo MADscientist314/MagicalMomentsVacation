@@ -8,3 +8,4 @@ dist-plugin/
 *.log
 .DS_Store
 *.eml
+.claude/

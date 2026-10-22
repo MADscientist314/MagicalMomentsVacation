@@ -22,3 +22,10 @@ export function splitDraft(md: string): {
 
   return { client, internal, days };
 }
+
+const SUBJECT_LINE = /^\*\*Subject:\*\*\s*(.+?)\s*(?:\r?\n|$)/;
+
+export function splitSubject(client: string): { subject: string | null; body: string } {
+  const m = SUBJECT_LINE.exec(client);
+  return m ? { subject: m[1], body: client.slice(m[0].length).trim() } : { subject: null, body: client };
+}

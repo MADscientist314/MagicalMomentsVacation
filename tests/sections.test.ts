@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitDraft } from "../shared/sections";
+import { splitDraft, splitSubject } from "../shared/sections";
 
 describe("splitDraft", () => {
   it("separates client text from Jillian-only notes", () => {
@@ -23,5 +23,18 @@ describe("splitDraft", () => {
   it("does not take day blocks from the internal notes", () => {
     const parts = splitDraft("Intro\n## For Jillian only\n### Day 1 — not for clients\nx");
     expect(parts.days).toEqual([]);
+  });
+});
+
+describe("splitSubject", () => {
+  it("pulls a bold subject line off the top of an email", () => {
+    expect(splitSubject("**Subject:** Welcome aboard!\n\nHi Maria,")).toEqual({
+      subject: "Welcome aboard!",
+      body: "Hi Maria,",
+    });
+  });
+
+  it("returns no subject when the text doesn't start with one", () => {
+    expect(splitSubject("Hi Maria,")).toEqual({ subject: null, body: "Hi Maria," });
   });
 });
