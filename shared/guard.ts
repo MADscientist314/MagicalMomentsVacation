@@ -4,6 +4,12 @@
 
 export type SensitiveKind = "card" | "ssn" | "passport";
 
+export const SENSITIVE_MESSAGES: Record<SensitiveKind, string> = {
+  card: "That looks like a card number — please remove it. Card details never go into the assistant.",
+  ssn: "That looks like a Social Security number — please remove it. It never goes into the assistant.",
+  passport: "That looks like a passport number — please remove it. It never goes into the assistant.",
+};
+
 // 13–19 digits, optionally separated by single spaces or dashes.
 const CARD_RUN = /(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)/g;
 const SSN_FORMATTED = /(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)/;
