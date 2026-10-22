@@ -1,0 +1,9 @@
+{
+  "name": "magical-vacations",
+  "displayName": "Magical Vacations by Jillian",
+  "version": "1.0.1",
+  "description": "Drafting helpers for Jillian Jochum's travel business: client emails, inquiry review, compliant marketing posts and trip plans.",
+  "author": {
+    "name": "Michael Jochum"
+  }
+}

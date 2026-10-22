@@ -1,0 +1,36 @@
+# When someone edits brains/ on GitHub, rebuild the Claude plugin folder and commit it,
+# so the Claude app's marketplace sync picks up the change.
+name: Rebuild Claude plugin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "brains/**"
+      - "scripts/build-plugin.mjs"
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:plugin
+      - name: Commit the rebuilt plugin
+        run: |
+          if [ -n "$(git status --porcelain plugin)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add plugin
+            git commit -m "chore: rebuild Claude plugin"
+            git push
+          else
+            echo "Plugin already up to date."
+          fi

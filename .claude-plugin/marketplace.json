@@ -1,0 +1,11 @@
+{
+  "name": "magical-vacations-marketplace",
+  "owner": { "name": "Michael Jochum" },
+  "plugins": [
+    {
+      "name": "magical-vacations",
+      "source": "./plugin/magical-vacations",
+      "description": "Drafting helpers for Jillian Jochum's travel business: client emails, inquiry review, compliant marketing posts and trip plans."
+    }
+  ]
+}
