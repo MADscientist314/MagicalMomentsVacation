@@ -1,0 +1,42 @@
+{
+  "name": "magical-assistant",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "npm run build && vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "cf-typegen": "wrangler types --strict-vars=false",
+    "deploy": "npm run build && wrangler deploy",
+    "build:plugin": "node scripts/build-plugin.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
+    "@tabler/icons-webfont": "^3.49.0",
+    "dompurify": "^3.4.17",
+    "jose": "^6.2.13",
+    "marked": "^18.1.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.64.0",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "fflate": "^0.8.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.152.0"
+  },
+  "allowScripts": {
+    "workerd@1.20261012.1": true,
+    "workerd@1.20261019.1": true,
+    "esbuild@0.28.2": true
+  }
+}
