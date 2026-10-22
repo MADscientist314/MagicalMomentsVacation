@@ -216,6 +216,41 @@ describe("handleDraft streaming", () => {
   });
 });
 
+describe("handleDraft diagnostics", () => {
+  it("logs the kind of failure but never the request text", async () => {
+    const logged: unknown[][] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args) => void logged.push(args));
+    const client: DraftClient = {
+      beta: {
+        messages: {
+          stream() {
+            return {
+              async *[Symbol.asyncIterator]() {
+                throw new TypeError("details about The Smiths");
+              },
+              finalMessage: async () => ({}) as BetaMessage,
+            };
+          },
+        },
+      },
+    };
+    await readEvents(await handleDraft(post(MAIL), ENV, () => client));
+    spy.mockRestore();
+    const text = JSON.stringify(logged);
+    expect(text).toContain("TypeError");
+    expect(text).not.toContain("Smiths");
+  });
+});
+
+describe("handleDraft re-checks only what Jillian typed", () => {
+  it("does not block a refine because of wording in Claude's own draft", async () => {
+    const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
+    const draft = "Bring passports for everyone. Passport 567891234 style numbers go to the cruise line.";
+    const res = await handleDraft(post({ ...MAIL, refinements: [{ draft, request: "warmer" }] }), ENV, fake.make);
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("handleDraft request to Claude", () => {
   it("uses Opus 5.5 at high effort with web search for trip plans", async () => {
     const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
@@ -223,6 +258,7 @@ describe("handleDraft request to Claude", () => {
     await readEvents(await handleDraft(post(trip), ENV, fake.make));
     const params = fake.calls[0];
     expect(params.model).toBe("claude-opus-5-5");
+    expect(params.max_tokens).toBe(64_000);
     expect(params.output_config?.effort).toBe("high");
     expect(params.tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 5 }]);
     expect(params.betas).toEqual(["server-side-fallback-2026-07-01"]);

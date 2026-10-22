@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../../shared/guard";
 import type { DraftRequest, ToolDef } from "../../shared/tools";
 import { CastleAtDusk } from "../art/CastleAtDusk";
-import { DraftPanel, type Phase } from "../components/DraftPanel";
+import { DraftPanel } from "../components/DraftPanel";
 import { ToolForm } from "../components/ToolForm";
+import { draftReducer, initialDraftState } from "../lib/draftState";
 import { streamDraft } from "../lib/streamDraft";
 
 function maskedNotice(emails: number, phones: number): string | null {
@@ -18,12 +19,7 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [sources, setSources] = useState<{ title: string; url: string }[]>([]);
-  const [stopReason, setStopReason] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<DraftRequest | null>(null);
+  const [state, dispatch] = useReducer(draftReducer, initialDraftState);
   const controller = useRef<AbortController | null>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
@@ -32,29 +28,14 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
     controller.current?.abort();
     const abort = new AbortController();
     controller.current = abort;
-    setSent(body);
-    setDraft("");
-    setSources([]);
-    setStopReason(null);
-    setError(null);
-    setPhase("waiting");
+    dispatch({ type: "start", body });
     void streamDraft(
       body,
       {
-        text: (t) => {
-          setPhase("writing");
-          setDraft((d) => d + t);
-        },
-        status: (p) => setPhase(p),
-        done: (d) => {
-          setSources(d.sources);
-          setStopReason(d.stopReason);
-          setPhase("done");
-        },
-        error: (message) => {
-          setError(message);
-          setPhase("done");
-        },
+        text: (text) => dispatch({ type: "text", text }),
+        status: (phase) => dispatch({ type: "status", phase }),
+        done: (d) => dispatch({ type: "done", ...d }),
+        error: (message) => dispatch({ type: "error", message }),
       },
       abort.signal,
     );
@@ -81,27 +62,23 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
   };
 
   const refine = (request: string) => {
-    if (!sent) return;
+    const base = state.committed;
+    if (!base) return;
     const hits = findSensitive(request);
     if (hits.length) {
-      setError(SENSITIVE_MESSAGES[hits[0]]);
+      dispatch({ type: "error", message: SENSITIVE_MESSAGES[hits[0]] });
       return;
     }
-    const refinements = [...(sent.refinements ?? []), { draft, request: maskContacts(request).text }];
-    run({ ...sent, refinements });
+    const refinements = [...(base.refinements ?? []), { draft: state.draft, request: maskContacts(request).text }];
+    run({ ...base, refinements });
   };
 
   const startOver = () => {
     controller.current?.abort();
-    setSent(null);
-    setDraft("");
-    setSources([]);
-    setStopReason(null);
-    setError(null);
-    setPhase("idle");
+    dispatch({ type: "reset" });
   };
 
-  const busy = phase === "waiting" || phase === "searching" || phase === "writing";
+  const busy = state.phase === "waiting" || state.phase === "searching" || state.phase === "writing";
 
   return (
     <>
@@ -127,11 +104,12 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
         />
         <DraftPanel
           tool={tool}
-          draft={draft}
-          phase={phase}
-          sources={sources}
-          stopReason={stopReason}
-          error={error}
+          draft={state.draft}
+          phase={state.phase}
+          sources={state.sources}
+          stopReason={state.stopReason}
+          error={state.error}
+          receiving={state.receiving}
           onRefine={refine}
           onStartOver={startOver}
         />

@@ -70,7 +70,9 @@ function validate(body: unknown): Validated {
   if (allText.reduce((n, t) => n + t.length, 0) > MAX_TOTAL_CHARS) {
     return { ok: false, status: 413, error: "This conversation has gotten long — start over to keep going." };
   }
-  const sensitive = findSensitive(allText.join("\n"));
+  // Only what Jillian typed: Claude's own drafts can mention passports and booking numbers.
+  const typed = [...Object.values(clean), ...refs.map((r) => r.request)];
+  const sensitive = findSensitive(typed.join("\n"));
   if (sensitive.length) return { ok: false, status: 400, error: SENSITIVE_MESSAGES[sensitive[0]] };
 
   return { ok: true, req: { tool, fields: clean, refinements: refs } };
@@ -101,6 +103,12 @@ function collectSources(content: BetaContentBlock[], into: Map<string, { title: 
   }
 }
 
+/** Error class and HTTP status only — never the message, which can echo client details. */
+function describeError(err: unknown): string {
+  if (err instanceof Anthropic.APIError) return `${err.name} ${err.status ?? ""}`.trim();
+  return err instanceof Error ? err.name : typeof err;
+}
+
 function friendlyError(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) return "The assistant isn't connected yet (API key).";
   if (err instanceof Anthropic.RateLimitError) return "It's busy right now — try again in a minute.";
@@ -127,7 +135,7 @@ export async function handleDraft(
   const tool = TOOLS[req.tool];
   const params: BetaMessageStreamParams = {
     model: MODEL,
-    max_tokens: 16_000,
+    max_tokens: 64_000,
     system: buildSystem(req.tool),
     messages: buildMessages(req),
     output_config: { effort: tool.effort },
@@ -182,6 +190,7 @@ export async function handleDraft(
       await send({ event: "done", data: { stopReason, sources: [...sources.values()] } });
     } catch (err) {
       if (!abort.signal.aborted) {
+        console.error("draft failed:", req.tool, describeError(err));
         await send({ event: "error", data: { message: friendlyError(err) } }).catch(() => {});
       }
     } finally {

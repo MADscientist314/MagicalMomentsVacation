@@ -63,3 +63,14 @@ describe("luhnValid", () => {
     expect(luhnValid("4111111111111112")).toBe(false);
   });
 });
+
+describe("findSensitive with travel wording", () => {
+  it("does not flag the word passports next to a booking number", () => {
+    expect(findSensitive("Don't forget your passports; booking 1234567")).toEqual([]);
+  });
+
+  it("still flags a passport number written right after the word passport", () => {
+    expect(findSensitive("Passport # X12345678")).toEqual(["passport"]);
+    expect(findSensitive("passport 567891234")).toEqual(["passport"]);
+  });
+});

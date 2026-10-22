@@ -51,7 +51,11 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
    - Under **Manage Cloudflare Access**, allow only Jillian's and the maintainer's email addresses.
    - In **Zero Trust → Integrations → Identity providers**, add **One-time PIN**, so they sign in with a code sent by email.
    - Copy the **team domain** (`https://<team>.cloudflareaccess.com`) and the **AUD tag** that Cloudflare shows into `vars.TEAM_DOMAIN` and `vars.POLICY_AUD` in `wrangler.jsonc`, then deploy again.
-5. **Auto-deploy from GitHub:** **Settings → Builds → Connect** to this repository. Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`.
+5. **Auto-deploy from GitHub:** **Settings → Builds → Connect** to this repository, and set:
+   - **Build command:** `npm run build`. The Vite build writes the deploy config and bundles `brains/` into the Worker, so `wrangler deploy` on its own won't work.
+   - **Deploy command:** `npx wrangler deploy`
+
+   Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`.
 6. **Cap the spend:** in the Anthropic Console, set a monthly limit for the workspace that owns the key (for example $25).
 
 Rough cost: an everyday draft is a few cents; a trip plan with web searches is about $0.20–0.50.

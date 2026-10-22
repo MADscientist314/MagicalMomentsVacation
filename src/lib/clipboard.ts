@@ -21,7 +21,7 @@ export async function copyRich(html: string, text: string): Promise<void> {
     area.value = text;
     area.style.position = "fixed";
     area.style.opacity = "0";
-    document.body.append(area);
+    document.body.appendChild(area);
     area.select();
     document.execCommand("copy");
     area.remove();

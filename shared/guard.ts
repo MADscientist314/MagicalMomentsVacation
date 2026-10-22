@@ -14,7 +14,9 @@ export const SENSITIVE_MESSAGES: Record<SensitiveKind, string> = {
 const CARD_RUN = /(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)/g;
 const SSN_FORMATTED = /(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)/;
 const SSN_KEYWORD = /(?:ssn|social security)\D{0,20}\d{3}[- ]?\d{2}[- ]?\d{4}(?!\d)/i;
-const PASSPORT_KEYWORD = /passport/gi;
+// "passport", an optional "number/no./#/:", then the number itself. "Bring your passports;
+// booking 1234567" must not match, so the number has to follow the word directly.
+const PASSPORT_NUMBER = /passport\s*(?:number|num|no\.?)?\s*[#:]?\s*([A-Za-z0-9]{6,9})\b/gi;
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 // Only formatted phone numbers: a bare 10-digit run could be a confirmation number.
@@ -44,10 +46,8 @@ function hasCard(text: string): boolean {
 }
 
 function hasPassport(text: string): boolean {
-  for (const match of text.matchAll(PASSPORT_KEYWORD)) {
-    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 25);
-    const tokens = after.match(/[A-Za-z0-9]{6,9}/g) ?? [];
-    if (tokens.some((t) => (t.match(/\d/g)?.length ?? 0) >= 6)) return true;
+  for (const match of text.matchAll(PASSPORT_NUMBER)) {
+    if ((match[1].match(/\d/g)?.length ?? 0) >= 6) return true;
   }
   return false;
 }

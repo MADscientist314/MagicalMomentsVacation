@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { IconRefresh } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
+import type { Phase } from "../lib/draftState";
 import { splitDraft, splitSubject } from "../../shared/sections";
 import { renderMarkdown } from "../lib/markdown";
 import { CopyButton } from "./CopyButton";
 import { Sparkles } from "./Sparkles";
 
-export type Phase = "idle" | "waiting" | "searching" | "writing" | "done";
 
 interface Props {
   tool: ToolDef;
@@ -15,6 +15,8 @@ interface Props {
   sources: { title: string; url: string }[];
   stopReason: string | null;
   error: string | null;
+  /** The draft on screen belongs to the request in flight (vs. the previous one). */
+  receiving: boolean;
   onRefine(request: string): void;
   onStartOver(): void;
 }
@@ -28,7 +30,7 @@ const STOP_NOTES: Record<string, string> = {
   max_tokens: "That got long — try asking for less.",
 };
 
-export function DraftPanel({ tool, draft, phase, sources, stopReason, error, onRefine, onStartOver }: Props) {
+export function DraftPanel({ tool, draft, phase, sources, stopReason, error, receiving, onRefine, onStartOver }: Props) {
   const [request, setRequest] = useState("");
   const busy = phase === "waiting" || phase === "searching" || phase === "writing";
   const { client, internal, days } = splitDraft(draft);
@@ -42,7 +44,7 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, onR
     );
   }
 
-  const waiting = (phase === "waiting" || phase === "searching") && !draft && (
+  const waiting = (phase === "waiting" || phase === "searching") && !receiving && (
     <div className="waiting" aria-live="polite">
       <Sparkles />
       <p>{phase === "searching" ? "Checking the latest info…" : "Sprinkling pixie dust…"}</p>
@@ -139,7 +141,7 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, onR
           </button>
         </form>
       )}
-      {(draft || error) && !busy && (
+      {(draft || error || busy) && (
         <div className="actions">
           <button type="button" className="btn-quiet" onClick={onStartOver}>
             <IconRefresh size={16} aria-hidden />
