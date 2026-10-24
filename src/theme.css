@@ -18,6 +18,7 @@
   --font-heading: "Fraunces", Georgia, serif;
   --font-body: "Wix Madefor Text", system-ui, sans-serif;
   --font-script: "Princess Sofia", "Fraunces", cursive;
+  --font-genie: "Rakkas", "Fraunces", serif;
   --radius: 12px;
 
   color-scheme: light;
@@ -215,13 +216,61 @@ button:disabled {
   padding: 18px 20px;
 }
 
-.ask-label {
-  display: block;
-  font-family: var(--font-heading);
-  font-style: italic;
-  font-size: 20px;
+.wish-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wish-label,
+.genie-title {
+  font-family: var(--font-genie);
+  font-style: normal;
+  font-weight: 400;
   color: var(--purple);
-  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+
+.wish-label {
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.1;
+}
+
+.banner-text h1.genie-title {
+  font-size: clamp(24px, 2.8vw, 34px);
+}
+
+.lamp {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.wisp {
+  animation: wisp 3.5s ease-in-out infinite;
+}
+
+@keyframes wisp {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 0.6;
+  }
+}
+
+.sources-box {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.sources-box summary {
+  cursor: pointer;
+  color: var(--purple-dark);
+  font-weight: 500;
 }
 
 .ask-row,
@@ -625,6 +674,7 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .twinkle,
   .sparkle,
+  .wisp,
   .btn-mic.listening {
     animation: none;
   }

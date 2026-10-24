@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { IconArrowLeft, IconPlus, IconSend } from "@tabler/icons-react";
 import { CastleAtDusk } from "../art/CastleAtDusk";
+import { MagicLamp } from "../art/MagicLamp";
 import { CopyButton } from "../components/CopyButton";
 import { MicButton } from "../components/MicButton";
+import { Sources } from "../components/Sources";
 import { Sparkles } from "../components/Sparkles";
 import { chatStore, useChat } from "../lib/chatStore";
 import { renderMarkdown } from "../lib/markdown";
@@ -45,13 +47,14 @@ export function ChatPage() {
             <IconArrowLeft size={16} aria-hidden />
             All tools
           </a>
-          <h1>Ask me anything</h1>
+          <h1 className="genie-title">Make a wish… or ask me anything</h1>
         </div>
       </header>
       <main className="page chat">
         <section className="card chat-thread" aria-live="polite">
           {chat.turns.length === 0 && !busy && (
             <div className="chat-empty">
+              <MagicLamp size={96} />
               <p>
                 Ask about parks, ships, clients or marketing — type below, or tap the microphone and just talk.
               </p>
@@ -73,17 +76,7 @@ export function ChatPage() {
             ) : (
               <div key={i} className="bubble bubble-assistant">
                 <div className="draft-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(t.content) }} />
-                {t.sources && t.sources.length > 0 && (
-                  <ul className="sources">
-                    {t.sources.map((s) => (
-                      <li key={s.url}>
-                        <a href={s.url} target="_blank" rel="noopener noreferrer">
-                          {s.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {t.sources && <Sources sources={t.sources} />}
                 {!(busy && last) && (
                   <div className="bubble-actions">
                     <CopyButton markdown={t.content} />

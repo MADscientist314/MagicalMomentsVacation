@@ -2,6 +2,7 @@ import { useState } from "react";
 import { IconDoorEnter, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
 import { TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
+import { MagicLamp } from "../art/MagicLamp";
 import { MicButton } from "../components/MicButton";
 import { chatStore } from "../lib/chatStore";
 import { greeting } from "../lib/greeting";
@@ -54,9 +55,12 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
             ask();
           }}
         >
-          <label htmlFor="ask" className="ask-label">
-            Or just ask me anything
-          </label>
+          <div className="wish-head">
+            <MagicLamp size={84} />
+            <label htmlFor="ask" className="wish-label">
+              Make a wish… or ask me anything
+            </label>
+          </div>
           <div className="ask-row">
             <input
               id="ask"

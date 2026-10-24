@@ -5,6 +5,7 @@ import type { Phase } from "../lib/draftState";
 import { splitDraft, splitSubject } from "../../shared/sections";
 import { renderMarkdown } from "../lib/markdown";
 import { CopyButton } from "./CopyButton";
+import { Sources } from "./Sources";
 import { Sparkles } from "./Sparkles";
 
 
@@ -87,20 +88,7 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
         <h2>For Jillian only</h2>
       </div>
       <Markdown md={internal} />
-      {sources.length > 0 && (
-        <>
-          <strong>Sources</strong>
-          <ul className="sources">
-            {sources.map((s) => (
-              <li key={s.url}>
-                <a href={s.url} target="_blank" rel="noopener noreferrer">
-                  {s.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <Sources sources={sources} />
     </section>
   );
 

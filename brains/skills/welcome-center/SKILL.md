@@ -38,3 +38,4 @@ Before writing, read:
 - If no inquiry text was provided, ask Jillian to paste it.
 - Never include or repeat card numbers, SSNs or passport numbers. If you see one, stop and say so instead of drafting.
 - Never invent prices, availability or policies. Mark anything time-sensitive "verify before quoting".
+- Refer to her reference files by plain names (her fit rules, the booking-windows sheet, her brand rules), never by file name.

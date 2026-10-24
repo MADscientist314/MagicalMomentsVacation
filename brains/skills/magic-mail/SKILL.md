@@ -38,3 +38,4 @@ Write the email first. Then add a line with exactly `## For Jillian only`, follo
 - If key details are missing, ask for them before drafting.
 - Never include or repeat card numbers, SSNs or passport numbers. If you see one, stop and say so instead of drafting.
 - Never invent prices, availability or policies. Mark anything time-sensitive "verify before quoting".
+- Refer to her reference files by plain names (her fit rules, the booking-windows sheet, her brand rules), never by file name.
