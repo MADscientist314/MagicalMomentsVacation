@@ -14,6 +14,7 @@ All of them are in the `brains/` folder on GitHub.
 | When dining, Lightning Lane, Express Pass and cruise reservations open | `brains/reference/booking-windows.md` |
 | Her rules for which inquiries are a good fit (budgets, lead time, destinations) | `brains/reference/fit-rules.md` |
 | How a whole tool behaves | `brains/skills/<tool>/SKILL.md` |
+| How the "Ask me anything" chat talks and what it won't do | `brains/chat.md` |
 
 Look for lines marked **TODO**. Those are the gaps Jillian still needs to fill in. Until she does, the assistant leaves placeholders and says "verify" instead of guessing. Most urgent:
 1. `fit-rules.md`: until it's filled in, Welcome Center can't say whether an inquiry is a fit.
@@ -58,6 +59,10 @@ The website asks for the **magic words**, a single shared password. Capitals and
 The magic words are never written in this repository, which is public. Michael shares them privately. To change them, someone with the code runs `npx wrangler secret put APP_PASSWORD` and types the new words. Everyone is signed out, and the new words work straight away.
 
 Don't post the magic words anywhere public: anyone who has them can use the assistant, and that spends API credit.
+
+## Talking instead of typing
+
+On the home screen ("Or just ask me anything") and on the chat page there's a **microphone** button. Tap it, talk, and tap again (or pause) to stop. Her words appear in the box so she can fix anything misheard before sending. The first time, the browser asks permission to use the microphone; she should choose **Allow**. It works in Safari and Chrome on a Mac. The speech-to-text is done by Apple (Safari) or Google (Chrome).
 
 ## What never to paste in
 

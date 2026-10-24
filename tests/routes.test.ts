@@ -19,6 +19,11 @@ describe("worker routes", () => {
     expect(res.status).toBe(401);
   });
 
+  it("refuses chat without signing in", async () => {
+    const res = await call("/api/chat", { method: "POST", body: "{}" });
+    expect(res.status).toBe(401);
+  });
+
   it("reports whether the visitor is signed in", async () => {
     expect((await call("/api/session")).status).toBe(401);
     expect((await call("/api/session", { headers: { cookie: await loginCookie() } })).status).toBe(200);

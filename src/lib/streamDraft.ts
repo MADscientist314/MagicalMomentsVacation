@@ -1,4 +1,5 @@
 import { EventParser } from "../../shared/sse";
+import type { ChatRequest } from "../../shared/chat";
 import type { DraftRequest } from "../../shared/tools";
 
 export interface DraftHandlers {
@@ -12,10 +13,16 @@ const OFFLINE = "Couldn't reach the assistant — check the internet connection.
 const GENERIC = "Something went wrong — try again.";
 const SIGNED_OUT = "Your sign-in expired — reload the page to sign in again.";
 
-export async function streamDraft(body: DraftRequest, on: DraftHandlers, signal: AbortSignal): Promise<void> {
+export const streamDraft = (body: DraftRequest, on: DraftHandlers, signal: AbortSignal) =>
+  streamFrom("/api/draft", body, on, signal);
+
+export const streamChat = (body: ChatRequest, on: DraftHandlers, signal: AbortSignal) =>
+  streamFrom("/api/chat", body, on, signal);
+
+async function streamFrom(url: string, body: unknown, on: DraftHandlers, signal: AbortSignal): Promise<void> {
   let res: Response;
   try {
-    res = await fetch("/api/draft", {
+    res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

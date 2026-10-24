@@ -1,6 +1,6 @@
 # Magical Vacations assistant
 
-A small, password-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, writes compliant marketing posts and sketches trip plans. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
+A small, password-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, writes compliant marketing posts and sketches trip plans, or just chats with the assistant, by typing or by talking into the microphone. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
 
 - **Design:** [docs/superpowers/specs/2026-10-22-jillian-assistant-design.md](docs/superpowers/specs/2026-10-22-jillian-assistant-design.md)
 - **For the person maintaining what it says:** [docs/MAINTAINING.md](docs/MAINTAINING.md)
@@ -8,15 +8,21 @@ A small, password-protected website where Jillian Jochum (Magical Moments Vacati
 ## How it fits together
 
 ```
-brains/            what the assistant knows and how each tool behaves (plain Markdown) ← edit these
+brains/            what the assistant knows, how each tool behaves, and how the chat talks (plain Markdown) ← edit these
 src/               the website (React + Vite)
-worker/            Cloudflare Worker: POST /api/draft → Claude (streaming), plus the password sign-in
+worker/            Cloudflare Worker: POST /api/draft and /api/chat → Claude (streaming), plus the password sign-in
 shared/            code used by both: tool definitions, card-number guard, stream format
 scripts/           build-plugin.mjs: brains/ → plugin/magical-vacations/ + a zip
 plugin/            GENERATED Claude app plugin (don't edit by hand)
 ```
 
 The Worker builds Claude's instructions from `brains/` at deploy time, calls `claude-opus-5-5` with streaming, and re-streams the text to the browser. Card, SSN and passport numbers are blocked in the browser and again in the Worker. Email addresses and phone numbers are masked before anything is sent. Nothing is stored.
+
+## Chat and the microphone
+
+Besides the four tools, there's a free-form chat (`#/chat`, also reachable from the "Or just ask me anything" bar on the home screen). It uses the same reference pack plus `brains/chat.md`, can search the web, and keeps the conversation only in the open browser tab. The server stores nothing, and **New chat** clears it.
+
+The microphone button uses the browser's built-in speech recognition (Safari and Chrome on a Mac). What she says is typed into the box for her to check and send; it isn't sent automatically. Where the browser can't listen (e.g. Firefox), the button doesn't appear. Note that Safari and Chrome do the speech-to-text on Apple's or Google's servers.
 
 ## Local development
 

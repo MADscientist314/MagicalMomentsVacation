@@ -1,7 +1,11 @@
-import { IconDoorEnter, IconMailHeart, IconMap2, IconWand, type Icon } from "@tabler/icons-react";
+import { useState } from "react";
+import { IconDoorEnter, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
 import { TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
+import { MicButton } from "../components/MicButton";
+import { chatStore } from "../lib/chatStore";
 import { greeting } from "../lib/greeting";
+import { joinTranscript } from "../lib/speech";
 
 const ICONS: Record<string, Icon> = {
   "mail-heart": IconMailHeart,
@@ -11,6 +15,16 @@ const ICONS: Record<string, Icon> = {
 };
 
 export function Home({ onSignOut }: { onSignOut(): void }) {
+  const [question, setQuestion] = useState("");
+  const [blocked, setBlocked] = useState<string | null>(null);
+
+  const ask = () => {
+    if (!question.trim()) return;
+    const problem = chatStore.send(question);
+    setBlocked(problem);
+    if (!problem) window.location.hash = "#/chat";
+  };
+
   return (
     <>
       <header className="hero">
@@ -33,6 +47,42 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
             );
           })}
         </nav>
+        <form
+          className="ask-bar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask();
+          }}
+        >
+          <label htmlFor="ask" className="ask-label">
+            Or just ask me anything
+          </label>
+          <div className="ask-row">
+            <input
+              id="ask"
+              value={question}
+              maxLength={4000}
+              placeholder="What's new at Disney World this year?"
+              onChange={(e) => {
+                setQuestion(e.target.value);
+                setBlocked(null);
+              }}
+            />
+            <MicButton onSpeech={(heard) => setQuestion((q) => joinTranscript(q, heard))} />
+            <button type="submit" className="btn-primary" disabled={!question.trim()}>
+              <IconSend size={18} aria-hidden />
+              Ask
+            </button>
+          </div>
+          {blocked && (
+            <p className="message message-error" role="alert">
+              {blocked}
+            </p>
+          )}
+          <a className="ask-link" href="#/chat">
+            Open the chat
+          </a>
+        </form>
         <p className="footnote">
           Everything here is a draft for you to review. Nothing is sent until you send it.{" "}
           <button type="button" className="link-button" onClick={onSignOut}>

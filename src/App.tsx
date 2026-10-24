@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isToolId, TOOLS } from "../shared/tools";
 import { checkSession, signOut } from "./lib/session";
+import { ChatPage } from "./pages/ChatPage";
 import { Home } from "./pages/Home";
 import { LoginPage } from "./pages/LoginPage";
 import { ToolPage } from "./pages/ToolPage";
@@ -28,6 +29,7 @@ export default function App() {
 
   if (signedIn === null) return null;
   if (!signedIn) return <LoginPage onSignedIn={() => setSignedIn(true)} />;
+  if (id === "chat") return <ChatPage />;
   if (isToolId(id)) return <ToolPage key={id} tool={TOOLS[id]} />;
   return (
     <Home

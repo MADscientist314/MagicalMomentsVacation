@@ -1,4 +1,5 @@
 import { handleLogin, handleLogout, hasValidSession } from "./auth";
+import { handleChat } from "./chat";
 import { handleDraft } from "./draft";
 
 const SIGNED_OUT = () => Response.json({ error: "Sign in again to keep going." }, { status: 401 });
@@ -17,6 +18,11 @@ export default {
       if (!post) return Response.json({ error: "Use POST." }, { status: 405 });
       if (!(await hasValidSession(request, env))) return SIGNED_OUT();
       return handleDraft(request, env);
+    }
+    if (pathname === "/api/chat") {
+      if (!post) return Response.json({ error: "Use POST." }, { status: 405 });
+      if (!(await hasValidSession(request, env))) return SIGNED_OUT();
+      return handleChat(request, env);
     }
     if (pathname.startsWith("/api/")) {
       return Response.json({ error: "not found" }, { status: 404 });

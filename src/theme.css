@@ -206,6 +206,186 @@ button:disabled {
   max-width: 440px;
 }
 
+/* ---------- ask bar and chat ---------- */
+.ask-bar {
+  margin-top: 24px;
+  background: var(--cream);
+  border: 1px solid var(--lavender-line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+
+.ask-label {
+  display: block;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--purple);
+  margin-bottom: 10px;
+}
+
+.ask-row,
+.composer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ask-row input,
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.composer textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.ask-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.ask-bar .message {
+  margin: 10px 0 0;
+}
+
+.mic {
+  position: relative;
+  display: inline-flex;
+}
+
+.btn-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--lavender-line);
+  background: #fff;
+  color: var(--purple);
+}
+
+.btn-mic:hover:not(:disabled) {
+  border-color: var(--purple);
+}
+
+.btn-mic.listening {
+  background: var(--gold);
+  border-color: var(--gold-deep);
+  color: var(--night);
+  animation: listening 1.4s ease-in-out infinite;
+}
+
+@keyframes listening {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 164, 59, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(201, 164, 59, 0);
+  }
+}
+
+.mic-status {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--purple-dark);
+}
+
+.mic-problem {
+  color: var(--danger);
+}
+
+.chat {
+  max-width: 900px;
+}
+
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 320px;
+  max-height: calc(100vh - 360px);
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+.chat-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  margin: auto 0;
+}
+
+.starters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.starters .btn-quiet {
+  white-space: normal;
+  text-align: left;
+}
+
+.bubble {
+  max-width: 85%;
+  border-radius: 14px;
+  padding: 10px 14px;
+  overflow-wrap: anywhere;
+}
+
+.bubble-user {
+  align-self: flex-end;
+  background: var(--purple);
+  color: #fff;
+  white-space: pre-wrap;
+}
+
+.bubble-assistant {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+}
+
+.bubble-assistant .draft-body p:last-child {
+  margin-bottom: 0;
+}
+
+.bubble-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.waiting-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--purple-dark);
+  font-family: var(--font-heading);
+  font-style: italic;
+}
+
+.waiting-bubble svg {
+  width: 72px;
+  height: 36px;
+}
+
 /* ---------- tool page ---------- */
 .workspace {
   display: grid;
@@ -444,7 +624,8 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   .twinkle,
-  .sparkle {
+  .sparkle,
+  .btn-mic.listening {
     animation: none;
   }
   .tile {

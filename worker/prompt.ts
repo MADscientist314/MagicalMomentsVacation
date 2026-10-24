@@ -21,17 +21,25 @@ function reference(name: string): string {
   return `# File: references/${name}.md\n\n${text.trim()}`;
 }
 
-export function buildSystem(tool: ToolId): Anthropic.TextBlockParam[] {
-  const skill = stripFrontmatter(BRAINS[`skills/${tool}`]);
-  const extras = skillReferences(skill).filter((r) => !SHARED_REFERENCES.includes(r));
+/** Shared reference pack first (same bytes for every tool), then the rest, cached together. */
+function systemFor(instructions: string): Anthropic.TextBlockParam[] {
+  const extras = skillReferences(instructions).filter((r) => !SHARED_REFERENCES.includes(r));
   return [
     { type: "text", text: SHARED_REFERENCES.map(reference).join("\n\n---\n\n") },
     {
       type: "text",
-      text: [...extras.map(reference), skill].join("\n\n---\n\n"),
+      text: [...extras.map(reference), instructions].join("\n\n---\n\n"),
       cache_control: { type: "ephemeral" },
     },
   ];
+}
+
+export function buildSystem(tool: ToolId): Anthropic.TextBlockParam[] {
+  return systemFor(stripFrontmatter(BRAINS[`skills/${tool}`]));
+}
+
+export function buildChatSystem(): Anthropic.TextBlockParam[] {
+  return systemFor(BRAINS.chat.trim());
 }
 
 export function buildUserMessage(tool: ToolId, fields: Record<string, string>): string {
