@@ -1,6 +1,6 @@
 # Magical Vacations assistant
 
-A small, login-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, writes compliant marketing posts and sketches trip plans. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
+A small, password-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, writes compliant marketing posts and sketches trip plans. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
 
 - **Design:** [docs/superpowers/specs/2026-10-22-jillian-assistant-design.md](docs/superpowers/specs/2026-10-22-jillian-assistant-design.md)
 - **For the person maintaining what it says:** [docs/MAINTAINING.md](docs/MAINTAINING.md)
@@ -10,7 +10,7 @@ A small, login-protected website where Jillian Jochum (Magical Moments Vacations
 ```
 brains/            what the assistant knows and how each tool behaves (plain Markdown) ← edit these
 src/               the website (React + Vite)
-worker/            Cloudflare Worker: POST /api/draft → Claude (streaming), plus the login check
+worker/            Cloudflare Worker: POST /api/draft → Claude (streaming), plus the password sign-in
 shared/            code used by both: tool definitions, card-number guard, stream format
 scripts/           build-plugin.mjs: brains/ → plugin/magical-vacations/ + a zip
 plugin/            GENERATED Claude app plugin (don't edit by hand)
@@ -24,11 +24,15 @@ Needs Node.js 22 or newer.
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # then put a real Anthropic API key in .dev.vars
+cp .dev.vars.example .dev.vars   # then add a real Anthropic API key and pick the magic words
 npm run dev
 ```
 
-`.dev.vars` sets `ACCESS_MODE=off` so you can use the app locally without Cloudflare Access. Never set that in production.
+## Signing in
+
+The site asks for one shared password, called "the magic words". It comes from the `APP_PASSWORD` secret and is never in this repository. Capitals, spaces and punctuation don't matter, so "Magic Words!" and "magicwords" are the same password. A successful sign-in sets a signed, HttpOnly cookie that lasts 30 days. Changing `APP_PASSWORD` signs everyone out.
+
+Because anyone who knows the magic words can spend API credit, keep them out of anything public and keep the Anthropic spend limit in place. For a stronger lock, you can also turn on Cloudflare Access for the Worker; it works alongside the password with no code changes.
 
 | Script | What it does |
 |---|---|
@@ -46,11 +50,8 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
 
 1. `npx wrangler login`
 2. `npx wrangler secret put ANTHROPIC_API_KEY`, then paste the key.
-3. `npm run deploy`. The site is now at `https://magical-assistant.<your-subdomain>.workers.dev`, but the API refuses requests until step 4 is done.
-4. **Turn on the login.** In the Cloudflare dashboard, go to **Workers & Pages → magical-assistant → Settings → Domains & Routes → workers.dev → Enable Cloudflare Access**.
-   - Under **Manage Cloudflare Access**, allow only Jillian's and the maintainer's email addresses.
-   - In **Zero Trust → Integrations → Identity providers**, add **One-time PIN**, so they sign in with a code sent by email.
-   - Copy the **team domain** (`https://<team>.cloudflareaccess.com`) and the **AUD tag** that Cloudflare shows into `vars.TEAM_DOMAIN` and `vars.POLICY_AUD` in `wrangler.jsonc`, then deploy again.
+3. `npx wrangler secret put APP_PASSWORD`, then type the magic words Jillian will use.
+4. `npm run deploy`. The site is now at `https://magical-assistant.<your-subdomain>.workers.dev`.
 5. **Auto-deploy from GitHub:** **Settings → Builds → Connect** to this repository, and set:
    - **Build command:** `npm run build`. The Vite build writes the deploy config and bundles `brains/` into the Worker, so `wrangler deploy` on its own won't work.
    - **Deploy command:** `npx wrangler deploy`

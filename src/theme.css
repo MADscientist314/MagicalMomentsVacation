@@ -193,6 +193,19 @@ button:disabled {
   margin-top: 28px;
 }
 
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--purple);
+  text-decoration: underline;
+  font-size: inherit;
+}
+
+.login {
+  max-width: 440px;
+}
+
 /* ---------- tool page ---------- */
 .workspace {
   display: grid;

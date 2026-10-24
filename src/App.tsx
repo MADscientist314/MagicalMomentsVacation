@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { isToolId, TOOLS } from "../shared/tools";
+import { checkSession, signOut } from "./lib/session";
 import { Home } from "./pages/Home";
+import { LoginPage } from "./pages/LoginPage";
 import { ToolPage } from "./pages/ToolPage";
 
 function useHash(): string {
@@ -17,6 +19,22 @@ function useHash(): string {
 }
 
 export default function App() {
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const id = useHash().replace(/^#\/?/, "");
-  return isToolId(id) ? <ToolPage key={id} tool={TOOLS[id]} /> : <Home />;
+
+  useEffect(() => {
+    void checkSession().then(setSignedIn);
+  }, []);
+
+  if (signedIn === null) return null;
+  if (!signedIn) return <LoginPage onSignedIn={() => setSignedIn(true)} />;
+  if (isToolId(id)) return <ToolPage key={id} tool={TOOLS[id]} />;
+  return (
+    <Home
+      onSignOut={async () => {
+        await signOut();
+        setSignedIn(false);
+      }}
+    />
+  );
 }

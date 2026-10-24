@@ -43,7 +43,7 @@ The website is the main way to use it. Jillian can also have the same four tools
 **Easiest: upload once.** Someone with the code runs `npm run build:plugin`, which creates `dist-plugin/magical-vacations.zip`. In the Claude app, go to **Customize → Plugins → Add → Upload plugin** and choose that zip. To update, upload the new zip.
 
 **Better: stay updated automatically.**
-1. In the Claude app, go to **Customize → Plugins → Add → Add marketplace**, and paste this repository's GitHub address. For a private repo, Claude asks you to connect GitHub and give it access.
+1. In the Claude app, go to **Customize → Plugins → Add → Add marketplace**, and paste this repository's GitHub address (`MADscientist314/MagicalMomentsVacation`).
 2. Install **Magical Vacations by Jillian** from that marketplace.
 3. Turn on **Sync automatically**.
 
@@ -51,9 +51,13 @@ Updates arrive on their own. Start a **new chat** to use the latest version.
 
 In a chat, Jillian types `/` and picks a tool, or just asks: "Draft a welcome email for the Rivera family."
 
-## Who can sign in to the website
+## Signing in to the website
 
-The site is protected by Cloudflare Access: only listed email addresses can open it, and each sign-in sends a one-time code by email. To add or remove someone, go to the Cloudflare dashboard → **Workers & Pages → magical-assistant → Settings → Domains & Routes → Manage Cloudflare Access** and edit the list of emails.
+The website asks for the **magic words**, a single shared password. Capitals and spaces don't matter. Once Jillian signs in, her browser remembers her for 30 days, and **Sign out** is at the bottom of the home screen.
+
+The magic words are never written in this repository, which is public. Michael shares them privately. To change them, someone with the code runs `npx wrangler secret put APP_PASSWORD` and types the new words. Everyone is signed out, and the new words work straight away.
+
+Don't post the magic words anywhere public: anyone who has them can use the assistant, and that spends API credit.
 
 ## What never to paste in
 

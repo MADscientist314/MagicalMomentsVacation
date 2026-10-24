@@ -32,7 +32,7 @@ export async function streamDraft(body: DraftRequest, on: DraftHandlers, signal:
     on.error(json?.error ?? (res.status === 401 ? SIGNED_OUT : GENERIC));
     return;
   }
-  // Cloudflare Access answers an expired session with its login page instead.
+  // A proxy in front (e.g. Cloudflare Access, if added) may answer with a login page instead.
   if (!type.includes("text/event-stream") || !res.body) {
     on.error(SIGNED_OUT);
     return;

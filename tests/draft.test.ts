@@ -8,7 +8,7 @@ import { handleDraft, type DraftClient } from "../worker/draft";
 import { EventParser, KEEPALIVE, type ServerEvent } from "../shared/sse";
 import type { DraftRequest } from "../shared/tools";
 
-const ENV = { ANTHROPIC_API_KEY: "test", ACCESS_MODE: "off", TEAM_DOMAIN: "", POLICY_AUD: "" } as Env;
+const ENV = { ANTHROPIC_API_KEY: "test", APP_PASSWORD: "test" } as Env;
 
 type Script = { events: BetaRawMessageStreamEvent[]; final: Partial<BetaMessage>; silentMs?: number };
 

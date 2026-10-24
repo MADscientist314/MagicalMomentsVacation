@@ -10,7 +10,7 @@ const ICONS: Record<string, Icon> = {
   "map-2": IconMap2,
 };
 
-export function Home() {
+export function Home({ onSignOut }: { onSignOut(): void }) {
   return (
     <>
       <header className="hero">
@@ -33,7 +33,12 @@ export function Home() {
             );
           })}
         </nav>
-        <p className="footnote">Everything here is a draft for you to review. Nothing is sent until you send it.</p>
+        <p className="footnote">
+          Everything here is a draft for you to review. Nothing is sent until you send it.{" "}
+          <button type="button" className="link-button" onClick={onSignOut}>
+            Sign out
+          </button>
+        </p>
       </main>
     </>
   );
