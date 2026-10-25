@@ -34,7 +34,8 @@ const STOP_NOTES: Record<string, string> = {
 export function DraftPanel({ tool, draft, phase, sources, stopReason, error, receiving, onRefine, onStartOver }: Props) {
   const [request, setRequest] = useState("");
   const busy = phase === "waiting" || phase === "searching" || phase === "writing";
-  const { client, internal, days } = splitDraft(draft);
+  const { client, internal, blocks } = splitDraft(draft);
+  const blockLabel = tool.id === "inbox-helper" ? "Copy reply" : "Copy day";
   const { subject, body } = splitSubject(client);
 
   if (phase === "idle" && !error) {
@@ -55,8 +56,10 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
   const clientCard: ReactNode = client && (
     <section className="card" aria-live="polite">
       <div className="card-head">
-        <h2>{days.length ? "Trip plan" : "Draft"}</h2>
-        {!busy && <CopyButton markdown={days.length ? client : body} label={days.length ? "Copy all days" : "Copy"} />}
+        <h2>{blocks.length ? (tool.id === "inbox-helper" ? "Replies" : "Trip plan") : "Draft"}</h2>
+        {!busy && !(blocks.length && tool.id === "inbox-helper") && (
+          <CopyButton markdown={blocks.length ? client : body} label={blocks.length ? "Copy all days" : "Copy"} />
+        )}
       </div>
       {subject && (
         <div className="subject">
@@ -66,12 +69,12 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
           {!busy && <CopyButton markdown={subject} label="Copy subject" />}
         </div>
       )}
-      {days.length ? (
-        days.map((d) => (
+      {blocks.length ? (
+        blocks.map((d) => (
           <div key={d.title} className="day">
             <div className="card-head">
               <h3>{d.title}</h3>
-              {!busy && <CopyButton markdown={`${d.title}\n\n${d.body}`} label="Copy day" />}
+              {!busy && <CopyButton markdown={`${d.title}\n\n${d.body}`} label={blockLabel} />}
             </div>
             <Markdown md={d.body} />
           </div>

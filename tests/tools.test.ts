@@ -25,3 +25,13 @@ describe("isToolId", () => {
     expect(isToolId(42)).toBe(false);
   });
 });
+
+describe("Inbox Helper", () => {
+  it("takes pasted emails and puts the priorities first", () => {
+    const tool = TOOLS["inbox-helper"];
+    expect(tool.name).toBe("Inbox Helper");
+    expect(tool.webSearch).toBe(false);
+    expect(tool.notesFirst).toBe(true);
+    expect(tool.fields.map((f) => [f.id, f.required, f.maxLength])).toEqual([["emails", true, 20000]]);
+  });
+});

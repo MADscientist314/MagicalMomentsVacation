@@ -33,6 +33,16 @@ Before writing, read:
    - **Budget reality check:** …
    - **What they told us:** destination, dates, party and ages, budget, occasion, and anything unusual
    - **Questions for the Blueprint Call:** 5–8 specific questions that fill the gaps in what they shared
+   - **Trip hand-off**: always include this block last, exactly in this shape, so Jillian can start a trip in the Adventure Planner with one click. Write "unknown" for anything the inquiry doesn't say.
+     ```
+     **Trip hand-off**
+     - Client last name: …
+     - Destination: … (exactly one of: Walt Disney World, Universal Orlando, Royal Caribbean cruise, All-inclusive resort; or unknown)
+     - Dates: …
+     - Who's going: … (adults and children's ages)
+     - Priorities: …
+     - Summary: one or two sentences about what they want and why
+     ```
 
 ## Always
 - If no inquiry text was provided, ask Jillian to paste it.

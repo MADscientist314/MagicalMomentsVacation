@@ -61,6 +61,14 @@ describe("buildSystem", () => {
   });
 });
 
+describe("Inbox Helper prompt", () => {
+  it("uses the inbox-helper skill with her voice and footer", () => {
+    const text = buildSystem("inbox-helper").map((b) => b.text).join("\n");
+    expect(text).toContain("Inbox Helper");
+    expect(text).toContain("Required legal footer");
+  });
+});
+
 describe("buildUserMessage", () => {
   it("writes one labelled line per filled field in form order", () => {
     expect(buildUserMessage("magic-mail", { clientNames: "The Smiths", emailType: "Welcome" })).toBe(

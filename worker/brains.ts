@@ -6,6 +6,7 @@ import bookingWindows from "../brains/reference/booking-windows.md?raw";
 import fitRules from "../brains/reference/fit-rules.md?raw";
 import magicMail from "../brains/skills/magic-mail/SKILL.md?raw";
 import welcomeCenter from "../brains/skills/welcome-center/SKILL.md?raw";
+import inboxHelper from "../brains/skills/inbox-helper/SKILL.md?raw";
 import spreadTheMagic from "../brains/skills/spread-the-magic/SKILL.md?raw";
 import adventurePlanner from "../brains/skills/adventure-planner/SKILL.md?raw";
 import chat from "../brains/chat.md?raw";
@@ -19,6 +20,7 @@ export const BRAINS: Record<string, string> = {
   "reference/fit-rules": fitRules,
   "skills/magic-mail": magicMail,
   "skills/welcome-center": welcomeCenter,
+  "skills/inbox-helper": inboxHelper,
   "skills/spread-the-magic": spreadTheMagic,
   "skills/adventure-planner": adventurePlanner,
   chat,

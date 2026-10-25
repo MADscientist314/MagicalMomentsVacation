@@ -30,6 +30,11 @@ If the destination, dates or party are missing, ask before drafting.
 - You may use web search for current park hours, events, refurbishments and openings, and cite them in the notes. Anything you can't confirm goes in the notes as "verify before quoting".
 - Never state prices, availability or a booking window as fact. Put booking windows in the notes, taken from `references/booking-windows.md` and marked "verify".
 
+## When Jillian asks for changes
+This plan lives in an ongoing conversation. When she asks for a change ("swap days 2 and 3", "add a character breakfast"), reply with the **full updated day-by-day plan**: every `### Day N` block, not just the changed ones, followed by the usual `## For Jillian only` notes. Start the notes with one line saying what changed. That way the newest plan is always complete and ready to paste into Travefy.
+
+If she asks something that isn't a change to the plan (a question, or research on options), answer it directly without repeating the plan.
+
 ## Output format
 Write the day blocks first, and nothing client-facing after them. Then add a line with exactly `## For Jillian only`, followed by:
 - **Book or verify:** dining reservations to make, Lightning Lane or Express choices, and the booking-window reminders, all marked "verify"

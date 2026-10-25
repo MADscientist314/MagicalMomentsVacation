@@ -1,7 +1,7 @@
-// The four tools Jillian sees, and the form fields each one asks for.
+// The tools Jillian sees on the home screen, and the form fields each one asks for.
 // The UI renders forms from this; the Worker validates requests against it.
 
-export type ToolId = "magic-mail" | "welcome-center" | "spread-the-magic" | "adventure-planner";
+export type ToolId = "magic-mail" | "welcome-center" | "inbox-helper" | "spread-the-magic" | "adventure-planner";
 
 export interface FieldDef {
   id: string;
@@ -76,6 +76,25 @@ export const TOOLS: Record<ToolId, ToolDef> = {
         kind: "textarea",
         required: true,
         maxLength: 12000,
+      },
+    ],
+  },
+  "inbox-helper": {
+    id: "inbox-helper",
+    name: "Inbox Helper",
+    subtitle: "Prioritize and reply",
+    icon: "inbox",
+    effort: "medium",
+    webSearch: false,
+    notesFirst: true,
+    fields: [
+      {
+        id: "emails",
+        label: "Paste the emails or thread",
+        kind: "textarea",
+        required: true,
+        placeholder: "Paste one or more emails here: who they're from, the subject and the message.",
+        maxLength: 20000,
       },
     ],
   },

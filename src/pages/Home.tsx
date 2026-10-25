@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconDoorEnter, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
+import { IconDoorEnter, IconInbox, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
 import { TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
 import { MagicLamp } from "../art/MagicLamp";
@@ -11,6 +11,7 @@ import { joinTranscript } from "../lib/speech";
 const ICONS: Record<string, Icon> = {
   "mail-heart": IconMailHeart,
   "door-enter": IconDoorEnter,
+  inbox: IconInbox,
   wand: IconWand,
   "map-2": IconMap2,
 };
