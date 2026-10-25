@@ -15,12 +15,14 @@ All of them are in the `brains/` folder on GitHub.
 | Her rules for which inquiries are a good fit (budgets, lead time, destinations) | `brains/reference/fit-rules.md` |
 | How a whole tool behaves | `brains/skills/<tool>/SKILL.md` |
 | How the "Ask me anything" chat talks and what it won't do | `brains/chat.md` |
+| What goes into proposals, itineraries and estimates | `brains/deliverables.md` |
 
 Look for lines marked **TODO**. Those are the gaps Jillian still needs to fill in. Until she does, the assistant leaves placeholders and says "verify" instead of guessing. Most urgent:
 1. `fit-rules.md`: until it's filled in, Welcome Center can't say whether an inquiry is a fit.
 2. `compliance.md`: paste in the MMV brand guide and EarMarked rules.
 3. `voice.md`: paste 2–3 real emails Jillian has sent (with client names removed).
 4. `business.md`: add the Blueprint Call booking link and the payment-reminder schedule.
+5. `compliance.md`: if client documents need a disclaimer (e.g. "prices subject to availability"), write its exact wording there.
 
 ## How to edit a file
 
@@ -39,7 +41,7 @@ To undo a change, open the file's **History** and copy the old text back.
 
 ## Installing the assistant in the Claude app (optional)
 
-The website is the main way to use it. Jillian can also have the same four tools inside the Claude desktop app on her Mac. That needs a paid Claude plan (Pro or above).
+The website is the main way to use it. Jillian can also have the same five tools inside the Claude desktop app on her Mac (without the saved trips and client documents, which only the website has). That needs a paid Claude plan (Pro or above).
 
 **Easiest: upload once.** Someone with the code runs `npm run build:plugin`, which creates `dist-plugin/magical-vacations.zip`. In the Claude app, go to **Customize → Plugins → Add → Upload plugin** and choose that zip. To update, upload the new zip.
 
@@ -63,6 +65,23 @@ Don't post the magic words anywhere public: anyone who has them can use the assi
 ## Talking instead of typing
 
 On the home screen ("Or just ask me anything") and on the chat page there's a **microphone** button. Tap it, talk, and tap again (or pause) to stop. Her words appear in the box so she can fix anything misheard before sending. The first time, the browser asks permission to use the microphone; she should choose **Allow**. It works in Safari and Chrome on a Mac. The speech-to-text is done by Apple (Safari) or Google (Chrome).
+
+## Saved trips and chats
+
+Trips (Adventure Planner) and chats ("Ask me anything") are saved on Cloudflare, behind the magic words, so Jillian can pick them up on any device. The quick tools (Magic Mail, Welcome Center, Inbox Helper, Spread the Magic) save nothing.
+
+- **Nothing is deleted automatically.** To delete a trip, use the trash icon on the trips list and confirm; its conversation and documents go with it. Chats have a trash icon in **Your chats**.
+- **Deleted by mistake?** Someone with the code can roll the whole database back to a moment before the delete (Cloudflare "D1 Time Travel", up to 30 days). It rolls back everything, so do it soon.
+- Email addresses and phone numbers are hidden before a message is saved, just as before sending.
+
+## Client documents
+
+On a trip's page, the **Client deliverables** panel makes a proposal, an itinerary or an estimate from the conversation.
+
+- **Prices only come from Jillian.** Any price she didn't type into the trip conversation herself shows as **Add price**. Prices Claude found online are only hints, so she should check them with the supplier.
+- **Review & edit** lets her change any text or price and **Save as new version**; older versions are kept. **Client copy** is what the family sees: no internal notes.
+- **PDF** opens the print dialog; choose **Save as PDF**. **HTML** saves a single web page she can attach or upload. If a price still says "Add price", both warn first.
+- Her signature and the legal footer are added automatically from `voice.md` and `compliance.md`, so changing those files changes new documents too.
 
 ## What never to paste in
 

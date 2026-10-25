@@ -27,3 +27,5 @@ Every marketing piece (posts, newsletters, website promos) and every client emai
 - Clients' card details go directly to the supplier, never through email or the assistant.
 
 <!-- TODO(Jillian): paste the MMV brand guide rules and Disney's EarMarked branding rules here (approved name formats, required wording, anything forbidden). The assistant only applies rules written in this file, so until then it uses the basics above. -->
+
+<!-- TODO(Jillian): client document disclaimer. If proposals, itineraries and estimates need a line such as "Prices are subject to availability until booked", write the exact wording here. Until then, client documents end with only the footer above. -->

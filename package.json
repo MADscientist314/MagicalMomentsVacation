@@ -11,7 +11,9 @@
     "typecheck": "tsc -b",
     "cf-typegen": "wrangler types --strict-vars=false",
     "deploy": "npm run build && wrangler deploy",
-    "build:plugin": "node scripts/build-plugin.mjs"
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply magical-assistant --local",
+    "db:migrate": "wrangler d1 migrations apply magical-assistant --remote"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
