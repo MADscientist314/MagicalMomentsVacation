@@ -7,6 +7,7 @@ export interface DraftHandlers {
   status(phase: "searching" | "writing"): void;
   done(d: { stopReason: string; sources: { title: string; url: string }[] }): void;
   error(message: string): void;
+  deliverable?(d: { id: string; kind: "proposal" | "itinerary" | "estimate"; version: number }): void;
 }
 
 const OFFLINE = "Couldn't reach the assistant — check the internet connection.";
@@ -55,6 +56,7 @@ async function streamFrom(url: string, body: unknown, on: DraftHandlers, signal:
         if (e.event === "text") on.text(e.data);
         else if (e.event === "status") on.status(e.data.phase);
         else if (e.event === "done") on.done(e.data);
+        else if (e.event === "deliverable") on.deliverable?.(e.data);
         else on.error(e.data.message);
         if (signal.aborted) return;
       }

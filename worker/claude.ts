@@ -69,9 +69,17 @@ function friendlyError(err: unknown): string {
   return "Something went wrong — try again.";
 }
 
+/** An error whose message is safe and helpful to show Jillian as-is. */
+export class UserFacingError extends Error {}
+
 export interface StreamHooks {
-  /** Runs before `done` is sent (e.g. to save the reply); if it throws, an error is sent instead. */
-  beforeDone?(result: { text: string; sources: Source[]; stopReason: string }): Promise<void>;
+  /** Send Claude's text to the browser as it arrives (default true; off for JSON deliverables). */
+  forwardText?: boolean;
+  /**
+   * Runs before `done` is sent (e.g. to save the reply) and may return extra events to send first.
+   * If it throws, an error is sent instead of `done`.
+   */
+  beforeDone?(result: { text: string; sources: Source[]; stopReason: string }): Promise<ServerEvent[] | void>;
   /** Runs once the stream has ended, however it ended (e.g. to release a lock). */
   finally?(): Promise<void>;
   /** Keeps the Worker alive until the stream's work, including the hooks, has finished. */
@@ -122,7 +130,7 @@ export function streamClaude(
             }
           } else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             text += event.delta.text;
-            await send({ event: "text", data: event.delta.text });
+            if (hooks.forwardText !== false) await send({ event: "text", data: event.delta.text });
           }
         }
         const final = await stream.finalMessage();
@@ -134,13 +142,16 @@ export function streamClaude(
         }
         break;
       }
+      let extra: ServerEvent[] = [];
       try {
-        await hooks.beforeDone?.({ text, sources: [...sources.values()], stopReason });
+        extra = (await hooks.beforeDone?.({ text, sources: [...sources.values()], stopReason })) ?? [];
       } catch (err) {
-        console.error(`${label} save failed:`, describeError(err));
-        await send({ event: "error", data: { message: "Couldn't save that reply — try again." } }).catch(() => {});
+        const message = err instanceof UserFacingError ? err.message : "Couldn't save that reply — try again.";
+        if (!(err instanceof UserFacingError)) console.error(`${label} save failed:`, describeError(err));
+        await send({ event: "error", data: { message } }).catch(() => {});
         return;
       }
+      for (const e of extra) await send(e);
       await send({ event: "done", data: { stopReason, sources: [...sources.values()] } });
     } catch (err) {
       if (!abort.signal.aborted) {

@@ -42,6 +42,33 @@ export function buildChatSystem(): Anthropic.TextBlockParam[] {
   return systemFor(BRAINS.chat.trim());
 }
 
+export function buildDeliverableSystem(): Anthropic.TextBlockParam[] {
+  return systemFor(BRAINS.deliverables.trim());
+}
+
+/** The legal footer, exactly as written in compliance.md. */
+export function extractFooter(compliance: string): string {
+  const line = compliance.split(/\r?\n/).find((l) => l.startsWith("> As to Disney"));
+  return line ? line.replace(/^>\s*/, "").trim() : "";
+}
+
+/** Her signature block from voice.md (the lines under "## Signature block"). */
+export function extractSignature(voice: string): string {
+  const lines = voice.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^##\s+Signature block/i.test(l));
+  if (start < 0) return "";
+  const out: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^(#|<!--)/.test(line.trim())) break;
+    if (!line.trim()) {
+      if (out.length) break;
+      continue;
+    }
+    out.push(line.trim());
+  }
+  return out.join("\n");
+}
+
 export function buildUserMessage(tool: ToolId, fields: Record<string, string>): string {
   return TOOLS[tool].fields
     .filter((f) => fields[f.id]?.trim())

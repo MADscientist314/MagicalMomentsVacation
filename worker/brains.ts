@@ -9,6 +9,7 @@ import welcomeCenter from "../brains/skills/welcome-center/SKILL.md?raw";
 import spreadTheMagic from "../brains/skills/spread-the-magic/SKILL.md?raw";
 import adventurePlanner from "../brains/skills/adventure-planner/SKILL.md?raw";
 import chat from "../brains/chat.md?raw";
+import deliverables from "../brains/deliverables.md?raw";
 
 export const BRAINS: Record<string, string> = {
   "reference/voice": voice,
@@ -21,4 +22,5 @@ export const BRAINS: Record<string, string> = {
   "skills/spread-the-magic": spreadTheMagic,
   "skills/adventure-planner": adventurePlanner,
   chat,
+  deliverables,
 };

@@ -4,7 +4,8 @@ export type ServerEvent =
   | { event: "text"; data: string }
   | { event: "status"; data: { phase: "searching" | "writing" } }
   | { event: "done"; data: { stopReason: string; sources: { title: string; url: string }[] } }
-  | { event: "error"; data: { message: string } };
+  | { event: "error"; data: { message: string } }
+  | { event: "deliverable"; data: { id: string; kind: "proposal" | "itinerary" | "estimate"; version: number } };
 
 export const KEEPALIVE = ": keepalive\n\n";
 
