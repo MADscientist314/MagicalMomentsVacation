@@ -182,7 +182,10 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 const priceOrGap = (n: number | null) => (n === null ? `<span class="missing">Add price</span>` : esc(money(n)));
-const list = (items: string[]) => (items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : "");
+const list = (items: string[]) => {
+  const filled = items.filter((i) => i.trim());
+  return filled.length ? `<ul>${filled.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : "";
+};
 const para = (text: string) => (text.trim() ? `<p>${esc(text)}</p>` : "");
 
 function proposalBody(p: Proposal): string {

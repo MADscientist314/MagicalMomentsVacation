@@ -1,5 +1,4 @@
 import { EventParser } from "../../shared/sse";
-import type { ChatRequest } from "../../shared/chat";
 import type { DraftRequest } from "../../shared/tools";
 
 export interface DraftHandlers {
@@ -15,12 +14,10 @@ const GENERIC = "Something went wrong — try again.";
 const SIGNED_OUT = "Your sign-in expired — reload the page to sign in again.";
 
 export const streamDraft = (body: DraftRequest, on: DraftHandlers, signal: AbortSignal) =>
-  streamFrom("/api/draft", body, on, signal);
+  streamPost("/api/draft", body, on, signal);
 
-export const streamChat = (body: ChatRequest, on: DraftHandlers, signal: AbortSignal) =>
-  streamFrom("/api/chat", body, on, signal);
-
-async function streamFrom(url: string, body: unknown, on: DraftHandlers, signal: AbortSignal): Promise<void> {
+/** POSTs JSON and reads the reply as our SSE stream (drafts, trip and chat replies, deliverables). */
+export async function streamPost(url: string, body: unknown, on: DraftHandlers, signal: AbortSignal): Promise<void> {
   let res: Response;
   try {
     res = await fetch(url, {

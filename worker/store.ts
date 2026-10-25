@@ -1,34 +1,8 @@
 // All D1 queries for saved trips, chats, messages and deliverables.
 import type { DeliverableKind } from "../shared/deliverables";
+import type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage } from "../shared/conversations";
 
-export type ConversationKind = "trip" | "chat";
-export type Source = { title: string; url: string };
-
-export interface Conversation {
-  id: string;
-  kind: ConversationKind;
-  title: string;
-  details: Record<string, string>;
-  pinned: boolean;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface StoredMessage {
-  id: string;
-  seq: number;
-  role: "user" | "assistant";
-  content: string;
-  sources: Source[];
-  created_at: number;
-}
-
-export interface DeliverableMeta {
-  id: string;
-  kind: DeliverableKind;
-  version: number;
-  created_at: number;
-}
+export type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage };
 
 type ConversationRow = Omit<Conversation, "details" | "pinned"> & { details: string; pinned: number };
 

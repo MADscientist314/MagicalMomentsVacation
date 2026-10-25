@@ -4,7 +4,7 @@ import { TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
 import { MagicLamp } from "../art/MagicLamp";
 import { MicButton } from "../components/MicButton";
-import { chatStore } from "../lib/chatStore";
+import { startChat } from "../lib/startChat";
 import { greeting } from "../lib/greeting";
 import { joinTranscript } from "../lib/speech";
 
@@ -20,11 +20,15 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
   const [question, setQuestion] = useState("");
   const [blocked, setBlocked] = useState<string | null>(null);
 
-  const ask = () => {
-    if (!question.trim()) return;
-    const problem = chatStore.send(question);
-    setBlocked(problem);
-    if (!problem) window.location.hash = "#/chat";
+  const [asking, setAsking] = useState(false);
+
+  const ask = async () => {
+    if (!question.trim() || asking) return;
+    setAsking(true);
+    const started = await startChat(question);
+    setAsking(false);
+    if ("error" in started) return setBlocked(started.error);
+    window.location.hash = `#/chat/${started.id}`;
   };
 
   return (
@@ -41,7 +45,7 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
           {Object.values(TOOLS).map((t) => {
             const ToolIcon = ICONS[t.icon];
             return (
-              <a key={t.id} className="tile" href={`#/${t.id}`}>
+              <a key={t.id} className="tile" href={t.id === "adventure-planner" ? "#/trips" : `#/${t.id}`}>
                 <ToolIcon size={26} aria-hidden />
                 <span className="tile-name">{t.name}</span>
                 {t.subtitle}
@@ -53,7 +57,7 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
           className="ask-bar"
           onSubmit={(e) => {
             e.preventDefault();
-            ask();
+            void ask();
           }}
         >
           <div className="wish-head">
@@ -74,7 +78,7 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
               }}
             />
             <MicButton onSpeech={(heard) => setQuestion((q) => joinTranscript(q, heard))} />
-            <button type="submit" className="btn-primary" disabled={!question.trim()}>
+            <button type="submit" className="btn-primary" disabled={!question.trim() || asking}>
               <IconSend size={18} aria-hidden />
               Ask
             </button>

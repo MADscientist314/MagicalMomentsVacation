@@ -20,6 +20,7 @@ export type ChatAction =
   | { type: "status"; phase: "searching" | "writing" }
   | { type: "done"; stopReason: string; sources: { title: string; url: string }[] }
   | { type: "error"; message: string }
+  | { type: "load"; turns: ChatTurn[] }
   | { type: "reset" };
 
 export const initialChatState: ChatState = { turns: [], phase: "idle", error: null, notice: null, restore: null };
@@ -53,6 +54,8 @@ export function chatReducer(s: ChatState, a: ChatAction): ChatState {
     }
     case "error":
       return giveBack(s, a.message);
+    case "load":
+      return { ...initialChatState, turns: a.turns };
     case "reset":
       return initialChatState;
   }

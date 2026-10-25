@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { IconRefresh } from "@tabler/icons-react";
+import { IconMap2, IconRefresh } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
 import type { Phase } from "../lib/draftState";
-import { splitDraft, splitSubject } from "../../shared/sections";
+import { parseTripHandoff, splitDraft, splitSubject } from "../../shared/sections";
+import { giveHandoff } from "../lib/handoff";
 import { renderMarkdown } from "../lib/markdown";
 import { CopyButton } from "./CopyButton";
 import { Sources } from "./Sources";
@@ -85,10 +86,24 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
     </section>
   );
 
+  const handoff = tool.id === "welcome-center" && phase === "done" ? parseTripHandoff(internal) : null;
+
   const notesCard: ReactNode = (internal || sources.length > 0) && (
     <section className="card notes">
       <div className="card-head">
         <h2>For Jillian only</h2>
+        {handoff && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              giveHandoff(handoff);
+              window.location.hash = "#/trips/new";
+            }}
+          >
+            <IconMap2 size={16} aria-hidden /> Start a trip
+          </button>
+        )}
       </div>
       <Markdown md={internal} />
       <Sources sources={sources} />

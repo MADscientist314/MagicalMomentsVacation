@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { streamChat, streamDraft } from "../src/lib/streamDraft";
+import { streamDraft, streamPost } from "../src/lib/streamDraft";
 import { encodeEvent } from "../shared/sse";
 import type { DraftRequest } from "../shared/tools";
 
@@ -63,13 +63,13 @@ describe("streamDraft", () => {
   });
 });
 
-describe("streamChat", () => {
-  it("posts the conversation to the chat endpoint", async () => {
+describe("streamPost", () => {
+  it("posts to any streaming endpoint", async () => {
     const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(encodeEvent({ event: "done", data: { stopReason: "end_turn", sources: [] } }), { headers: { "content-type": "text/event-stream" } }));
     vi.stubGlobal("fetch", fetchMock);
     const on = handlers();
-    await streamChat({ messages: [{ role: "user", content: "Hi" }] }, on, new AbortController().signal);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/chat");
+    await streamPost("/api/conversations/abc/messages", { content: "Hi" }, on, new AbortController().signal);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/conversations/abc/messages");
     expect(on.done).toHaveBeenCalled();
   });
 });
