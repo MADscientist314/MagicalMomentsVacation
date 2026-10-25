@@ -7,7 +7,15 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "magical-assistant",
+      "database_id": "f3575c74-2a4a-473b-90a8-ebd141b64bd9",
+      "migrations_dir": "migrations"
+    }
+  ]
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
   //   ANTHROPIC_API_KEY  the Claude API key
   //   APP_PASSWORD       the "magic words" Jillian types to sign in
