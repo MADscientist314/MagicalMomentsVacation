@@ -21,6 +21,7 @@ export function TripPage({ id }: { id: string }) {
     getConversation(id)
       .then((t) => {
         setTrip(t);
+        setError(null);
         loadThread(id, t.messages);
       })
       .catch((e: Error) => setError(e.message));
@@ -74,7 +75,11 @@ export function TripPage({ id }: { id: string }) {
           <button
             type="button"
             className="btn-quiet"
-            onClick={() => void updateConversation(id, { pinned: !trip.pinned }).then(refresh)}
+            onClick={() =>
+              void updateConversation(id, { pinned: !trip.pinned })
+                .then(refresh)
+                .catch((e: Error) => setError(e.message))
+            }
           >
             {trip.pinned ? <IconPinnedOff size={16} aria-hidden /> : <IconPin size={16} aria-hidden />}
             {trip.pinned ? "Unpin" : "Pin to the top"}
@@ -84,6 +89,7 @@ export function TripPage({ id }: { id: string }) {
           </button>
         </div>
 
+        {error && !editing && <p className="message message-error">{error}</p>}
         {editing && (
           <TripDetailsForm
             initial={d}

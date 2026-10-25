@@ -2,6 +2,7 @@
 // heading followed by internal notes. Trip plans ("### Day …") and Inbox Helper
 // replies ("### Reply to …") come as "### " blocks that can each be copied.
 
+import { TRIP_FIELD_LIMITS } from "./conversations";
 import { TOOLS } from "./tools";
 
 const NOTES_MARKER = /^##\s+For Jillian only\s*$/im;
@@ -62,7 +63,7 @@ export function parseTripHandoff(internal: string): TripHandoff | null {
     if (!m) break;
     const key = HANDOFF_LINES[m[1].trim().toLowerCase().replace(/[’]/g, "'")];
     const value = m[2].trim();
-    if (key && !/^\(?unknown\)?$/i.test(value)) out[key] = value;
+    if (key && !/^\(?unknown\)?$/i.test(value)) out[key] = value.slice(0, TRIP_FIELD_LIMITS[key]);
   }
   const destinations = TOOLS["adventure-planner"].fields.find((f) => f.id === "destination")?.options ?? [];
   if (!destinations.includes(out.destination)) out.destination = "";

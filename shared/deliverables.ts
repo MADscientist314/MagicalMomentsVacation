@@ -135,7 +135,7 @@ function checkEstimate(d: Record<string, unknown>): string | null {
   if (!isText(d.title, true) || !isTextList(d.notes) || !isTextList(d.verifyNotes)) return "missing text";
   if (!Array.isArray(d.lineItems) || d.lineItems.length < 1 || d.lineItems.length > 100) return "needs line items";
   for (const l of d.lineItems) {
-    if (!isObject(l) || !isText(l.label, true) || !isPrice(l.unitPrice) || !isText(l.note ?? "")) return "bad line";
+    if (!isObject(l) || !isText(l.label, true) || !isPrice(l.unitPrice) || !isText(l.note)) return "bad line";
     if (typeof l.qty !== "number" || !Number.isFinite(l.qty) || l.qty <= 0) return "bad quantity";
   }
   return null;

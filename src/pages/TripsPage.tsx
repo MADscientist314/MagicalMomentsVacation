@@ -10,8 +10,9 @@ const ago = (ms: number) => {
   return days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : new Date(ms).toLocaleDateString();
 };
 
-function TripCard({ trip, onChanged }: { trip: Conversation; onChanged(): void }) {
+function TripCard({ trip, onChanged, onError }: { trip: Conversation; onChanged(): void; onError(message: string): void }) {
   const [confirming, setConfirming] = useState(false);
+  const fail = (e: Error) => onError(e.message);
   const where = [trip.details.destination, trip.details.dates].filter(Boolean).join(" · ");
   return (
     <li className="trip-card">
@@ -26,14 +27,14 @@ function TripCard({ trip, onChanged }: { trip: Conversation; onChanged(): void }
           className="btn-icon"
           aria-label={trip.pinned ? "Unpin" : "Pin"}
           title={trip.pinned ? "Unpin" : "Pin to the top"}
-          onClick={() => void updateConversation(trip.id, { pinned: !trip.pinned }).then(onChanged)}
+          onClick={() => void updateConversation(trip.id, { pinned: !trip.pinned }).then(onChanged).catch(fail)}
         >
           {trip.pinned ? <IconPinnedOff size={18} aria-hidden /> : <IconPin size={18} aria-hidden />}
         </button>
         {confirming ? (
           <span className="confirm">
             Delete this trip?
-            <button type="button" className="btn-quiet danger" onClick={() => void deleteConversation(trip.id).then(onChanged)}>
+            <button type="button" className="btn-quiet danger" onClick={() => void deleteConversation(trip.id).then(onChanged).catch(fail)}>
               Delete
             </button>
             <button type="button" className="btn-quiet" onClick={() => setConfirming(false)}>
@@ -100,13 +101,13 @@ export function TripsPage() {
         {pinned.length > 0 && (
           <section>
             <h2 className="list-heading">📌 Pinned</h2>
-            <ul className="trip-list">{pinned.map((t) => <TripCard key={t.id} trip={t} onChanged={load} />)}</ul>
+            <ul className="trip-list">{pinned.map((t) => <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />)}</ul>
           </section>
         )}
         {recent.length > 0 && (
           <section>
             <h2 className="list-heading">Recent trips</h2>
-            <ul className="trip-list">{recent.map((t) => <TripCard key={t.id} trip={t} onChanged={load} />)}</ul>
+            <ul className="trip-list">{recent.map((t) => <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />)}</ul>
           </section>
         )}
       </main>

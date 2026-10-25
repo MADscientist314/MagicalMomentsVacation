@@ -28,7 +28,8 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const response = await route(request, env, ctx);
     // An answer sent without reading the body (401, 409, 429…) can break the connection for the next request.
-    if (request.body && !request.bodyUsed) await request.arrayBuffer().catch(() => {});
+    // Streamed away rather than buffered, since the caller may not be signed in.
+    if (request.body && !request.bodyUsed) await request.body.pipeTo(new WritableStream()).catch(() => {});
     return response;
   },
 } satisfies ExportedHandler<Env>;

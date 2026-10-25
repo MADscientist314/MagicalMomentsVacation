@@ -57,6 +57,8 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
   };
 
   const addToConversation = (text: string) => {
+    // sendToThread ignores the call while a reply is running; keep her text in the box then.
+    if (threadBusy) return false;
     const problem = sendToThread(tripId, text, onChanged);
     setError(problem);
     return !problem;
@@ -147,7 +149,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
         </>
       )}
 
-      {openId && <DeliverableModal id={openId} tripTitle={tripTitle} onClose={() => setOpenId(null)} onSaved={onChanged} />}
+      {openId && <DeliverableModal key={openId} id={openId} tripTitle={tripTitle} onClose={() => setOpenId(null)} onSaved={onChanged} />}
     </aside>
   );
 }

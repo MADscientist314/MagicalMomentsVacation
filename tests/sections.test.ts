@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseTripHandoff, splitDraft, splitSubject } from "../shared/sections";
+import { TRIP_FIELD_LIMITS } from "../shared/conversations";
 
 describe("splitDraft", () => {
   it("separates client text from Jillian-only notes", () => {
@@ -67,6 +68,11 @@ describe("parseTripHandoff", () => {
       priorities: "Deluxe resort near Magic Kingdom, character dining",
       summary: "First visit; daughter's 7th birthday during the trip.",
     });
+  });
+
+  it("cuts values to what a trip can hold, so Plan it can't be refused for length", () => {
+    const long = parseTripHandoff(HANDOFF.replace(/Summary: .*/, `Summary: ${"a".repeat(3000)}`));
+    expect(long?.summary).toHaveLength(TRIP_FIELD_LIMITS.summary);
   });
 
   it("leaves the destination blank when it isn't one of the planner's choices", () => {

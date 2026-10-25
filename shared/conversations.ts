@@ -4,6 +4,17 @@ import type { DeliverableKind } from "./deliverables";
 export type ConversationKind = "trip" | "chat";
 export type Source = { title: string; url: string };
 
+/** The longest each trip detail may be (characters). */
+export const TRIP_FIELD_LIMITS: Record<string, number> = {
+  lastName: 80,
+  destination: 60,
+  dates: 200,
+  party: 300,
+  resort: 200,
+  priorities: 4_000,
+  summary: 2_000,
+};
+
 /** Starts the note the server adds when trip details are edited after planning. */
 export const DETAILS_CHANGED = "Trip details changed — use these from now on:";
 

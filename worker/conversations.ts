@@ -1,7 +1,7 @@
 // Saved trips and chats: /api/conversations[/:id[/plan|/messages|/deliverables]].
 // The server keeps the history; the browser only ever sends the new message.
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { DETAILS_CHANGED } from "../shared/conversations";
+import { DETAILS_CHANGED, TRIP_FIELD_LIMITS } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
 import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
@@ -20,15 +20,7 @@ const MAX_MESSAGE = 4_000;
 const MAX_HISTORY = 200_000;
 const MAX_TITLE = 120;
 const LOCK_MS = 10 * 60_000;
-const TRIP_FIELDS: Record<string, number> = {
-  lastName: 80,
-  destination: 60,
-  dates: 200,
-  party: 300,
-  resort: 200,
-  priorities: 4_000,
-  summary: 2_000,
-};
+const TRIP_FIELDS = TRIP_FIELD_LIMITS;
 const FIELD_LABELS: Record<string, string> = {
   lastName: "client last name",
   destination: "destination",

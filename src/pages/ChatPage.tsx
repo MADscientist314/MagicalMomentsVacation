@@ -16,7 +16,63 @@ const STARTERS = [
   "Give me three Facebook post ideas for this month.",
 ];
 
-function ChatList({ chats, currentId, onChanged }: { chats: Conversation[]; currentId?: string; onChanged(): void }) {
+interface ChatListProps {
+  chats: Conversation[];
+  currentId?: string;
+  onChanged(): void;
+  onError(message: string): void;
+}
+
+function ChatItem({ chat: c, currentId, onChanged, onError }: Omit<ChatListProps, "chats"> & { chat: Conversation }) {
+  const [confirming, setConfirming] = useState(false);
+  const fail = (e: Error) => onError(e.message);
+  return (
+    <li className={c.id === currentId ? "current" : ""}>
+      <a href={`#/chat/${c.id}`}>
+        {c.pinned && "📌 "}
+        {c.title}
+      </a>
+      {confirming ? (
+        <span className="confirm">
+          Delete?
+          <button
+            type="button"
+            className="btn-quiet danger"
+            onClick={() =>
+              void deleteConversation(c.id)
+                .then(() => {
+                  if (c.id === currentId) window.location.hash = "#/chat";
+                  onChanged();
+                })
+                .catch(fail)
+            }
+          >
+            Delete
+          </button>
+          <button type="button" className="btn-quiet" onClick={() => setConfirming(false)}>
+            Keep
+          </button>
+        </span>
+      ) : (
+        <span className="chat-actions">
+          <button
+            type="button"
+            className="btn-icon"
+            aria-label={c.pinned ? "Unpin" : "Pin"}
+            onClick={() => void updateConversation(c.id, { pinned: !c.pinned }).then(onChanged).catch(fail)}
+          >
+            {c.pinned ? <IconPinnedOff size={15} aria-hidden /> : <IconPin size={15} aria-hidden />}
+          </button>
+          <button type="button" className="btn-icon" aria-label="Delete chat" onClick={() => setConfirming(true)}>
+            <IconTrash size={15} aria-hidden />
+          </button>
+        </span>
+      )}
+    </li>
+  );
+}
+
+function ChatList({ chats, ...rest }: ChatListProps) {
   return (
     <nav className="card chat-list" aria-label="Your chats">
       <div className="card-head">
@@ -28,35 +84,7 @@ function ChatList({ chats, currentId, onChanged }: { chats: Conversation[]; curr
       {chats.length === 0 && <p className="muted-note">Your past chats will show up here.</p>}
       <ul>
         {chats.map((c) => (
-          <li key={c.id} className={c.id === currentId ? "current" : ""}>
-            <a href={`#/chat/${c.id}`}>
-              {c.pinned && "📌 "}
-              {c.title}
-            </a>
-            <span className="chat-actions">
-              <button
-                type="button"
-                className="btn-icon"
-                aria-label={c.pinned ? "Unpin" : "Pin"}
-                onClick={() => void updateConversation(c.id, { pinned: !c.pinned }).then(onChanged)}
-              >
-                {c.pinned ? <IconPinnedOff size={15} aria-hidden /> : <IconPin size={15} aria-hidden />}
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                aria-label="Delete chat"
-                onClick={() =>
-                  void deleteConversation(c.id).then(() => {
-                    if (c.id === currentId) window.location.hash = "#/chat";
-                    onChanged();
-                  })
-                }
-              >
-                <IconTrash size={15} aria-hidden />
-              </button>
-            </span>
-          </li>
+          <ChatItem key={c.id} chat={c} {...rest} />
         ))}
       </ul>
     </nav>
@@ -107,7 +135,7 @@ export function ChatPage({ id }: { id?: string }) {
         </div>
       </header>
       <main className="page chat-layout">
-        <ChatList chats={chats} currentId={id} onChanged={refreshList} />
+        <ChatList chats={chats} currentId={id} onChanged={refreshList} onError={setError} />
         <section className="chat-main">
           <div className="card chat-thread">
             {error && <p className="message message-error">{error}</p>}

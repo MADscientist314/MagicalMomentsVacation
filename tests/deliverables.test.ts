@@ -47,6 +47,9 @@ describe("validateDeliverable", () => {
     expect(validateDeliverable("estimate", { title: "x" }).ok).toBe(false);
     expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [{ ...ESTIMATE.lineItems[0], qty: -1 }] }).ok).toBe(false);
     expect(validateDeliverable("itinerary", "nope").ok).toBe(false);
+    // The renderer relies on every line having a note (even an empty one).
+    const { note: _, ...noNote } = ESTIMATE.lineItems[0];
+    expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [noNote] }).ok).toBe(false);
   });
 });
 
