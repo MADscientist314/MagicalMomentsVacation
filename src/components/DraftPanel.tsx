@@ -35,7 +35,10 @@ const STOP_NOTES: Record<string, string> = {
 export function DraftPanel({ tool, draft, phase, sources, stopReason, error, receiving, onRefine, onStartOver }: Props) {
   const [request, setRequest] = useState("");
   const busy = phase === "waiting" || phase === "searching" || phase === "writing";
-  const { client, internal, blocks } = splitDraft(draft);
+  const split = splitDraft(draft);
+  const { client, internal } = split;
+  // Only these tools write ### blocks to copy one by one; elsewhere a ### is just a heading.
+  const blocks = tool.id === "adventure-planner" || tool.id === "inbox-helper" ? split.blocks : [];
   const blockLabel = tool.id === "inbox-helper" ? "Copy reply" : "Copy day";
   const { subject, body } = splitSubject(client);
 
@@ -71,8 +74,8 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
         </div>
       )}
       {blocks.length ? (
-        blocks.map((d) => (
-          <div key={d.title} className="day">
+        blocks.map((d, i) => (
+          <div key={i} className="day">
             <div className="card-head">
               <h3>{d.title}</h3>
               {!busy && <CopyButton markdown={`${d.title}\n\n${d.body}`} label={blockLabel} />}

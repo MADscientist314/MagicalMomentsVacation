@@ -20,6 +20,14 @@ describe("DraftPanel", () => {
     expect(html).toContain("Start over");
   });
 
+  it("doesn't call another tool's draft with ### headings a trip plan", () => {
+    const html = renderToStaticMarkup(
+      createElement(DraftPanel, { ...props, tool: TOOLS["magic-mail"], phase: "done", receiving: false, draft: "Hi!\n\n### What to pack\nSunscreen" }),
+    );
+    expect(html).not.toContain("Trip plan");
+    expect(html).not.toContain("Copy all days");
+  });
+
   it("offers Start over while waiting for the first words", () => {
     const html = renderToStaticMarkup(createElement(DraftPanel, { ...props, phase: "waiting", draft: "", receiving: false }));
     expect(html).toContain("Start over");

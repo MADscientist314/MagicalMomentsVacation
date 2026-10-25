@@ -10,9 +10,14 @@ function Markdown({ md }: { md: string }) {
   return <div className="draft-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(md) }} />;
 }
 
+const DAY_PLAN = /^###\s+Day\b/m;
+
 /** A trip reply: day blocks with Copy day, Jillian-only notes folded away, sources. */
 function TripReply({ turn, current, busy }: { turn: ChatTurn; current: boolean; busy: boolean }) {
-  const { client, internal, blocks } = splitDraft(turn.content);
+  const split = splitDraft(turn.content);
+  const { client, internal } = split;
+  // Only a day-by-day plan gets the plan label and Copy day; other ### replies (options, say) read as text.
+  const blocks = DAY_PLAN.test(client) ? split.blocks : [];
   return (
     <div className={`bubble bubble-assistant trip-reply${current ? " current" : ""}`}>
       {blocks.length > 0 && (
@@ -24,8 +29,8 @@ function TripReply({ turn, current, busy }: { turn: ChatTurn; current: boolean; 
       {blocks.length ? (
         <>
           {client.slice(0, client.indexOf("###")).trim() && <Markdown md={client.slice(0, client.indexOf("###"))} />}
-          {blocks.map((b) => (
-            <div key={b.title} className="day">
+          {blocks.map((b, i) => (
+            <div key={i} className="day">
               <div className="card-head">
                 <h3>{b.title}</h3>
                 {!busy && <CopyButton markdown={`${b.title}\n\n${b.body}`} label="Copy day" />}
@@ -57,7 +62,7 @@ export function ConversationThread({ state, mode }: { state: ChatState; mode: "t
   const bottom = useRef<HTMLDivElement>(null);
   const busy = state.phase !== "idle";
   // The newest reply that contains a day-by-day plan is the one to copy into Travefy.
-  const currentPlan = mode === "trip" ? state.turns.findLastIndex((t) => t.role === "assistant" && /^###\s/m.test(t.content)) : -1;
+  const currentPlan = mode === "trip" ? state.turns.findLastIndex((t) => t.role === "assistant" && DAY_PLAN.test(t.content)) : -1;
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end", behavior: "smooth" });
