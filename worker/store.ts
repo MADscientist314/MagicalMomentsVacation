@@ -175,7 +175,10 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
 }
 
 export async function recordLoginFailure(db: D1Database, ip: string, now: number): Promise<void> {
-  await db.prepare("INSERT INTO login_failures (ip, at) VALUES (?, ?)").bind(ip, now).run();
+  await db.batch([
+    db.prepare("DELETE FROM login_failures WHERE at < ?").bind(now - 24 * 60 * 60_000),
+    db.prepare("INSERT INTO login_failures (ip, at) VALUES (?, ?)").bind(ip, now),
+  ]);
 }
 
 export async function countRecentLoginFailures(db: D1Database, ip: string, since: number): Promise<number> {

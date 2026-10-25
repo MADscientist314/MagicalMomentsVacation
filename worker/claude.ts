@@ -69,6 +69,17 @@ function friendlyError(err: unknown): string {
   return "Something went wrong — try again.";
 }
 
+export interface StreamHooks {
+  /** Runs before `done` is sent (e.g. to save the reply); if it throws, an error is sent instead. */
+  beforeDone?(result: { text: string; sources: Source[]; stopReason: string }): Promise<void>;
+  /** Runs once the stream has ended, however it ended (e.g. to release a lock). */
+  finally?(): Promise<void>;
+  /** Keeps the Worker alive until the stream's work, including the hooks, has finished. */
+  waitUntil?(work: Promise<unknown>): void;
+}
+
+type Source = { title: string; url: string };
+
 /** Calls Claude and streams the reply to the browser; `label` only tags error logs. */
 export function streamClaude(
   params: BetaMessageStreamParams,
@@ -76,6 +87,7 @@ export function streamClaude(
   makeClient: (env: Env) => ClaudeClient,
   keepaliveMs: number,
   label: string,
+  hooks: StreamHooks = {},
 ): Response {
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
@@ -93,7 +105,8 @@ export function streamClaude(
     const keepalive = setInterval(() => write(KEEPALIVE).catch(() => {}), keepaliveMs);
     try {
       const client = makeClient(env);
-      const sources = new Map<string, { title: string; url: string }>();
+      const sources = new Map<string, Source>();
+      let text = "";
       let searching = false;
       let stopReason = "end_turn";
       for (let turn = 0; ; turn++) {
@@ -108,6 +121,7 @@ export function streamClaude(
               await send({ event: "status", data: { phase: "writing" } });
             }
           } else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            text += event.delta.text;
             await send({ event: "text", data: event.delta.text });
           }
         }
@@ -120,6 +134,13 @@ export function streamClaude(
         }
         break;
       }
+      try {
+        await hooks.beforeDone?.({ text, sources: [...sources.values()], stopReason });
+      } catch (err) {
+        console.error(`${label} save failed:`, describeError(err));
+        await send({ event: "error", data: { message: "Couldn't save that reply — try again." } }).catch(() => {});
+        return;
+      }
       await send({ event: "done", data: { stopReason, sources: [...sources.values()] } });
     } catch (err) {
       if (!abort.signal.aborted) {
@@ -128,10 +149,13 @@ export function streamClaude(
       }
     } finally {
       clearInterval(keepalive);
+      await hooks.finally?.().catch((err) => console.error(`${label} cleanup failed:`, describeError(err)));
       await writer.close().catch(() => {});
     }
   };
-  void run();
+  const work = run();
+  if (hooks.waitUntil) hooks.waitUntil(work);
+  else void work;
 
   return new Response(readable, {
     headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store" },

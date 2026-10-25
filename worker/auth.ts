@@ -1,9 +1,13 @@
+import { countRecentLoginFailures, recordLoginFailure } from "./store";
+
 // A single shared password ("the magic words") guards the API. Logging in sets a
 // signed cookie; the signature is keyed on the password itself, so changing the
 // APP_PASSWORD secret signs everyone out.
 
 export const SESSION_COOKIE = "mmv_session";
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
+const MAX_FAILURES = 10;
+const FAILURE_WINDOW_MS = 15 * 60_000;
 const encoder = new TextEncoder();
 
 /** Case, spaces and punctuation don't matter: "Magic Words!" matches "magic-words". */
@@ -49,13 +53,19 @@ export async function hasValidSession(request: Request, env: Env, now = Date.now
   return match[2] === (await sign(expiry, env.APP_PASSWORD));
 }
 
-export async function handleLogin(request: Request, env: Env): Promise<Response> {
+export async function handleLogin(request: Request, env: Env, now = Date.now()): Promise<Response> {
   if (!normalizePassword(env.APP_PASSWORD ?? "")) {
     return Response.json({ error: "The password isn't set up yet." }, { status: 500 });
+  }
+  // Saved trips hold client details, so slow down anyone guessing the magic words.
+  const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  if ((await countRecentLoginFailures(env.DB, ip, now - FAILURE_WINDOW_MS)) >= MAX_FAILURES) {
+    return Response.json({ error: "Too many tries — wait a few minutes." }, { status: 429 });
   }
   const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
   const given = typeof body?.password === "string" ? body.password : "";
   if (!(await passwordMatches(given, env.APP_PASSWORD))) {
+    await recordLoginFailure(env.DB, ip, now);
     return Response.json({ error: "That's not quite the magic word — try again." }, { status: 401 });
   }
   const expiry = Math.floor(Date.now() / 1000) + SESSION_SECONDS;

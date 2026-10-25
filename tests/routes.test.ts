@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import worker from "../worker/index";
+import { fakeD1 } from "./helpers/fakeD1";
 
-const ENV = { ANTHROPIC_API_KEY: "k", APP_PASSWORD: "test-magic-words" } as Env;
-const call = (path: string, init?: RequestInit) => worker.fetch(new Request(`https://app.test${path}`, init), ENV);
+const ENV = { ANTHROPIC_API_KEY: "k", APP_PASSWORD: "test-magic-words", DB: fakeD1() } as Env;
+const CTX = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+const call = (path: string, init?: RequestInit) => worker.fetch(new Request(`https://app.test${path}`, init), ENV, CTX);
 
 async function loginCookie(): Promise<string> {
   const res = await call("/api/login", {
@@ -19,9 +21,19 @@ describe("worker routes", () => {
     expect(res.status).toBe(401);
   });
 
-  it("refuses chat without signing in", async () => {
-    const res = await call("/api/chat", { method: "POST", body: "{}" });
-    expect(res.status).toBe(401);
+  it("refuses saved trips and chats without signing in", async () => {
+    expect((await call("/api/conversations?kind=trip")).status).toBe(401);
+    expect((await call("/api/deliverables/abc")).status).toBe(401);
+  });
+
+  it("lists saved trips for a signed-in visitor", async () => {
+    const res = await call("/api/conversations?kind=trip", { headers: { cookie: await loginCookie() } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+  });
+
+  it("no longer serves the old stateless chat", async () => {
+    expect((await call("/api/chat", { method: "POST", headers: { cookie: await loginCookie() }, body: "{}" })).status).toBe(404);
   });
 
   it("reports whether the visitor is signed in", async () => {

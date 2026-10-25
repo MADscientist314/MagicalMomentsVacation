@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   handleLogin,
   handleLogout,
@@ -7,15 +7,19 @@ import {
   passwordMatches,
   SESSION_COOKIE,
 } from "../worker/auth";
+import { fakeD1 } from "./helpers/fakeD1";
 
-const ENV = { ANTHROPIC_API_KEY: "k", APP_PASSWORD: "test-magic-words" } as Env;
+let ENV = { ANTHROPIC_API_KEY: "k", APP_PASSWORD: "test-magic-words", DB: fakeD1() } as Env;
+beforeEach(() => {
+  ENV = { ANTHROPIC_API_KEY: "k", APP_PASSWORD: "test-magic-words", DB: fakeD1() } as Env;
+});
 const DAY = 24 * 60 * 60 * 1000;
 
-const login = (password: string, env = ENV) =>
+const login = (password: string, env = ENV, ip = "1.2.3.4") =>
   handleLogin(
     new Request("https://app.test/api/login", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "CF-Connecting-IP": ip },
       body: JSON.stringify({ password }),
     }),
     env,
@@ -100,5 +104,19 @@ describe("hasValidSession", () => {
 describe("handleLogout", () => {
   it("clears the session cookie", () => {
     expect(handleLogout().headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+});
+
+describe("sign-in rate limit", () => {
+  it("locks an address out after 10 wrong tries, even for the right words", async () => {
+    for (let i = 0; i < 10; i++) expect((await login("wrong")).status).toBe(401);
+    const locked = await login("test-magic-words");
+    expect(locked.status).toBe(429);
+    expect(((await locked.json()) as { error: string }).error).toBe("Too many tries — wait a few minutes.");
+  });
+
+  it("doesn't lock out other addresses", async () => {
+    for (let i = 0; i < 10; i++) await login("wrong");
+    expect((await login("test-magic-words", ENV, "5.6.7.8")).status).toBe(200);
   });
 });
