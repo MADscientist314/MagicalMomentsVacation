@@ -1113,6 +1113,8 @@ a.btn-primary {
   padding: 0;
   margin: 0;
   display: grid;
+  /* One column no wider than the card, so long titles truncate instead of pushing the buttons out. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
 }
 
