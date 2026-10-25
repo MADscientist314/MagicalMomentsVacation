@@ -12,6 +12,7 @@ export interface DraftHandlers {
 const OFFLINE = "Couldn't reach the assistant — check the internet connection.";
 const GENERIC = "Something went wrong — try again.";
 const SIGNED_OUT = "Your sign-in expired — reload the page to sign in again.";
+const CUT_OFF = "The reply was cut off — try again.";
 
 export const streamDraft = (body: DraftRequest, on: DraftHandlers, signal: AbortSignal) =>
   streamPost("/api/draft", body, on, signal);
@@ -48,13 +49,20 @@ export async function streamPost(url: string, body: unknown, on: DraftHandlers, 
   try {
     for (;;) {
       const { value, done } = await reader.read();
-      if (done) return;
+      if (done) {
+        // The server always ends with done or error; anything else means the reply was dropped (e.g. a redeploy).
+        if (!signal.aborted) on.error(CUT_OFF);
+        return;
+      }
       for (const e of parser.push(value)) {
         if (e.event === "text") on.text(e.data);
         else if (e.event === "status") on.status(e.data.phase);
-        else if (e.event === "done") on.done(e.data);
         else if (e.event === "deliverable") on.deliverable?.(e.data);
-        else on.error(e.data.message);
+        else {
+          if (e.event === "done") on.done(e.data);
+          else on.error(e.data.message);
+          return;
+        }
         if (signal.aborted) return;
       }
     }

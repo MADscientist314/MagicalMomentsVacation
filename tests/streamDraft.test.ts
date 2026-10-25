@@ -40,6 +40,18 @@ describe("streamDraft", () => {
     expect(on.error).toHaveBeenCalledWith("Your sign-in expired — reload the page to sign in again.");
   });
 
+  it("reports a cut-off reply when the stream ends without done or error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(encodeEvent({ event: "text", data: "Hi" }), { headers: { "content-type": "text/event-stream" } })),
+    );
+    const on = handlers();
+    await streamDraft(BODY, on, new AbortController().signal);
+    expect(on.text).toHaveBeenCalledWith("Hi");
+    expect(on.done).not.toHaveBeenCalled();
+    expect(on.error).toHaveBeenCalledWith("The reply was cut off — try again.");
+  });
+
   it("stops quietly when aborted mid-stream", async () => {
     const abort = new AbortController();
     vi.stubGlobal(
