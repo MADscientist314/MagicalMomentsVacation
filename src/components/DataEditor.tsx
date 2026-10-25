@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { emptyLike, humanize, toPrice } from "../lib/editorHelpers";
 
@@ -49,18 +50,7 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
   }
 
   if (PRICES.has(keyName)) {
-    return (
-      <label className="field field-price">
-        <span className="field-label">{label}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder="Add price"
-          defaultValue={value === null ? "" : String(value)}
-          onBlur={(e) => onChange(toPrice(e.target.value))}
-        />
-      </label>
-    );
+    return <PriceField label={label} value={value as number | null} onChange={onChange} />;
   }
 
   if (typeof value === "number") {
@@ -103,4 +93,30 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
   }
 
   return null;
+}
+
+/**
+ * Keeps what she's typing ("$7,6…") only while the box has focus; otherwise it always shows the
+ * row's real value, so removing a row can't leave a typed price showing on the next one.
+ */
+function PriceField({ label, value, onChange }: { label: string; value: number | null; onChange(value: unknown): void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const saved = value === null ? "" : String(value);
+  return (
+    <label className="field field-price">
+      <span className="field-label">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder="Add price"
+        value={draft ?? saved}
+        onFocus={() => setDraft(saved)}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          onChange(toPrice(e.target.value));
+        }}
+        onBlur={() => setDraft(null)}
+      />
+    </label>
+  );
 }
