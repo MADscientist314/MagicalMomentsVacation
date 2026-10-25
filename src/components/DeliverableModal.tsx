@@ -78,12 +78,15 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
   };
 
   const downloadHtml = () => {
-    const blob = new Blob([html.client], { type: "text/html" });
+    const url = URL.createObjectURL(new Blob([html.client], { type: "text/html" }));
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = downloadName(tripTitle, record.kind, record.version);
+    document.body.append(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    a.remove();
+    // Safari can cancel the download if the URL is revoked straight away.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   const printPdf = () => {
