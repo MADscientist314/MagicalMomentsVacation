@@ -96,8 +96,8 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
 }
 
 /**
- * Keeps what she's typing ("$7,6…") only while the box has focus; otherwise it always shows the
- * row's real value, so removing a row can't leave a typed price showing on the next one.
+ * Shows what she's typing ("$7,6…") only while it still matches the row's value; otherwise the row's
+ * real value. So if rows shift (Remove), a typed price can't show on, or later be saved to, another row.
  */
 function PriceField({ label, value, onChange }: { label: string; value: number | null; onChange(value: unknown): void }) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -109,7 +109,7 @@ function PriceField({ label, value, onChange }: { label: string; value: number |
         type="text"
         inputMode="decimal"
         placeholder="Add price"
-        value={draft ?? saved}
+        value={draft !== null && toPrice(draft) === value ? draft : saved}
         onFocus={() => setDraft(saved)}
         onChange={(e) => {
           setDraft(e.target.value);
