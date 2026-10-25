@@ -23,6 +23,7 @@ Use `references/voice.md` for tone and `references/business.md` for her services
 - `tips`: 3–6 practical tips for this family (apps to download, what to pack, midday breaks).
 
 ## Estimate
+- **An estimate prices one trip**, and the app adds every line into a single total. Never list alternatives (two resorts, two ships, two packages) as separate lines. Use the option Jillian asked you to estimate, or the one the family chose. If neither is clear, use the option the proposal recommends (or the first one discussed), name it in the `title`, and add a `verifyNotes` line such as "This estimate is for the Art of Animation option. Ask in the trip chat for an estimate of the other option."
 - One line item per cost Jillian mentioned (package, tickets, dining, insurance, transfers, fees), with `qty` and the per-unit `unitPrice` she gave.
 - Include obvious items she still needs to price (for example travel insurance if it came up) with `unitPrice: null`.
 - `notes`: payment schedule or what's included, only as Jillian described it.
