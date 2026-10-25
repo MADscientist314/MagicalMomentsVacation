@@ -21,6 +21,12 @@ describe("worker routes", () => {
     expect(res.status).toBe(401);
   });
 
+  it("reads the body of a refused POST, so the connection stays usable", async () => {
+    const request = new Request("https://app.test/api/draft", { method: "POST", body: JSON.stringify({ tool: "magic-mail" }) });
+    expect((await worker.fetch(request, ENV, CTX)).status).toBe(401);
+    expect(request.bodyUsed).toBe(true);
+  });
+
   it("refuses saved trips and chats without signing in", async () => {
     expect((await call("/api/conversations?kind=trip")).status).toBe(401);
     expect((await call("/api/deliverables/abc")).status).toBe(401);
