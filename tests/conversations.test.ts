@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { handleConversations, type ConversationDeps } from "../worker/conversations";
-import { appendMessages, createConversation, getMessages, tryLock } from "../worker/store";
+import { appendMessages, createConversation, getConversation, getMessages, releaseLock, tryLock } from "../worker/store";
 import { EventParser, type ServerEvent } from "../shared/sse";
 import { fakeD1 } from "./helpers/fakeD1";
 import { fakeClaude, textEvents, type Script } from "./helpers/fakeClaude";
@@ -44,6 +44,13 @@ async function newTrip(details: Record<string, string> = TRIP) {
 }
 
 describe("creating and listing", () => {
+  it("masks contact details in a long chat title before cutting it short", async () => {
+    const title = `${"x".repeat(105)} write to jane.doe@example.com or 555-201-3344`;
+    const created = (await (await api("POST", "", { kind: "chat", title })).json()) as { title: string };
+    expect(created.title).not.toMatch(/jane|555|example/);
+    expect(created.title.length).toBeLessThanOrEqual(120);
+  });
+
   it("creates a trip titled by the family name", async () => {
     const res = await api("POST", "", { kind: "trip", details: TRIP });
     expect(res.status).toBe(201);
@@ -222,6 +229,25 @@ describe("editing trip details after planning", () => {
     const msgs = await getMessages(env.DB, id);
     expect(msgs.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
     expect(msgs[2].content).toContain("July 1–7, 2027");
+  });
+
+  it("won't change details while a reply is running, and frees the trip afterwards", async () => {
+    const id = await newTrip();
+    await appendMessages(env.DB, id, [{ role: "user", content: "Plan it" }, { role: "assistant", content: "Plan" }], 1);
+    await tryLock(env.DB, id, 1_000_000, 300_000);
+    expect((await api("PATCH", `/${id}`, { details: { ...TRIP, dates: "July" } })).status).toBe(409);
+    expect((await getConversation(env.DB, id))?.details.dates).toBe(TRIP.dates);
+    expect(await getMessages(env.DB, id)).toHaveLength(2);
+    await releaseLock(env.DB, id);
+    expect((await api("PATCH", `/${id}`, { details: { ...TRIP, dates: "July" } })).status).toBe(200);
+    expect(await tryLock(env.DB, id, 1_000_001, 300_000)).toBe(true);
+  });
+
+  it("still pins while a reply is running", async () => {
+    const id = await newTrip();
+    await appendMessages(env.DB, id, [{ role: "user", content: "Plan it" }, { role: "assistant", content: "Plan" }], 1);
+    await tryLock(env.DB, id, 1_000_000, 300_000);
+    expect((await api("PATCH", `/${id}`, { pinned: true })).status).toBe(200);
   });
 
   it("just saves the details when nothing is planned yet", async () => {

@@ -46,10 +46,11 @@ const error = (message: string, status: number) => Response.json({ error: messag
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /** Validates, guards and masks text that will be stored and sent to Claude. */
-function checkText(text: string): Checked<string> {
+/** Blocks sensitive numbers and masks contacts; cuts to `max` only afterwards, so a cut can't split a contact. */
+function checkText(text: string, max = Infinity): Checked<string> {
   const sensitive = findSensitive(text);
   if (sensitive.length) return { ok: false, error: SENSITIVE_MESSAGES[sensitive[0]] };
-  return { ok: true, value: maskContacts(text).text };
+  return { ok: true, value: maskContacts(text).text.slice(0, max) };
 }
 
 function checkDetails(raw: unknown): Checked<Record<string, string>> {
@@ -132,7 +133,7 @@ async function create(request: Request, env: Env, now: number): Promise<Response
   }
   if (body.kind === "chat") {
     if (typeof body.title !== "string" || !body.title.trim()) return error(BAD_REQUEST, 400);
-    const title = checkText(body.title.trim().slice(0, MAX_TITLE));
+    const title = checkText(body.title.trim(), MAX_TITLE);
     if (!title.ok) return error(title.error, 400);
     return Response.json(await store.createConversation(env.DB, { kind: "chat", title: title.value }, now), { status: 201 });
   }
@@ -149,7 +150,7 @@ async function update(request: Request, env: Env, convo: store.Conversation, now
   }
   if (body.title !== undefined) {
     if (typeof body.title !== "string" || !body.title.trim()) return error(BAD_REQUEST, 400);
-    const title = checkText(body.title.trim().slice(0, MAX_TITLE));
+    const title = checkText(body.title.trim(), MAX_TITLE);
     if (!title.ok) return error(title.error, 400);
     changes.title = title.value;
   }
@@ -159,26 +160,37 @@ async function update(request: Request, env: Env, convo: store.Conversation, now
     changes.details = details.value;
     if (details.value.lastName !== convo.details.lastName) changes.title = `${details.value.lastName} family`;
   }
-  await store.updateConversation(env.DB, convo.id, changes, now);
-
-  // Once a plan exists, tell Claude about changed details via the conversation itself.
-  if (changes.details) {
-    const changed = Object.keys(TRIP_FIELDS).filter((k) => (changes.details![k] ?? "") !== (convo.details[k] ?? ""));
-    const history = changed.length ? await store.getMessages(env.DB, convo.id) : [];
-    if (history.length) {
-      const lines = changed.map((k) => `${FIELD_LABELS[k]}: ${changes.details![k] || "(cleared)"}`);
-      await store.appendMessages(
-        env.DB,
-        convo.id,
-        [
-          { role: "user", content: `${DETAILS_CHANGED}\n${lines.join("\n")}` },
-          { role: "assistant", content: "Got it — I'll use the updated details from here on." },
-        ],
-        now,
-      );
-    }
+  if (!changes.details) {
+    await store.updateConversation(env.DB, convo.id, changes, now);
+    return Response.json(await store.getConversation(env.DB, convo.id));
+  }
+  // Changed details become part of the conversation, so wait for any running reply to finish first.
+  const details = changes.details;
+  if (!(await store.tryLock(env.DB, convo.id, now, LOCK_MS))) return error(BUSY, 409);
+  try {
+    await store.updateConversation(env.DB, convo.id, changes, now);
+    await noteChangedDetails(env, convo, details, now);
+  } finally {
+    await store.releaseLock(env.DB, convo.id);
   }
   return Response.json(await store.getConversation(env.DB, convo.id));
+}
+
+/** Once a plan exists, tells Claude about changed details via the conversation itself. */
+async function noteChangedDetails(env: Env, convo: store.Conversation, details: Record<string, string>, now: number) {
+  const changed = Object.keys(TRIP_FIELDS).filter((k) => (details[k] ?? "") !== (convo.details[k] ?? ""));
+  const history = changed.length ? await store.getMessages(env.DB, convo.id) : [];
+  if (!history.length) return;
+  const lines = changed.map((k) => `${FIELD_LABELS[k]}: ${details[k] || "(cleared)"}`);
+  await store.appendMessages(
+    env.DB,
+    convo.id,
+    [
+      { role: "user", content: `${DETAILS_CHANGED}\n${lines.join("\n")}` },
+      { role: "assistant", content: "Got it — I'll use the updated details from here on." },
+    ],
+    now,
+  );
 }
 
 async function plan(env: Env, convo: store.Conversation, deps: ConversationDeps): Promise<Response> {

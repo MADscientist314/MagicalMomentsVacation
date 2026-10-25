@@ -16,5 +16,6 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 
 export function renderMarkdown(md: string): string {
   if (!purify) return escapeHtml(md);
-  return purify.sanitize(marked.parse(md, { async: false, gfm: true, breaks: true }));
+  // No images: a remote image URL in a reply (e.g. planted in a web page Claude read) could leak conversation details.
+  return purify.sanitize(marked.parse(md, { async: false, gfm: true, breaks: true }), { FORBID_TAGS: ["img"] });
 }
