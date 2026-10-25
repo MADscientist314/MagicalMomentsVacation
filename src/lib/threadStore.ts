@@ -55,7 +55,8 @@ export const threadBusy = (id: string) => thread(id).state.phase !== "idle";
 async function reload(id: string, after?: () => void) {
   try {
     const convo = await getConversation(id);
-    dispatch(id, { type: "load", turns: toTurns(convo.messages) });
+    // If she has already sent another message, don't wipe it with this older snapshot.
+    loadThread(id, convo.messages);
   } catch {
     // Keep what's on screen; the next visit reloads it.
   }
@@ -65,7 +66,7 @@ async function reload(id: string, after?: () => void) {
 /** Starts the trip plan (the server writes the first message from the trip details). */
 export function planTrip(id: string, after?: () => void) {
   if (threadBusy(id)) return;
-  dispatch(id, { type: "send", text: "Plan this trip, please.", notice: null });
+  dispatch(id, { type: "send", text: "Plan this trip, please.", notice: null, restorable: false });
   run(id, `/api/conversations/${id}/plan`, {}, after);
 }
 

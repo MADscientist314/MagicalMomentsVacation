@@ -3,7 +3,7 @@
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
 import * as store from "./store";
@@ -235,15 +235,23 @@ async function reply(
     // Cache everything up to here, so long conversations stay cheap turn after turn.
     { role: "user", content: [{ type: "text", text: userText, cache_control: { type: "ephemeral" } }] },
   ];
-  const params = baseParams({
-    system: trip ? buildSystem("adventure-planner") : buildChatSystem(),
-    messages,
-    output_config: { effort: trip ? TOOLS["adventure-planner"].effort : "medium" },
-    tools: [WEB_SEARCH],
-  });
+  let params: ReturnType<typeof baseParams>;
+  try {
+    params = baseParams({
+      system: trip ? buildSystem("adventure-planner") : buildChatSystem(),
+      messages,
+      output_config: { effort: trip ? TOOLS["adventure-planner"].effort : "medium" },
+      tools: [WEB_SEARCH],
+    });
+  } catch (err) {
+    await store.releaseLock(env.DB, convo.id);
+    throw err;
+  }
   return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${convo.kind} reply`, {
     async beforeDone({ text, sources, stopReason }) {
-      if (stopReason === "refusal" || !text.trim()) return;
+      // Nothing is saved, so the browser must take the turn back: send error, not done.
+      if (stopReason === "refusal") throw new UserFacingError("I can't help with that one — try rewording.");
+      if (!text.trim()) throw new UserFacingError("Something went wrong — try again.");
       await store.appendMessages(
         env.DB,
         convo.id,

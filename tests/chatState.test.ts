@@ -25,16 +25,36 @@ describe("chatReducer", () => {
     expect(s.phase).toBe("idle");
   });
 
-  it("keeps a partial reply when it fails midway", () => {
-    let s = chatReducer(sent(), { type: "text", text: "Half an ans" });
-    s = chatReducer(s, { type: "error", message: "Couldn't reach the assistant — check the internet connection." });
-    expect(s.turns.map((t) => t.role)).toEqual(["user", "assistant"]);
+  it("takes back a partial reply when it fails midway, since nothing was saved", () => {
+    const saved: ChatState = { ...initialChatState, turns: [{ role: "user", content: "Plan it" }, { role: "assistant", content: "Day 1…" }] };
+    let s = chatReducer(saved, { type: "send", text: "Swap days 2 and 3", notice: null });
+    s = chatReducer(s, { type: "text", text: "Half an ans" });
+    s = chatReducer(s, { type: "error", message: "The reply was cut off — try again." });
+    expect(s.turns).toEqual(saved.turns);
+    expect(s.restore).toBe("Swap days 2 and 3");
+    expect(s.error).toBe("The reply was cut off — try again.");
+    expect(s.phase).toBe("idle");
+  });
+
+  it("doesn't hand back a request that wasn't typed (Plan it)", () => {
+    let s = chatReducer(initialChatState, { type: "send", text: "Plan this trip, please.", notice: null, restorable: false });
+    s = chatReducer(s, { type: "text", text: "Day 1" });
+    s = chatReducer(s, { type: "error", message: "The reply was cut off — try again." });
+    expect(s.turns).toEqual([]);
     expect(s.restore).toBeNull();
   });
 
   it("explains a refusal that came with no reply", () => {
     const s = chatReducer(sent(), { type: "done", stopReason: "refusal", sources: [] });
     expect(s.turns).toEqual([]);
+    expect(s.error).toBe("I can't help with that one — try rewording.");
+  });
+
+  it("takes back a refused reply even if some text arrived", () => {
+    let s = chatReducer(sent("Hmm"), { type: "text", text: "I" });
+    s = chatReducer(s, { type: "done", stopReason: "refusal", sources: [] });
+    expect(s.turns).toEqual([]);
+    expect(s.restore).toBe("Hmm");
     expect(s.error).toBe("I can't help with that one — try rewording.");
   });
 

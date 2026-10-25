@@ -169,10 +169,17 @@ describe("sending messages", () => {
 
   it("saves nothing when Claude refuses, and frees the conversation", async () => {
     const id = await plannedTrip();
-    const evs = await events(await api("POST", `/${id}/messages`, { content: "Hmm" }, deps({ final: { stop_reason: "refusal" } }).d));
-    expect(evs.at(-1)).toMatchObject({ event: "done", data: { stopReason: "refusal" } });
+    const evs = await events(await api("POST", `/${id}/messages`, { content: "Hmm" }, deps({ events: textEvents("I"), final: { stop_reason: "refusal" } }).d));
+    expect(evs.at(-1)).toEqual({ event: "error", data: { message: "I can't help with that one — try rewording." } });
     expect(await getMessages(env.DB, id)).toHaveLength(2);
     expect(await tryLock(env.DB, id, 1_000_001, 300_000)).toBe(true);
+  });
+
+  it("reports an empty reply as an error instead of done", async () => {
+    const id = await plannedTrip();
+    const evs = await events(await api("POST", `/${id}/messages`, { content: "Hmm" }, deps({ events: [] }).d));
+    expect(evs.at(-1)).toEqual({ event: "error", data: { message: "Something went wrong — try again." } });
+    expect(await getMessages(env.DB, id)).toHaveLength(2);
   });
 
   it("saves nothing when the call fails midway, and frees the conversation", async () => {
