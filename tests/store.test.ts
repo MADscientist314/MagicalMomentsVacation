@@ -3,15 +3,15 @@ import { fakeD1 } from "./helpers/fakeD1";
 import {
   addDeliverable,
   appendMessages,
-  countRecentLoginFailures,
   createConversation,
   deleteConversation,
+  forgetLoginAttempt,
   getConversation,
   getDeliverable,
   getMessages,
   listConversations,
   listDeliverables,
-  recordLoginFailure,
+  recordLoginAttempt,
   releaseLock,
   tryLock,
   updateConversation,
@@ -93,11 +93,17 @@ describe("deliverables", () => {
   });
 });
 
-describe("login failures", () => {
-  it("counts only recent failures from the same address", async () => {
-    await recordLoginFailure(db, "1.2.3.4", 1000);
-    await recordLoginFailure(db, "1.2.3.4", 5000);
-    await recordLoginFailure(db, "5.6.7.8", 5000);
-    expect(await countRecentLoginFailures(db, "1.2.3.4", 2000)).toBe(1);
+describe("login attempts", () => {
+  it("counts this attempt plus recent ones from the same address", async () => {
+    await recordLoginAttempt(db, "1.2.3.4", 1000, 0);
+    await recordLoginAttempt(db, "5.6.7.8", 5000, 2000);
+    expect((await recordLoginAttempt(db, "1.2.3.4", 5000, 2000)).count).toBe(1);
+    expect((await recordLoginAttempt(db, "1.2.3.4", 6000, 2000)).count).toBe(2);
+  });
+
+  it("forgets an attempt that turned out to be a successful sign-in", async () => {
+    const first = await recordLoginAttempt(db, "1.2.3.4", 1000, 0);
+    await forgetLoginAttempt(db, first.id);
+    expect((await recordLoginAttempt(db, "1.2.3.4", 2000, 0)).count).toBe(1);
   });
 });

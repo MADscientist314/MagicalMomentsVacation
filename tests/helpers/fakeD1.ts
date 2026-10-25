@@ -17,6 +17,10 @@ class FakeStatement {
   }
 
   async all<T>() {
+    return this.allSync<T>();
+  }
+
+  allSync<T>() {
     return { results: this.db.prepare(this.sql).all(...this.params) as T[], success: true, meta: {} };
   }
 
@@ -27,6 +31,10 @@ class FakeStatement {
   }
 
   async run() {
+    return this.runSync();
+  }
+
+  runSync() {
     const r = this.db.prepare(this.sql).run(...this.params);
     return { success: true, results: [], meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } };
   }
@@ -41,13 +49,13 @@ export function fakeD1(): D1Database {
   }
   const fake = {
     prepare: (sql: string) => new FakeStatement(db, sql),
-    // All-or-nothing, like D1.
+    // All-or-nothing and one batch at a time, like D1 (synchronous, so concurrent batches can't interleave).
     async batch(statements: FakeStatement[]) {
       db.exec("BEGIN");
       try {
         const results = [];
         for (const s of statements) {
-          results.push(/^\s*(select|with)/i.test(s.sql) ? await s.all() : await s.run());
+          results.push(/^\s*(select|with)/i.test(s.sql) ? s.allSync() : s.runSync());
         }
         db.exec("COMMIT");
         return results;

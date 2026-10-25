@@ -148,13 +148,19 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
   return results;
 }
 
-export async function recordLoginFailure(db: D1Database, ip: string, now: number): Promise<void> {
-  await db.batch([
+/**
+ * Records a sign-in attempt and counts this address's attempts since `since`, in one batch,
+ * so guesses sent all at once can't all see a low count. A successful sign-in is forgotten again.
+ */
+export async function recordLoginAttempt(db: D1Database, ip: string, now: number, since: number): Promise<{ id: number; count: number }> {
+  const [, inserted, counted] = await db.batch([
     db.prepare("DELETE FROM login_failures WHERE at < ?").bind(now - 24 * 60 * 60_000),
     db.prepare("INSERT INTO login_failures (ip, at) VALUES (?, ?)").bind(ip, now),
+    db.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE ip = ? AND at >= ?").bind(ip, since),
   ]);
+  return { id: Number(inserted.meta.last_row_id), count: Number((counted.results[0] as { n: number }).n) };
 }
 
-export async function countRecentLoginFailures(db: D1Database, ip: string, since: number): Promise<number> {
-  return (await db.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE ip = ? AND at >= ?").bind(ip, since).first<number>("n")) ?? 0;
+export async function forgetLoginAttempt(db: D1Database, id: number): Promise<void> {
+  await db.prepare("DELETE FROM login_failures WHERE rowid = ?").bind(id).run();
 }

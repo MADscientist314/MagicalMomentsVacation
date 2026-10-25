@@ -1,4 +1,4 @@
-import { countRecentLoginFailures, recordLoginFailure } from "./store";
+import { forgetLoginAttempt, recordLoginAttempt } from "./store";
 
 // A single shared password ("the magic words") guards the API. Logging in sets a
 // signed cookie; the signature is keyed on the password itself, so changing the
@@ -59,15 +59,16 @@ export async function handleLogin(request: Request, env: Env, now = Date.now()):
   }
   // Saved trips hold client details, so slow down anyone guessing the magic words.
   const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
-  if ((await countRecentLoginFailures(env.DB, ip, now - FAILURE_WINDOW_MS)) >= MAX_FAILURES) {
+  const attempt = await recordLoginAttempt(env.DB, ip, now, now - FAILURE_WINDOW_MS);
+  if (attempt.count > MAX_FAILURES) {
     return Response.json({ error: "Too many tries — wait a few minutes." }, { status: 429 });
   }
   const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
   const given = typeof body?.password === "string" ? body.password : "";
   if (!(await passwordMatches(given, env.APP_PASSWORD))) {
-    await recordLoginFailure(env.DB, ip, now);
     return Response.json({ error: "That's not quite the magic word — try again." }, { status: 401 });
   }
+  await forgetLoginAttempt(env.DB, attempt.id);
   const expiry = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
   return Response.json(
     { ok: true },

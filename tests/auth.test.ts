@@ -115,6 +115,18 @@ describe("sign-in rate limit", () => {
     expect(((await locked.json()) as { error: string }).error).toBe("Too many tries — wait a few minutes.");
   });
 
+  it("holds the limit when many wrong guesses arrive at once", async () => {
+    const statuses = (await Promise.all(Array.from({ length: 30 }, () => login("wrong")))).map((r) => r.status);
+    expect(statuses.filter((s) => s === 401)).toHaveLength(10);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(20);
+  });
+
+  it("doesn't count successful sign-ins toward the limit", async () => {
+    for (let i = 0; i < 9; i++) await login("wrong");
+    for (let i = 0; i < 5; i++) expect((await login("test-magic-words")).status).toBe(200);
+    expect((await login("wrong")).status).toBe(401);
+  });
+
   it("doesn't lock out other addresses", async () => {
     for (let i = 0; i < 10; i++) await login("wrong");
     expect((await login("test-magic-words", ENV, "5.6.7.8")).status).toBe(200);
