@@ -30,9 +30,12 @@ function deps(...scripts: Script[]) {
   return { fake, d };
 }
 
-async function plannedTrip(jillianSays = "Plan the Rivera trip") {
+/** A trip whose first message the server wrote (details plus the inquiry summary), then what Jillian typed. */
+async function plannedTrip(jillianSays?: string) {
   const c = await createConversation(env.DB, { kind: "trip", title: "Rivera family", details: { lastName: "Rivera" } }, 1);
-  await appendMessages(env.DB, c.id, [{ role: "user", content: jillianSays }, { role: "assistant", content: "### Day 1 — Arrival\nRest" }], 2);
+  const first = "**Client:** Rivera family\n**Travel dates:** June 14–20, 2027\n**From their inquiry:** Budget about $6,000.";
+  await appendMessages(env.DB, c.id, [{ role: "user", content: first }, { role: "assistant", content: "### Day 1 — Arrival\nRest" }], 2);
+  if (jillianSays) await appendMessages(env.DB, c.id, [{ role: "user", content: jillianSays }, { role: "assistant", content: "Noted." }], 3);
   return c;
 }
 
@@ -83,6 +86,31 @@ describe("generating a deliverable", () => {
     const id = (events[0].data as { id: string }).id;
     const saved = (await getDeliverable(env.DB, id))?.data as Proposal;
     expect(saved.options.map((o) => o.price.amount)).toEqual([4200, null]);
+  });
+
+  it("doesn't take prices from the trip details, the inquiry summary or details-changed notes", async () => {
+    const c = await plannedTrip();
+    await appendMessages(
+      env.DB,
+      c.id,
+      [
+        { role: "user", content: "Trip details changed — use these from now on:\nWho's going: 2 adults, kids 9 and 12" },
+        { role: "assistant", content: "Got it — I'll use the updated details from here on." },
+      ],
+      4,
+    );
+    const option = (name: string, amount: number) => ({ name, summary: "", highlights: [], bestFor: "", price: { amount, note: "" } });
+    const proposal: Proposal = {
+      title: "Options",
+      intro: "",
+      options: [option("Budget-sized", 6000), option("From the dates", 20), option("From the party", 12)],
+      recommendation: "",
+      nextSteps: [],
+      verifyNotes: [],
+    };
+    const { events } = await generate(c.id, "proposal", deps({ events: json(proposal) }).d);
+    const saved = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data as Proposal;
+    expect(saved.options.map((o) => o.price.amount)).toEqual([null, null, null]);
   });
 
   it("reports a friendly error and saves nothing when the JSON doesn't fit", async () => {

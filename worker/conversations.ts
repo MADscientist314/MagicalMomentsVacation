@@ -1,6 +1,7 @@
 // Saved trips and chats: /api/conversations[/:id[/plan|/messages|/deliverables]].
 // The server keeps the history; the browser only ever sends the new message.
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { DETAILS_CHANGED } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
 import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
@@ -170,7 +171,7 @@ async function update(request: Request, env: Env, convo: store.Conversation, now
         env.DB,
         convo.id,
         [
-          { role: "user", content: `Trip details changed — use these from now on:\n${lines.join("\n")}` },
+          { role: "user", content: `${DETAILS_CHANGED}\n${lines.join("\n")}` },
           { role: "assistant", content: "Got it — I'll use the updated details from here on." },
         ],
         now,

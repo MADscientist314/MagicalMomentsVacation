@@ -4,6 +4,9 @@ import type { DeliverableKind } from "./deliverables";
 export type ConversationKind = "trip" | "chat";
 export type Source = { title: string; url: string };
 
+/** Starts the note the server adds when trip details are edited after planning. */
+export const DETAILS_CHANGED = "Trip details changed — use these from now on:";
+
 export interface Conversation {
   id: string;
   kind: ConversationKind;

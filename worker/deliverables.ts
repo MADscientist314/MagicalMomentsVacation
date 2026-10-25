@@ -10,6 +10,7 @@ import {
   validateDeliverable,
   type DeliverableKind,
 } from "../shared/deliverables";
+import { DETAILS_CHANGED } from "../shared/conversations";
 import { findSensitive, SENSITIVE_MESSAGES } from "../shared/guard";
 import { BRAINS } from "./brains";
 import { baseParams, defaultClient, streamClaude, UserFacingError } from "./claude";
@@ -57,8 +58,10 @@ export async function handleGenerateDeliverable(
     // No web search here: citations and structured output can't be combined.
     output_config: { effort: "medium", format: { type: "json_schema", schema: DELIVERABLE_SCHEMAS[kind] } },
   });
-  // Only amounts Jillian typed herself may reach the client document.
-  const allowed = new Set(history.filter((m) => m.role === "user").flatMap((m) => numbersIn(m.content)));
+  // Only amounts Jillian typed herself may reach the client document. The server wrote the first
+  // message (trip details and Claude's inquiry summary, which can hold a budget) and any details-changed notes.
+  const typed = history.filter((m, i) => m.role === "user" && i > 0 && !m.content.startsWith(DETAILS_CHANGED));
+  const allowed = new Set(typed.flatMap((m) => numbersIn(m.content)));
 
   return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${kind} deliverable`, {
     forwardText: false,
