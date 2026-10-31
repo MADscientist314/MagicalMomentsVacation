@@ -17,7 +17,7 @@ import {
   type ImageOwner,
   type Shape,
 } from "../shared/images";
-import type { Itinerary } from "../shared/deliverables";
+import type { Itinerary, Proposal } from "../shared/deliverables";
 import { splitDraft } from "../shared/sections";
 import { BRAINS } from "./brains";
 import { defaultImageClient, IMAGE_MODEL, ImageError, type ImageClient, type InlineImage } from "./gemini";
@@ -83,7 +83,8 @@ interface OwnerContext {
   isTrip: boolean;
   /** A standalone image has nothing to go on but her words and photos. */
   standalone: boolean;
-  subject(card?: CardKind): string;
+  /** `plan` is the trip's plan in words, for trip pictures. */
+  subject(card?: CardKind, plan?: string | null): string;
   /** Set for trips, which can also make pictures for their itineraries. */
   trip?: store.Conversation;
 }
@@ -119,16 +120,57 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
     isTrip: true,
     standalone: false,
     trip,
-    subject: (card) =>
+    subject: (card = "picture", plan) =>
       [
-        `Make a "${CARD_KINDS[card ?? "countdown"]}" card for the ${trip.title}'s trip, for Jillian to send them.`,
+        card === "picture"
+          ? `Make a picture of the ${trip.title} enjoying their trip, for Jillian to share with them (in a proposal, an email or a message). ${LOOK}`
+          : `Make a "${CARD_KINDS[card]}" card for the ${trip.title}'s trip, for Jillian to send them. ${LOOK}`,
+        plan && TRIP_SCENES[card],
         d.destination && `Where: ${d.destination}${d.resort ? ` (${d.resort})` : ""}.`,
         d.dates && `When: ${d.dates}.`,
         d.party && `Who's going: ${d.party}.`,
+        plan && `Their plan:\n"""\n${plan}\n"""`,
+        card === "picture" && "No words on the image unless her direction asks for them.",
       ]
         .filter(Boolean)
         .join("\n"),
   };
+}
+
+const LOOK = "It should look like a bright, natural travel photo, like a travel magazine.";
+/** Trips: their own photos (or pictures made for the trip earlier) are the family; without them, a stock-style family. */
+const FAMILY =
+  "The attached pictures show this family (their own photos, or pictures made for this trip earlier). Put these same people in the picture, looking like themselves.";
+const STOCK = "Show a family that matches who's going.";
+
+/** What each kind of trip picture shows from the family's plan. */
+const TRIP_SCENES: Record<CardKind, string> = {
+  picture: "Show them living a moment from their plan below, as if they were there.",
+  countdown: "Show them looking forward to a moment from their plan below.",
+  birthday: "Show a birthday celebration during their trip, in one of the places from their plan below.",
+  "welcome-home": "Show a few highlights from their plan below, like happy memories.",
+  "bon-voyage": "Show them setting off on the first day of their plan below.",
+};
+
+const MAX_PLAN = 6_000;
+const DAY_PLAN = /^###\s+Day\b/m;
+
+/** The family's plan in words: the latest itinerary, or else the latest day-by-day plan in the trip's conversation. */
+async function tripPlan(env: Env, tripId: string): Promise<string | null> {
+  const latest = (await store.listDeliverables(env.DB, tripId)).find((doc) => doc.kind === "itinerary");
+  const itinerary = latest ? ((await store.getDeliverable(env.DB, latest.id))?.data as Itinerary | undefined) : undefined;
+  if (itinerary) {
+    return itinerary.days
+      .map((day) => `${day.title}: ${day.items.map((i) => (i.time ? `${i.time} ` : "") + i.text).join("; ")}`)
+      .join("\n")
+      .slice(0, MAX_PLAN);
+  }
+  const messages = await store.getMessages(env.DB, tripId);
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === "assistant" && DAY_PLAN.test(m.content)) return splitDraft(m.content).client.slice(0, MAX_PLAN);
+  }
+  return null;
 }
 
 export async function handleImages(request: Request, env: Env, segments: string[], deps: ImageDeps = {}): Promise<Response> {
@@ -194,29 +236,27 @@ async function readImage(env: Env, id: string): Promise<InlineImage | null> {
   return image && object ? { mimeType: image.mime, data: new Uint8Array(await object.arrayBuffer()) } : null;
 }
 
-/**
- * A picture for an itinerary: the cover (from the whole plan) or one day. With the family's photos it's
- * them in the picture; without, a stock-style family that matches who's going.
- */
-function itinerarySubject(trip: store.Conversation, plan: Itinerary, slot: "cover" | number, familyPhotos: boolean): string {
+type DocumentSlot =
+  | { kind: "itinerary"; data: Itinerary; slot: "cover" | number }
+  | { kind: "proposal"; data: Proposal; slot: "cover" | number };
+
+/** A picture for a client document: the cover, or one itinerary day or proposal option. */
+function documentSubject(trip: store.Conversation, doc: DocumentSlot): string {
   const d = trip.details;
   const where = [d.destination, d.resort].filter(Boolean).join(", ");
-  const look = "It should look like a bright, natural travel photo, like a travel magazine.";
-  const scene =
-    slot === "cover"
-      ? `Make the cover picture for the ${trip.title}'s itinerary, "${plan.title}": the family enjoying this trip. ${look}\nThe plan: ${plan.days.map((day) => day.title).join("; ")}.`
-      : `Make a picture for one day of the ${trip.title}'s itinerary: the family enjoying this day. ${look}\nThe day: ${plan.days[slot].title}\nPlans: ${plan.days[slot].items.map((i) => i.text).join("; ")}`;
-  return [
-    scene,
-    where && `Where: ${where}.`,
-    d.party && `Who's going: ${d.party}.`,
-    familyPhotos
-      ? "The attached photos show this family. Put these people in the picture, looking like themselves."
-      : "Show a family that matches who's going.",
-    "No words on the image.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  let scene: string;
+  if (doc.kind === "itinerary") {
+    const day = doc.slot === "cover" ? null : doc.data.days[doc.slot];
+    scene = day
+      ? `Make a picture for one day of the ${trip.title}'s itinerary: the family enjoying this day. ${LOOK}\nThe day: ${day.title}\nPlans: ${day.items.map((i) => i.text).join("; ")}`
+      : `Make the cover picture for the ${trip.title}'s itinerary, "${doc.data.title}": the family enjoying this trip. ${LOOK}\nThe plan: ${doc.data.days.map((x) => x.title).join("; ")}.`;
+  } else {
+    const option = doc.slot === "cover" ? null : doc.data.options[doc.slot];
+    scene = option
+      ? `Make a picture for one option in the ${trip.title}'s trip proposal: the family enjoying this option. ${LOOK}\nThe option: ${option.name}\nWhat it is: ${option.summary}${option.highlights.length ? `\nHighlights: ${option.highlights.join("; ")}` : ""}`
+      : `Make the cover picture for the ${trip.title}'s trip proposal, "${doc.data.title}": the family enjoying this trip. ${LOOK}\nThe options: ${doc.data.options.map((o) => o.name).join("; ")}.`;
+  }
+  return [scene, where && `Where: ${where}.`, d.party && `Who's going: ${d.party}.`, "No words on the image."].filter(Boolean).join("\n");
 }
 
 function buildPrompt(subject: string, direction: string, editing: boolean, photos: number): string {
@@ -240,22 +280,21 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   const ctx = await loadOwner(env, owner);
   if (ctx instanceof Response) return ctx;
 
-  // An itinerary picture: this trip's itinerary, and the cover or a day that's in it.
-  let itinerary: { plan: Itinerary; slot: "cover" | number } | null = null;
+  // A document picture: this trip's itinerary or proposal, and its cover or a day or option that's in it.
+  let document: DocumentSlot | null = null;
   if (body.deliverableId !== undefined) {
     const doc = typeof body.deliverableId === "string" ? await store.getDeliverable(env.DB, body.deliverableId) : null;
-    const plan = doc?.kind === "itinerary" ? (doc.data as Itinerary) : undefined;
+    const count =
+      doc?.kind === "itinerary" ? (doc.data as Itinerary).days.length : doc?.kind === "proposal" ? (doc.data as Proposal).options.length : 0;
     const slot = body.slot;
-    const validSlot = slot === "cover" || (Number.isInteger(slot) && (slot as number) >= 0 && (slot as number) < (plan?.days.length ?? 0));
-    if (!ctx.trip || !doc || !plan || doc.conversation_id !== ctx.trip.id || !validSlot) {
-      return error(BAD_REQUEST, 400);
-    }
-    itinerary = { plan, slot: slot as "cover" | number };
+    const validSlot = slot === "cover" || (Number.isInteger(slot) && (slot as number) >= 0 && (slot as number) < count);
+    if (!ctx.trip || !doc || !count || doc.conversation_id !== ctx.trip.id || !validSlot) return error(BAD_REQUEST, 400);
+    document = { kind: doc.kind, data: doc.data, slot } as DocumentSlot;
   }
 
   if (body.shape !== undefined && !isShape(body.shape)) return error(BAD_REQUEST, 400);
-  const shape = (body.shape as Shape | undefined) ?? (itinerary ? "wide" : ctx.shape);
-  if (ctx.isTrip && !itinerary && !isCardKind(body.card)) return error(BAD_REQUEST, 400);
+  const shape = (body.shape as Shape | undefined) ?? (document ? "wide" : ctx.shape);
+  if (ctx.isTrip && !document && !isCardKind(body.card)) return error(BAD_REQUEST, 400);
 
   const raw = body.direction ?? "";
   if (typeof raw !== "string" || raw.length > MAX_DIRECTION) return error(BAD_REQUEST, 400);
@@ -267,11 +306,12 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   if (!Array.isArray(photoIds) || photoIds.length > MAX_REFERENCE_PHOTOS || new Set(photoIds).size !== photoIds.length) {
     return error(BAD_REQUEST, 400);
   }
-  const wanted: { id: unknown; kind: "upload" | "generated" }[] = photoIds.map((id) => ({ id, kind: "upload" }));
+  // Reference pictures can be her photos or pictures made earlier (to keep the same family); the one being changed must be a made one.
+  const wanted: { id: unknown; kind: "any" | "generated" }[] = photoIds.map((id) => ({ id, kind: "any" }));
   if (body.baseImageId !== undefined) wanted.unshift({ id: body.baseImageId, kind: "generated" });
   for (const w of wanted) {
     const image = typeof w.id === "string" ? await store.getImage(env.DB, w.id) : null;
-    if (!image || image.kind !== w.kind || !store.ownsImage(owner, image)) return error(BAD_REQUEST, 400);
+    if (!image || (w.kind !== "any" && image.kind !== w.kind) || !store.ownsImage(owner, image)) return error(BAD_REQUEST, 400);
   }
   if (ctx.standalone && !direction && !wanted.length) return error("Say what the image should show, or add a photo.", 400);
 
@@ -287,10 +327,15 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   }
 
   const card = isCardKind(body.card) ? body.card : undefined;
-  const prompt =
-    itinerary && ctx.trip
-      ? buildPrompt(itinerarySubject(ctx.trip, itinerary.plan, itinerary.slot, photoIds.length > 0), direction, false, 0)
-      : buildPrompt(ctx.subject(card), direction, body.baseImageId !== undefined, photoIds.length);
+  const editing = body.baseImageId !== undefined;
+  const subject = ctx.trip
+    ? document
+      ? documentSubject(ctx.trip, document)
+      : ctx.subject(card, await tripPlan(env, ctx.trip.id))
+    : ctx.subject(card);
+  // A trip's pictures show its family: their own photos when chosen, otherwise a family that fits who's going.
+  const family = ctx.trip && !editing ? (photoIds.length ? FAMILY : STOCK) : null;
+  const prompt = buildPrompt(family ? `${subject}\n${family}` : subject, direction, editing, family ? 0 : photoIds.length);
   let made: InlineImage;
   try {
     made = await makeClient(env).generate({ prompt, images: inputs, aspect: SHAPES[shape].aspect });
@@ -318,7 +363,7 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
         prompt: direction,
         model: IMAGE_MODEL,
         cost_usd: IMAGE_COST_USD,
-        purpose: itinerary ? "document" : "gallery",
+        purpose: document ? "document" : "gallery",
       },
       now,
       id,

@@ -1,35 +1,48 @@
 import { useEffect, useRef, useState } from "react";
 import { IconPhotoPlus, IconSparkles, IconTrash, IconUser } from "@tabler/icons-react";
 import { MAX_REFERENCE_PHOTOS, type ImageMeta } from "../../shared/images";
-import type { Itinerary } from "../../shared/deliverables";
+import type { Itinerary, Proposal } from "../../shared/deliverables";
 import { generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
 import { shrinkPhoto } from "../lib/photos";
 
 type Slot = "cover" | number;
+type PictureDoc = Itinerary | Proposal;
 
 interface Props {
   tripId: string;
+  kind: "itinerary" | "proposal";
   /** The saved version the pictures are made from. */
   deliverableId: string;
-  /** How many days that saved version has (a day added since can't get a picture until it's saved). */
-  savedDays: number;
-  plan: Itinerary;
-  onChange(update: (plan: Itinerary) => Itinerary): void;
+  /** How many days or options that saved version has (one added since can't get a picture until it's saved). */
+  savedCount: number;
+  doc: PictureDoc;
+  onChange(update: (doc: PictureDoc) => PictureDoc): void;
 }
 
 const slotKey = (slot: Slot) => String(slot);
+/** Itineraries have a picture per day, proposals one per option. */
+const parts = (kind: Props["kind"], doc: PictureDoc): { title: string; photo?: string }[] =>
+  kind === "itinerary" ? (doc as Itinerary).days : (doc as Proposal).options.map((o) => ({ title: o.name, photo: o.photo }));
 
-function withPhoto(plan: Itinerary, slot: Slot, id: string | undefined): Itinerary {
+function withPhoto(kind: Props["kind"], doc: PictureDoc, slot: Slot, id: string | undefined): PictureDoc {
   const place = <T extends object>(o: T, key: string): T => {
     const { [key]: _old, ...rest } = o as Record<string, unknown>;
     return (id ? { ...rest, [key]: id } : rest) as T;
   };
-  if (slot === "cover") return place(plan, "coverPhoto");
-  return { ...plan, days: plan.days.map((d, i) => (i === slot ? place(d, "photo") : d)) };
+  if (slot === "cover") return place(doc, "coverPhoto");
+  if (kind === "itinerary") {
+    const plan = doc as Itinerary;
+    return { ...plan, days: plan.days.map((d, i) => (i === slot ? place(d, "photo") : d)) };
+  }
+  const proposal = doc as Proposal;
+  return { ...proposal, options: proposal.options.map((o, i) => (i === slot ? place(o, "photo") : o)) };
 }
 
-/** Pictures for an itinerary: made from each day's plan (with the family's own photos if she adds them), or her photo as is. */
-export function DocumentPictures({ tripId, deliverableId, savedDays, plan, onChange }: Props) {
+/**
+ * Pictures for an itinerary (cover and each day) or a proposal (cover and each option): made from the plan
+ * (with the family's own photos or earlier trip pictures if she picks them), or one of those placed as is.
+ */
+export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc, onChange }: Props) {
   const owner = { type: "trip" as const, id: tripId };
   const [family, setFamily] = useState<ImageMeta[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
@@ -39,16 +52,17 @@ export function DocumentPictures({ tripId, deliverableId, savedDays, plan, onCha
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Everything in the trip's gallery: the family's photos and pictures made on the trip page.
     listImages(owner)
-      .then((list) => setFamily(list.filter((i) => i.kind === "upload")))
+      .then(setFamily)
       .catch((e: Error) => setErrors({ family: e.message }));
   }, [tripId]);
 
   const slots: { slot: Slot; label: string; id?: string }[] = [
-    { slot: "cover", label: "Cover", id: plan.coverPhoto },
-    ...plan.days.map((d, i) => ({ slot: i as Slot, label: d.title, id: d.photo })),
+    { slot: "cover", label: "Cover", id: doc.coverPhoto },
+    ...parts(kind, doc).map((p, i) => ({ slot: i as Slot, label: p.title, id: p.photo })),
   ];
-  const canMake = (slot: Slot) => slot === "cover" || slot < savedDays;
+  const canMake = (slot: Slot) => slot === "cover" || slot < savedCount;
 
   const make = async (slot: Slot) => {
     const key = slotKey(slot);
@@ -56,7 +70,7 @@ export function DocumentPictures({ tripId, deliverableId, savedDays, plan, onCha
     setErrors(({ [key]: _old, ...rest }) => rest);
     try {
       const meta = await generateImage({ owner, direction: "", shape: "wide", photoIds: chosen, deliverableId, slot });
-      onChange((p) => withPhoto(p, slot, meta.id));
+      onChange((d) => withPhoto(kind, d, slot, meta.id));
     } catch (e) {
       setErrors((all) => ({ ...all, [key]: (e as Error).message }));
     } finally {
@@ -101,13 +115,15 @@ export function DocumentPictures({ tripId, deliverableId, savedDays, plan, onCha
     <section className="document-pictures" aria-label="Pictures">
       <h3>Pictures</h3>
       <p className="muted-note">
-        Pictures of a family enjoying each day, made from the plan (about 3¢ each). Add the family's own photos to put them in
-        the pictures, or to use a photo as it is.
+        {kind === "itinerary"
+          ? "Pictures of the family enjoying each day, made from the plan (about 3¢ each)."
+          : "Pictures of the family enjoying each option (about 3¢ each)."}{" "}
+        Pick the family's photos to put them in the pictures (otherwise it shows a family like theirs), or place one as it is.
       </p>
 
       <div className="field">
-        <span className="field-label">The family's photos (optional)</span>
-        {family.length > 0 && <p className="muted-note">Tap a photo to use it or not (up to {MAX_REFERENCE_PHOTOS}).</p>}
+        <span className="field-label">The family's photos and trip pictures (optional)</span>
+        {family.length > 0 && <p className="muted-note">Tap to pick (up to {MAX_REFERENCE_PHOTOS}).</p>}
         <div className="photo-strip">
           {family.map((p) => (
             <div key={p.id} className={chosen.includes(p.id) ? "photo-thumb chosen" : "photo-thumb"}>
@@ -147,15 +163,15 @@ export function DocumentPictures({ tripId, deliverableId, savedDays, plan, onCha
                         <IconSparkles size={15} aria-hidden /> {id ? "Remake" : "Make picture"}
                       </button>
                     ) : (
-                      <span className="muted-note">Save this version first to make a picture for this day.</span>
+                      <span className="muted-note">Save this version first to make a picture for this {kind === "itinerary" ? "day" : "option"}.</span>
                     )}
                     {chosen.length > 0 && (
-                      <button type="button" className="btn-quiet" onClick={() => onChange((p) => withPhoto(p, slot, chosen[0]))}>
-                        <IconUser size={15} aria-hidden /> Use my photo
+                      <button type="button" className="btn-quiet" onClick={() => onChange((d) => withPhoto(kind, d, slot, chosen[0]))}>
+                        <IconUser size={15} aria-hidden /> Use the picked photo
                       </button>
                     )}
                     {id && (
-                      <button type="button" className="btn-quiet" onClick={() => onChange((p) => withPhoto(p, slot, undefined))}>
+                      <button type="button" className="btn-quiet" onClick={() => onChange((d) => withPhoto(kind, d, slot, undefined))}>
                         <IconTrash size={15} aria-hidden /> Remove
                       </button>
                     )}

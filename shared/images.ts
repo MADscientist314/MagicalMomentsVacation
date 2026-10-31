@@ -16,9 +16,11 @@ export function defaultShape(channel?: string): Shape {
   return channel === "Newsletter" || channel === "Website promo" ? "wide" : "portrait";
 }
 
-export type CardKind = "countdown" | "birthday" | "welcome-home" | "bon-voyage";
+/** What a trip's picture is for: a picture of the family living the plan, or one of the cards. */
+export type CardKind = "picture" | "countdown" | "birthday" | "welcome-home" | "bon-voyage";
 
 export const CARD_KINDS: Record<CardKind, string> = {
+  picture: "Trip picture",
   countdown: "Countdown",
   birthday: "Happy birthday",
   "welcome-home": "Welcome home",

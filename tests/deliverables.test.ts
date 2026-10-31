@@ -4,6 +4,7 @@ import {
   estimateTotals,
   numbersIn,
   DELIVERABLE_SCHEMAS,
+  documentPhotoIds,
   renderDeliverableHtml,
   validateDeliverable,
   type Estimate,
@@ -168,5 +169,36 @@ describe("pictures in an itinerary", () => {
 
   it("never asks Claude for picture ids", () => {
     expect(JSON.stringify(DELIVERABLE_SCHEMAS.itinerary)).not.toContain("photo");
+  });
+});
+
+describe("pictures in a proposal", () => {
+  const COVER = "2d0b8b4a-5e3f-4e9c-9c5b-7f4b3a8c9d0e";
+  const OPTION = "3e1c9c5b-6f4a-4fad-8d6c-8a5c4b9d0e1f";
+  const WITH_PICTURES: Proposal = {
+    ...PROPOSAL,
+    coverPhoto: COVER,
+    options: [{ ...PROPOSAL.options[0], photo: OPTION }, PROPOSAL.options[1]],
+  };
+  const brand = { footer: "Legal", signature: "Jillian", mode: "client" as const };
+
+  it("accepts picture ids on the cover and options only", () => {
+    expect(validateDeliverable("proposal", WITH_PICTURES).ok).toBe(true);
+    expect(validateDeliverable("proposal", { ...WITH_PICTURES, coverPhoto: "nope" }).ok).toBe(false);
+    expect(documentPhotoIds("proposal", WITH_PICTURES)).toEqual([COVER, OPTION]);
+    expect(documentPhotoIds("estimate", { title: "x", lineItems: [], notes: [], verifyNotes: [] })).toEqual([]);
+  });
+
+  it("shows the cover and each option's picture", () => {
+    const html = renderDeliverableHtml("proposal", WITH_PICTURES, {
+      ...brand,
+      photos: { [COVER]: "data:image/jpeg;base64,CCCC", [OPTION]: "data:image/jpeg;base64,DDDD" },
+    });
+    expect(html).toContain('<figure class="cover"><img src="data:image/jpeg;base64,CCCC" alt=""></figure>');
+    expect(html).toContain('<img class="option-photo" src="data:image/jpeg;base64,DDDD" alt="">');
+  });
+
+  it("never asks Claude for picture ids", () => {
+    expect(JSON.stringify(DELIVERABLE_SCHEMAS.proposal)).not.toContain("photo");
   });
 });

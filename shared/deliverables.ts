@@ -12,12 +12,15 @@ export const DELIVERABLE_LABELS: Record<DeliverableKind, string> = {
 export interface Proposal {
   title: string;
   intro: string;
+  /** Image id of the cover picture; Jillian adds pictures herself, Claude never writes these. */
+  coverPhoto?: string;
   options: {
     name: string;
     summary: string;
     highlights: string[];
     bestFor: string;
     price: { amount: number | null; note: string };
+    photo?: string;
   }[];
   recommendation: string;
   nextSteps: string[];
@@ -34,10 +37,19 @@ export interface Itinerary {
   verifyNotes: string[];
 }
 
-/** Every picture an itinerary uses: the cover, then each day's. */
-export function itineraryPhotoIds(i: Itinerary): string[] {
-  return [i.coverPhoto, ...i.days.map((d) => d.photo)].filter((id): id is string => typeof id === "string");
+/** Every picture a document uses: the cover, then each day's (itinerary) or option's (proposal). */
+export function documentPhotoIds(kind: DeliverableKind, data: DeliverableData): string[] {
+  const ids =
+    kind === "itinerary"
+      ? [(data as Itinerary).coverPhoto, ...(data as Itinerary).days.map((d) => d.photo)]
+      : kind === "proposal"
+        ? [(data as Proposal).coverPhoto, ...(data as Proposal).options.map((o) => o.photo)]
+        : [];
+  return ids.filter((id): id is string => typeof id === "string");
 }
+
+/** Proposals and itineraries can carry pictures; estimates can't. */
+export const HAS_PICTURES = (kind: DeliverableKind) => kind !== "estimate";
 
 export interface Estimate {
   title: string;
@@ -114,6 +126,7 @@ const isPhotoId = (x: unknown) => x === undefined || (typeof x === "string" && /
 
 function checkProposal(d: Record<string, unknown>): string | null {
   if (!isText(d.title, true) || !isText(d.intro) || !isText(d.recommendation)) return "missing text";
+  if (!isPhotoId(d.coverPhoto)) return "bad picture";
   if (!isTextList(d.nextSteps) || !isTextList(d.verifyNotes)) return "bad lists";
   if (!Array.isArray(d.options) || d.options.length < 2 || d.options.length > 4) return "needs 2–4 options";
   for (const o of d.options) {
@@ -121,6 +134,7 @@ function checkProposal(d: Record<string, unknown>): string | null {
       return "bad option";
     }
     if (!isObject(o.price) || !isPrice(o.price.amount) || !isText(o.price.note)) return "bad price";
+    if (!isPhotoId(o.photo)) return "bad picture";
   }
   return null;
 }
@@ -200,23 +214,6 @@ const list = (items: string[]) => {
 };
 const para = (text: string) => (text.trim() ? `<p>${esc(text)}</p>` : "");
 
-function proposalBody(p: Proposal): string {
-  const cards = p.options
-    .map(
-      (o) => `<article class="option">
-  <h2>${esc(o.name)}</h2>
-  ${para(o.summary)}
-  ${list(o.highlights)}
-  ${o.bestFor.trim() ? `<p class="best"><strong>Best for:</strong> ${esc(o.bestFor)}</p>` : ""}
-  <p class="price">${priceOrGap(o.price.amount)}${o.price.note.trim() ? ` <span class="note">${esc(o.price.note)}</span>` : ""}</p>
-</article>`,
-    )
-    .join("\n");
-  return `<section class="options">${cards}</section>
-${p.recommendation.trim() ? `<section><h2>My recommendation</h2>${para(p.recommendation)}</section>` : ""}
-${p.nextSteps.length ? `<section><h2>Next steps</h2>${list(p.nextSteps)}</section>` : ""}`;
-}
-
 /** Picture id → its data: URL, loaded by the browser so the page works offline and in a PDF. */
 type Photos = Record<string, string>;
 
@@ -224,6 +221,24 @@ type Photos = Record<string, string>;
 function photoSrc(photos: Photos | undefined, id: string | undefined): string | null {
   const src = id ? photos?.[id] : undefined;
   return src && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : null;
+}
+
+function proposalBody(p: Proposal, photos?: Photos): string {
+  const cards = p.options
+    .map((o) => {
+      const src = photoSrc(photos, o.photo);
+      return `<article class="option">
+  ${src ? `<img class="option-photo" src="${src}" alt="">` : ""}<h2>${esc(o.name)}</h2>
+  ${para(o.summary)}
+  ${list(o.highlights)}
+  ${o.bestFor.trim() ? `<p class="best"><strong>Best for:</strong> ${esc(o.bestFor)}</p>` : ""}
+  <p class="price">${priceOrGap(o.price.amount)}${o.price.note.trim() ? ` <span class="note">${esc(o.price.note)}</span>` : ""}</p>
+</article>`;
+    })
+    .join("\n");
+  return `<section class="options">${cards}</section>
+${p.recommendation.trim() ? `<section><h2>My recommendation</h2>${para(p.recommendation)}</section>` : ""}
+${p.nextSteps.length ? `<section><h2>Next steps</h2>${list(p.nextSteps)}</section>` : ""}`;
 }
 
 function itineraryBody(i: Itinerary, photos?: Photos): string {
@@ -261,7 +276,7 @@ h1{font-size:32px;margin:6px 0 10px}h2{font-size:21px;margin:22px 0 8px}
 header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px}
 .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
 .option{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;break-inside:avoid}
-.option h2{margin-top:0}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
+.option h2{margin-top:0}.option-photo{display:block;width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
 .missing{background:#fff1c9;color:#7a5a00;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:600}
 .day{break-inside:avoid}.items{padding-left:18px}
 .cover{margin:18px 0 6px}.cover img,.day-photo{display:block;width:100%;object-fit:cover;border-radius:12px}
@@ -283,11 +298,11 @@ export function renderDeliverableHtml(
 ): string {
   const body =
     kind === "proposal"
-      ? proposalBody(data as Proposal)
+      ? proposalBody(data as Proposal, brand.photos)
       : kind === "itinerary"
         ? itineraryBody(data as Itinerary, brand.photos)
         : estimateBody(data as Estimate);
-  const coverSrc = kind === "itinerary" ? photoSrc(brand.photos, (data as Itinerary).coverPhoto) : null;
+  const coverSrc = HAS_PICTURES(kind) ? photoSrc(brand.photos, (data as Itinerary | Proposal).coverPhoto) : null;
   const cover = coverSrc ? `<figure class="cover"><img src="${coverSrc}" alt=""></figure>` : "";
   const intro = "intro" in data ? para(data.intro) : "";
   const notes =

@@ -193,6 +193,26 @@ describe("reading and editing a deliverable", () => {
     expect(await bad.json()).toEqual({ error: "One of those pictures isn't part of this trip." });
   });
 
+  it("checks a proposal's pictures belong to the trip too", async () => {
+    const c = await plannedTrip();
+    const other = await createConversation(env.DB, { kind: "trip", title: "Other family", details: {} }, 1);
+    const theirs = await addImage(env.DB, { owner: { type: "trip", id: other.id }, kind: "upload", mime: "image/jpeg", bytes: 1, shape: null, prompt: "", model: null, cost_usd: 0 }, 2);
+    const proposal: Proposal = {
+      title: "Options",
+      intro: "",
+      options: [
+        { name: "A", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } },
+        { name: "B", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } },
+      ],
+      recommendation: "",
+      nextSteps: [],
+      verifyNotes: [],
+    };
+    const { id } = await addDeliverable(env.DB, c.id, "proposal", proposal, 3);
+    const bad = await call("POST", [id, "edit"], { data: { ...proposal, coverPhoto: theirs.id } });
+    expect(bad.status).toBe(400);
+  });
+
   it("rejects an edit that breaks the shape", async () => {
     const c = await plannedTrip();
     const { id } = await addDeliverable(env.DB, c.id, "itinerary", ITINERARY, 3);

@@ -6,11 +6,10 @@ import {
   DELIVERABLE_KINDS,
   DELIVERABLE_LABELS,
   DELIVERABLE_SCHEMAS,
-  itineraryPhotoIds,
+  documentPhotoIds,
   numbersIn,
   validateDeliverable,
   type DeliverableKind,
-  type Itinerary,
 } from "../shared/deliverables";
 import { DETAILS_CHANGED } from "../shared/conversations";
 import { findSensitive, SENSITIVE_MESSAGES } from "../shared/guard";
@@ -112,12 +111,10 @@ export async function handleDeliverable(
     if (!checked.ok) return error("Something in that edit doesn't fit — check every field has a value.", 400);
     const sensitive = findSensitive(JSON.stringify(checked.data));
     if (sensitive.length) return error(SENSITIVE_MESSAGES[sensitive[0]], 400);
-    if (existing.kind === "itinerary") {
-      const trip = { type: "trip", id: existing.conversation_id } as const;
-      for (const photoId of itineraryPhotoIds(checked.data as Itinerary)) {
-        const image = await store.getImage(env.DB, photoId);
-        if (!image || !store.ownsImage(trip, image)) return error("One of those pictures isn't part of this trip.", 400);
-      }
+    const trip = { type: "trip", id: existing.conversation_id } as const;
+    for (const photoId of documentPhotoIds(existing.kind, checked.data)) {
+      const image = await store.getImage(env.DB, photoId);
+      if (!image || !store.ownsImage(trip, image)) return error("One of those pictures isn't part of this trip.", 400);
     }
     const saved = await store.addDeliverable(env.DB, existing.conversation_id, existing.kind, checked.data, now());
     return Response.json({ id: saved.id, kind: existing.kind, version: saved.version });

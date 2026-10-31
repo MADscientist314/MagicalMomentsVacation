@@ -60,9 +60,10 @@ const TEXT: Record<Props["purpose"], { heading: string; about: string; placehold
     placeholder: "Our family photo by the pool at sunset, with the words 'Book by Dec 1'",
   },
   card: {
-    heading: "Cards for the family",
-    about: "A countdown, birthday, bon voyage or welcome-home card made from this trip.",
-    placeholder: "30 days to go! Use our photo and add confetti",
+    heading: "Pictures for this trip",
+    about:
+      "The family living their trip, made from its plan: a picture for a proposal or an email, or a countdown, birthday, bon voyage or welcome-home card. Add their photos to put them in it; otherwise it shows a family like theirs.",
+    placeholder: "Day 2 at Magic Kingdom, or: 30 days to go! with confetti",
   },
   free: {
     heading: "Make an image",
@@ -75,7 +76,7 @@ const TEXT: Record<Props["purpose"], { heading: string; about: string; placehold
 export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
   const [images, setImages] = useState<ImageMeta[]>([]);
   const [shape, setShape] = useState<Shape>(defaultShape);
-  const [card, setCard] = useState<CardKind>("countdown");
+  const [card, setCard] = useState<CardKind>("picture");
   const [direction, setDirection] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
   const [baseId, setBaseId] = useState<string | null>(null);
@@ -146,7 +147,7 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
 
   const download = (id: string, n: number) =>
     void fetchImage(id)
-      .then((blob) => saveBlob(blob, `${fileStem}-${purpose === "card" ? "card" : "image"}-${n}.${blob.type === "image/jpeg" ? "jpg" : "png"}`))
+      .then((blob) => saveBlob(blob, `${fileStem}-${purpose === "card" ? "picture" : "image"}-${n}.${blob.type === "image/jpeg" ? "jpg" : "png"}`))
       .catch(fail);
 
   const togglePhoto = (id: string) =>
@@ -161,7 +162,7 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
       <h2>{text.heading}</h2>
       <p className="muted-note">{text.about}</p>
 
-      {purpose === "card" && <Choices label="Which card?" options={CARD_KINDS} value={card} onChange={setCard} />}
+      {purpose === "card" && <Choices label="What kind?" options={CARD_KINDS} value={card} onChange={setCard} />}
       <Choices label="Shape" options={SHAPE_LABELS} value={shape} onChange={setShape} />
 
       <div className="field">

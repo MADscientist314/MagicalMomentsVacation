@@ -269,6 +269,60 @@ describe("making an image", () => {
   });
 });
 
+describe("pictures for a trip, from its plan", () => {
+  const ITINERARY = {
+    title: "The Testfam family's Disney week",
+    intro: "Here's your plan.",
+    days: [
+      { title: "Day 1 — Arrival and pool", items: [{ time: null, text: "Check in, then the lazy river" }] },
+      { title: "Day 2 — Magic Kingdom", items: [{ time: "9 AM", text: "Rope drop and the teacups" }] },
+    ],
+    tips: [],
+    verifyNotes: [],
+  };
+
+  it("makes a trip picture of the family living the plan, with no words, from the latest itinerary", async () => {
+    const trip = await makeTrip();
+    await store.addDeliverable(env.DB, trip.id, "itinerary", ITINERARY, clock);
+    const made = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture" });
+    expect(made.status).toBe(201);
+    for (const text of ["Day 1 — Arrival and pool", "Check in, then the lazy river", "Day 2 — Magic Kingdom", "Rope drop and the teacups", "No words on the image"]) {
+      expect(calls[0].prompt).toContain(text);
+    }
+    expect(calls[0].prompt).toContain("Show a family that matches who's going");
+    expect(calls[0].prompt).not.toMatch(/Make a ".*" card/);
+  });
+
+  it("uses the latest day-by-day plan from the conversation when there's no itinerary, without her notes", async () => {
+    const trip = await makeTrip();
+    await store.appendMessages(
+      env.DB,
+      trip.id,
+      [
+        { role: "user", content: "Plan it" },
+        { role: "assistant", content: "### Day 1 — Epcot\nSoarin' and dinner in Mexico\n\n## For Jillian only\nSECRET NOTE" },
+        { role: "user", content: "Thanks!" },
+        { role: "assistant", content: "You're welcome." },
+      ],
+      clock,
+    );
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, card: "countdown", direction: "30 days to go!" });
+    expect(calls[0].prompt).toContain("Soarin' and dinner in Mexico");
+    expect(calls[0].prompt).not.toContain("SECRET NOTE");
+    expect(calls[0].prompt).toContain("Countdown");
+    expect(calls[0].prompt).toContain("30 days to go!");
+  });
+
+  it("puts the real family in it when their photos are chosen, and can reuse a picture made earlier", async () => {
+    const trip = await makeTrip();
+    const family = await upload(`trip:${trip.id}`, JPEG(1));
+    const earlier = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture" });
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture", photoIds: [family.json.id, earlier.json.id] });
+    expect(calls[1].prompt).toContain("looking like themselves");
+    expect(calls[1].images).toHaveLength(2);
+  });
+});
+
 describe("pictures for an itinerary", () => {
   const PLAN = {
     title: "The Testfam family's Disney week",
@@ -317,9 +371,36 @@ describe("pictures for an itinerary", () => {
     const other = await makeTrip();
     const theirs = await store.addDeliverable(env.DB, other.id, "itinerary", PLAN, clock);
     expect((await api("POST", "/generate", { owner, deliverableId: theirs.id, slot: 0 })).status).toBe(400);
-    const proposal = await store.addDeliverable(env.DB, trip.id, "proposal", { title: "x" }, clock);
-    expect((await api("POST", "/generate", { owner, deliverableId: proposal.id, slot: 0 })).status).toBe(400);
+    const estimate = await store.addDeliverable(env.DB, trip.id, "estimate", { title: "x" }, clock);
+    expect((await api("POST", "/generate", { owner, deliverableId: estimate.id, slot: 0 })).status).toBe(400);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("pictures for a proposal", () => {
+  const PROPOSAL = {
+    title: "Your Disney options",
+    intro: "Two great ways to go.",
+    options: [
+      { name: "Disney's Polynesian Village Resort", summary: "Tropical deluxe on the monorail", highlights: ["Volcano pool"], bestFor: "Easy park days", price: { amount: null, note: "" } },
+      { name: "Disney Cruise Line, 4 nights", summary: "Bahamas cruise with Castaway Cay", highlights: ["Kids clubs"], bestFor: "Relaxing", price: { amount: null, note: "" } },
+    ],
+    recommendation: "Polynesian",
+    nextSteps: [],
+    verifyNotes: [],
+  };
+
+  it("makes a picture of the family enjoying each option, and a cover", async () => {
+    const trip = await makeTrip();
+    const doc = await store.addDeliverable(env.DB, trip.id, "proposal", PROPOSAL, clock);
+    const made = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 1 });
+    expect(made.status).toBe(201);
+    expect(calls[0].prompt).toContain("Disney Cruise Line, 4 nights");
+    expect(calls[0].prompt).toContain("Bahamas cruise with Castaway Cay");
+    expect(calls[0].aspect).toBe("16:9");
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: "cover" });
+    expect(calls[1].prompt).toContain("Your Disney options");
+    expect((await api("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 2 })).status).toBe(400);
   });
 });
 

@@ -3,11 +3,13 @@ import { IconDeviceFloppy, IconDownload, IconPrinter, IconX } from "@tabler/icon
 import type { DeliverableRecord } from "../../shared/conversations";
 import {
   DELIVERABLE_LABELS,
-  itineraryPhotoIds,
+  documentPhotoIds,
+  HAS_PICTURES,
   renderDeliverableHtml,
   validateDeliverable,
   type DeliverableData,
   type Itinerary,
+  type Proposal,
 } from "../../shared/deliverables";
 import { fetchImage, getDeliverable, saveDeliverableEdit } from "../lib/api";
 import { downloadName, missingPrices } from "../lib/deliverableFiles";
@@ -45,7 +47,7 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
   const [closing, setClosing] = useState(false);
   // Pictures are put into the page as data: URLs, so the HTML file and the PDF carry them ("" while loading).
   const [photos, setPhotos] = useState<Record<string, string>>({});
-  const photoIds = record?.kind === "itinerary" && data ? itineraryPhotoIds(data as Itinerary) : [];
+  const photoIds = record && data ? documentPhotoIds(record.kind, data) : [];
 
   useEffect(() => {
     let live = true;
@@ -209,14 +211,17 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
         {tab === "review" ? (
           <div className="modal-body review-layout">
             <div className="editor">
-              {record.kind === "itinerary" && (
+              {HAS_PICTURES(record.kind) && (
                 <DocumentPictures
                   tripId={tripId}
+                  kind={record.kind as "itinerary" | "proposal"}
                   deliverableId={record.id}
-                  savedDays={(record.data as Itinerary).days.length}
-                  plan={data as Itinerary}
+                  savedCount={
+                    record.kind === "itinerary" ? (record.data as Itinerary).days.length : (record.data as Proposal).options.length
+                  }
+                  doc={data as Itinerary | Proposal}
                   onChange={(update) => {
-                    setData((d) => update(d as Itinerary));
+                    setData((d) => update(d as Itinerary | Proposal));
                     setDirty(true);
                   }}
                 />
