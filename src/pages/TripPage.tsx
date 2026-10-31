@@ -9,11 +9,15 @@ import { TripDetailsForm } from "../components/TripDetailsForm";
 import { getConversation, updateConversation } from "../lib/api";
 import { loadThread, planTrip, sendToThread, useThread } from "../lib/threadStore";
 
+const UPDATE_PLAN = "The trip details just changed (see the note above). Please send the full updated day-by-day plan using the new details.";
+
 export function TripPage({ id }: { id: string }) {
   const [trip, setTrip] = useState<ConversationWithHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Changed details are noted in the conversation, but the plan itself only changes when she asks.
+  const [detailsChanged, setDetailsChanged] = useState(false);
   const thread = useThread(id);
   const busy = thread.phase !== "idle";
 
@@ -49,6 +53,7 @@ export function TripPage({ id }: { id: string }) {
       await updateConversation(id, { details });
       setEditing(false);
       setError(null);
+      if (planned) setDetailsChanged(true);
       refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -90,6 +95,26 @@ export function TripPage({ id }: { id: string }) {
         </div>
 
         {error && !editing && <p className="message message-error">{error}</p>}
+        {detailsChanged && planned && (
+          <div className="message message-info">
+            The trip details changed. The current plan still uses the old ones.{" "}
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy}
+              onClick={() => {
+                const problem = sendToThread(id, UPDATE_PLAN, refresh);
+                if (problem) setError(problem);
+                else setDetailsChanged(false);
+              }}
+            >
+              <IconSparkles size={16} aria-hidden /> Update the plan
+            </button>{" "}
+            <button type="button" className="btn-quiet" onClick={() => setDetailsChanged(false)}>
+              Not now
+            </button>
+          </div>
+        )}
         {editing && (
           <TripDetailsForm
             initial={d}
