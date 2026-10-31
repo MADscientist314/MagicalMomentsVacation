@@ -1369,3 +1369,8 @@ a.btn-primary {
   margin: 16px 0 0;
   padding-left: 18px;
 }
+
+.images-page .image-studio {
+  max-width: 920px;
+  margin: 0 auto;
+}

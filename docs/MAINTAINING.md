@@ -81,11 +81,12 @@ Magic Mail's tile is gone from the home screen: its emails (welcome, payment rem
 
 Images are made by Google's **Nano Banana**, about 3¢ each.
 
-- **For a post:** in Spread the Magic, once a post is finished, **Images for this post** appears under it. Pick a shape (Portrait suits Facebook and Instagram, Wide suits newsletters and the website), optionally add photos, say what it should show ("our family by the pool at sunset, with the words 'Book by Dec 1'"), and click **Make an image**.
+- **Any image:** the **Picture Perfect** tile on the home screen makes an image on its own: a social graphic, a flyer, a promo, a holiday greeting. She describes it (and can add photos); everything she makes there stays in that page's gallery.
+- **For a post:** in Spread the Magic, once a post is finished, **Images for this post** appears under it (the **Make an image** button at the top of the post jumps there). Pick a shape (Portrait suits Facebook and Instagram, Wide suits newsletters and the website), optionally add photos, say what it should show ("our family by the pool at sunset, with the words 'Book by Dec 1'"), and click **Make an image**.
 - **For a family:** each trip page has **Cards for the family**: a countdown, birthday, welcome-home or bon voyage card made from the trip's details.
 - **Her photos:** **Add photos** takes up to 3 at a time into an image (tap a photo to use it or not). They're shrunk before uploading and kept with that post or trip. Don't upload photos of passports, IDs or cards.
 - **Not quite right?** **Change this one** and say what to change. Every version is kept until she deletes it.
-- **Finishing in Canva:** **Download** saves the image; drag it into a Canva design to add her brand kit, a QR code or exact text.
+- **Saving:** **Download** saves the image to post or use anywhere.
 - **The rules:** `brains/images.md` only blocks branding problems (copied logos, an "official" look, a character used as her logo, anything suggesting she works for Disney or Universal) and prices or dates she didn't give. Parks, castles and characters are otherwise allowed; Google may still refuse some requests ("Google wouldn't make that one"). Add her brand colors there once the brand guide arrives.
 - **Limits:** 100 new images a day across the site, so a leaked password can't run up a big bill.
 

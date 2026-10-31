@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconDownload, IconPencil, IconPhotoPlus, IconSparkles, IconTrash, IconX } from "@tabler/icons-react";
-import { CARD_KINDS, MAX_REFERENCE_PHOTOS, SHAPES, type CardKind, type ImageMeta, type ImageOwner, type Shape } from "../../shared/images";
+import { CARD_KINDS, MAX_REFERENCE_PHOTOS, ownerKey, SHAPES, type CardKind, type ImageMeta, type ImageOwner, type Shape } from "../../shared/images";
 import { deleteImage, fetchImage, generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
 import { saveBlob } from "../lib/download";
 import { shrinkPhoto } from "../lib/photos";
@@ -8,8 +8,8 @@ import { Sparkles } from "./Sparkles";
 
 interface Props {
   owner: ImageOwner;
-  /** Posts get an image to go with them; trips get cards for the family. */
-  purpose: "post" | "card";
+  /** Posts get an image to go with them, trips get cards for the family, and Picture Perfect makes anything. */
+  purpose: "post" | "card" | "free";
   defaultShape: Shape;
   /** Start of the downloaded file's name, e.g. "Whitfield-family". */
   fileStem: string;
@@ -51,6 +51,24 @@ function ConfirmDelete({ label, onDelete }: { label: string; onDelete(): void })
 
 const SHAPE_LABELS = Object.fromEntries(Object.entries(SHAPES).map(([k, s]) => [k, s.label])) as Record<Shape, string>;
 
+const TEXT: Record<Props["purpose"], { heading: string; about: string; placeholder: string }> = {
+  post: {
+    heading: "Images for this post",
+    about: "An image to go with this post, made from what it says.",
+    placeholder: "Our family photo by the pool at sunset, with the words 'Book by Dec 1'",
+  },
+  card: {
+    heading: "Cards for the family",
+    about: "A countdown, birthday, bon voyage or welcome-home card made from this trip.",
+    placeholder: "30 days to go! Use our photo and add confetti",
+  },
+  free: {
+    heading: "Make an image",
+    about: "Anything for your business: a social graphic, a flyer, a promo, a holiday greeting. Describe it, and add your own photos if you like.",
+    placeholder: "A flyer: a sunny beach at sunrise, with the words 'Now booking 2027'",
+  },
+};
+
 /** Make images with Nano Banana from the post or trip, her words and her own photos; download them for Canva. */
 export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
   const [images, setImages] = useState<ImageMeta[]>([]);
@@ -63,12 +81,14 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const directionBox = useRef<HTMLTextAreaElement>(null);
+  const key = ownerKey(owner);
+  const text = TEXT[purpose];
 
   useEffect(() => {
     listImages(owner)
       .then(setImages)
       .catch((e: Error) => setError(e.message));
-  }, [owner.type, owner.id]);
+  }, [key]);
 
   const photos = images.filter((i) => i.kind === "upload");
   const made = images.filter((i) => i.kind === "generated");
@@ -131,15 +151,13 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length < MAX_REFERENCE_PHOTOS ? [...c, id] : c));
 
   const busy = working !== null;
+  // With no post or trip behind it, a standalone image needs her words or a photo.
+  const nothingToGoOn = purpose === "free" && !direction.trim() && !chosen.length && !baseId;
 
   return (
-    <section id="image-studio" className="card image-studio" aria-label={purpose === "card" ? "Cards for the family" : "Images for this post"}>
-      <h2>{purpose === "card" ? "Cards for the family" : "Images for this post"}</h2>
-      <p className="muted-note">
-        {purpose === "card"
-          ? "A countdown, birthday, bon voyage or welcome-home card made from this trip."
-          : "An image to go with this post, made from what it says."}
-      </p>
+    <section id="image-studio" className="card image-studio" aria-label={text.heading}>
+      <h2>{text.heading}</h2>
+      <p className="muted-note">{text.about}</p>
 
       {purpose === "card" && <Choices label="Which card?" options={CARD_KINDS} value={card} onChange={setCard} />}
       <Choices label="Shape" options={SHAPE_LABELS} value={shape} onChange={setShape} />
@@ -183,33 +201,27 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
       )}
 
       <div className="field">
-        <label className="field-label" htmlFor={`direction-${owner.id}`}>
-          {baseId ? "How should I change it?" : "What should it show? (optional)"}
+        <label className="field-label" htmlFor={`direction-${key}`}>
+          {baseId ? "How should I change it?" : purpose === "free" ? "What should it show?" : "What should it show? (optional)"}
         </label>
         <textarea
           ref={directionBox}
-          id={`direction-${owner.id}`}
+          id={`direction-${key}`}
           value={direction}
           maxLength={1000}
-          placeholder={
-            baseId
-              ? "Make the sky pinker, move the words to the top…"
-              : purpose === "card"
-                ? "30 days to go! Use our photo and add confetti"
-                : "Our family photo by the pool at sunset, with the words 'Book by Dec 1'"
-          }
+          placeholder={baseId ? "Make the sky pinker, move the words to the top…" : text.placeholder}
           onChange={(e) => setDirection(e.target.value)}
         />
       </div>
 
-      <button type="button" className="btn-primary" disabled={busy} onClick={() => void make()}>
+      <button type="button" className="btn-primary" disabled={busy || nothingToGoOn} onClick={() => void make()}>
         <IconSparkles size={18} aria-hidden /> {baseId ? "Change it" : "Make an image"}
       </button>
 
       {working === "making" && (
         <div className="waiting" aria-live="polite">
           <Sparkles />
-          <p>Painting your image… (about 20 seconds)</p>
+          <p>Painting your image… (20–40 seconds)</p>
         </div>
       )}
       {error && (
@@ -246,7 +258,6 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
       )}
 
       <ul className="image-notes muted-note">
-        <li>Finish it in Canva: download it, then drag it into your design.</li>
         <li>Don't upload photos of passports, IDs or cards.</li>
         <li>Made by Google's Nano Banana, about 3¢ an image.</li>
       </ul>

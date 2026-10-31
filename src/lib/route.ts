@@ -6,6 +6,7 @@ export type Route =
   | { page: "new-trip" }
   | { page: "trip"; id: string }
   | { page: "chat"; id?: string }
+  | { page: "images" }
   | { page: "tool"; tool: ToolId };
 
 export function parseRoute(hash: string): Route {
@@ -18,6 +19,7 @@ export function parseRoute(hash: string): Route {
     return { page: "trips" };
   }
   if (first === "chat") return second ? { page: "chat", id: second } : { page: "chat" };
+  if (first === "images") return { page: "images" };
   if (isToolId(first)) return { page: "tool", tool: first };
   return { page: "home" };
 }

@@ -27,8 +27,11 @@ export const CARD_KINDS: Record<CardKind, string> = {
 
 export const isCardKind = (x: unknown): x is CardKind => typeof x === "string" && Object.hasOwn(CARD_KINDS, x);
 
-/** A saved Spread the Magic post or a trip; every image belongs to one. */
-export type ImageOwner = { type: "draft" | "trip"; id: string };
+/** A saved Spread the Magic post, a trip, or her standalone library (Picture Perfect). */
+export type ImageOwner = { type: "draft" | "trip"; id: string } | { type: "library" };
+
+/** "draft:<id>", "trip:<id>" or "library", as the API takes it. */
+export const ownerKey = (owner: ImageOwner) => (owner.type === "library" ? "library" : `${owner.type}:${owner.id}`);
 
 export interface ImageMeta {
   id: string;

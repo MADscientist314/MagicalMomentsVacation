@@ -2,7 +2,7 @@
 import type { Conversation, ConversationKind, ConversationWithHistory, DeliverableRecord } from "../../shared/conversations";
 import type { DeliverableData, DeliverableKind } from "../../shared/deliverables";
 import type { SavedDraft, SavedDraftMeta } from "../../shared/drafts";
-import type { CardKind, ImageMeta, ImageOwner, Shape } from "../../shared/images";
+import { ownerKey, type CardKind, type ImageMeta, type ImageOwner, type Shape } from "../../shared/images";
 import type { ToolId } from "../../shared/tools";
 
 export class ApiError extends Error {
@@ -57,7 +57,6 @@ export const updateDraft = (id: string, changes: Partial<DraftBody> & { handled?
   call<SavedDraft>(`/api/drafts/${id}`, send("PATCH", changes));
 export const deleteDraft = (id: string) => call<{ ok: true }>(`/api/drafts/${id}`, send("DELETE"));
 
-const ownerKey = (owner: ImageOwner) => `${owner.type}:${owner.id}`;
 export const imageUrl = (id: string) => `/api/images/${id}`;
 export const listImages = (owner: ImageOwner) => call<ImageMeta[]>(`/api/images?owner=${ownerKey(owner)}`);
 export const generateImage = (body: {

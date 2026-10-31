@@ -41,10 +41,11 @@ const IMAGE_ERRORS: Record<ImageError["kind"], [number, string]> = {
 
 const error = (message: string, status: number) => Response.json({ error: message }, { status });
 
-/** "draft:<id>" or "trip:<id>". */
+/** "draft:<id>", "trip:<id>" or "library". */
 function parseOwner(raw: unknown): ImageOwner | null {
+  if (raw === "library") return { type: "library" };
   const m = typeof raw === "string" ? /^(draft|trip):([A-Za-z0-9-]{1,64})$/.exec(raw) : null;
-  return m ? { type: m[1] as ImageOwner["type"], id: m[2] } : null;
+  return m ? { type: m[1] as "draft" | "trip", id: m[2] } : null;
 }
 
 /** JPEG, PNG or WebP by their first bytes; anything else isn't a photo. */
@@ -60,10 +61,21 @@ interface OwnerContext {
   shape: Shape;
   /** Trips make cards, so they need a card kind. */
   isTrip: boolean;
+  /** A standalone image has nothing to go on but her words and photos. */
+  standalone: boolean;
   subject(card?: CardKind): string;
 }
 
 async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Response> {
+  if (owner.type === "library") {
+    return {
+      shape: "portrait",
+      isTrip: false,
+      standalone: true,
+      subject: () =>
+        "Make one image for Jillian Jochum's travel-planning business, Magical Moments Vacations, as her direction describes. It's for her marketing: social media, flyers, emails or her website.",
+    };
+  }
   if (owner.type === "draft") {
     const draft = await store.getDraft(env.DB, owner.id);
     if (!draft) return error("That saved post or trip wasn't found.", 404);
@@ -72,6 +84,7 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
     return {
       shape: defaultShape(draft.request.fields.channel),
       isTrip: false,
+      standalone: false,
       subject: () => `Make one image to go with this ${channel}. The post:\n"""\n${splitDraft(draft.content).client}\n"""`,
     };
   }
@@ -82,6 +95,7 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
   return {
     shape: "portrait",
     isTrip: true,
+    standalone: false,
     subject: (card) =>
       [
         `Make a "${CARD_KINDS[card ?? "countdown"]}" card for the ${trip.title}'s trip, for Jillian to send them.`,
@@ -198,6 +212,7 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
     const image = typeof w.id === "string" ? await store.getImage(env.DB, w.id) : null;
     if (!image || image.kind !== w.kind || !store.ownsImage(owner, image)) return error(BAD_REQUEST, 400);
   }
+  if (ctx.standalone && !direction && !wanted.length) return error("Say what the image should show, or add a photo.", 400);
 
   if ((await store.countGeneratedSince(env.DB, now - DAY)) >= DAILY_IMAGE_LIMIT) {
     return error(`That's ${DAILY_IMAGE_LIMIT} images today — try again tomorrow.`, 429);

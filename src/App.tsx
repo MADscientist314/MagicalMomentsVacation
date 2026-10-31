@@ -4,6 +4,7 @@ import { parseRoute } from "./lib/route";
 import { checkSession, signOut } from "./lib/session";
 import { ChatPage } from "./pages/ChatPage";
 import { Home } from "./pages/Home";
+import { ImagesPage } from "./pages/ImagesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewTripPage } from "./pages/NewTripPage";
 import { ToolPage } from "./pages/ToolPage";
@@ -42,6 +43,8 @@ export default function App() {
       return <TripPage key={route.id} id={route.id} />;
     case "chat":
       return <ChatPage key={route.id ?? "new"} id={route.id} />;
+    case "images":
+      return <ImagesPage />;
     case "tool":
       return <ToolPage key={route.tool} tool={TOOLS[route.tool]} />;
     default:

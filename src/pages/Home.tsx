@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconDoorEnter, IconInbox, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
+import { IconDoorEnter, IconInbox, IconMailHeart, IconMap2, IconPhoto, IconSend, IconWand, type Icon } from "@tabler/icons-react";
 import { HOME_TOOLS, TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
 import { MagicLamp } from "../art/MagicLamp";
@@ -52,6 +52,11 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
               </a>
             );
           })}
+          <a className="tile" href="#/images">
+            <IconPhoto size={26} aria-hidden />
+            <span className="tile-name">Picture Perfect</span>
+            Images and graphics
+          </a>
         </nav>
         <form
           className="ask-bar"

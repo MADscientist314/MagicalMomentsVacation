@@ -246,6 +246,56 @@ describe("making an image", () => {
   });
 });
 
+describe("standalone images (Picture Perfect)", () => {
+  it("keeps photos and images that belong to no post or trip", async () => {
+    const photo = await upload("library", JPEG(1));
+    expect(photo.status).toBe(201);
+    const post = await makePost();
+    await upload(`draft:${post.id}`, JPEG(2));
+
+    const made = await api<ImageMeta>("POST", "/generate", {
+      owner: "library",
+      direction: "A flyer background: a beach at sunrise, with the words 'Now booking 2027'",
+      photoIds: [photo.json.id],
+    });
+    expect(made.status).toBe(201);
+    expect(made.json.shape).toBe("portrait");
+    expect(calls[0].prompt).toContain("Magical Moments Vacations");
+    expect(calls[0].prompt).toContain("Now booking 2027");
+    expect(calls[0].prompt).toContain(BRAINS.images.split("\n").find((l) => l.startsWith("- Don't copy official logos"))!);
+    expect(calls[0].images.map((i) => i.data)).toEqual([JPEG(1)]);
+
+    const list = await api<ImageMeta[]>("GET", "?owner=library");
+    expect(list.json.map((i) => i.id).sort()).toEqual([photo.json.id, made.json.id].sort());
+  });
+
+  it("needs her words or a photo", async () => {
+    const empty = await api("POST", "/generate", { owner: "library", direction: "   " });
+    expect(empty.status).toBe(400);
+    expect(empty.json).toEqual({ error: "Say what the image should show, or add a photo." });
+    const photo = await upload("library", JPEG(3));
+    expect((await api("POST", "/generate", { owner: "library", photoIds: [photo.json.id] })).status).toBe(201);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("never mixes library photos with a post's", async () => {
+    const post = await makePost();
+    const postPhoto = await upload(`draft:${post.id}`, JPEG(4));
+    const libraryPhoto = await upload("library", JPEG(5));
+    expect((await api("POST", "/generate", { owner: "library", direction: "x", photoIds: [postPhoto.json.id] })).status).toBe(400);
+    expect((await api("POST", "/generate", { owner: `draft:${post.id}`, photoIds: [libraryPhoto.json.id] })).status).toBe(400);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("keeps library images when a post is deleted", async () => {
+    const post = await makePost();
+    await upload(`draft:${post.id}`, JPEG(6));
+    const kept = await upload("library", JPEG(7));
+    await handleDrafts(new Request(`https://app.test/api/drafts/${post.id}`, { method: "DELETE" }), env, [post.id]);
+    expect([...r2.objects.keys()]).toEqual([`images/${kept.json.id}`]);
+  });
+});
+
 describe("viewing and deleting images", () => {
   it("serves an image privately and lets her delete it", async () => {
     const post = await makePost();

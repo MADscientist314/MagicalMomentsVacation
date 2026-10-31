@@ -222,11 +222,18 @@ export async function deleteDraft(db: D1Database, id: string): Promise<boolean> 
 
 export type StoredImage = ImageMeta & { mime: string; draft_id: string | null; conversation_id: string | null };
 
-const ownerColumn = (owner: ImageOwner) => (owner.type === "draft" ? "draft_id" : "conversation_id");
 const IMAGE_COLUMNS = "id, kind, shape, prompt, created_at";
 
-export const ownsImage = (owner: ImageOwner, image: StoredImage) =>
-  (owner.type === "draft" ? image.draft_id : image.conversation_id) === owner.id;
+/** The WHERE clause for one owner's images; library images belong to neither a post nor a trip. */
+function ownerWhere(owner: ImageOwner): { sql: string; values: string[] } {
+  if (owner.type === "library") return { sql: "draft_id IS NULL AND conversation_id IS NULL", values: [] };
+  return { sql: `${owner.type === "draft" ? "draft_id" : "conversation_id"} = ?`, values: [owner.id] };
+}
+
+export function ownsImage(owner: ImageOwner, image: StoredImage): boolean {
+  if (owner.type === "library") return image.draft_id === null && image.conversation_id === null;
+  return (owner.type === "draft" ? image.draft_id : image.conversation_id) === owner.id;
+}
 
 export async function addImage(
   db: D1Database,
@@ -243,21 +250,24 @@ export async function addImage(
   now: number,
   id: string = crypto.randomUUID(),
 ): Promise<ImageMeta> {
+  const draftId = i.owner.type === "draft" ? i.owner.id : null;
+  const conversationId = i.owner.type === "trip" ? i.owner.id : null;
   await db
     .prepare(
-      `INSERT INTO images (id, ${ownerColumn(i.owner)}, kind, mime, bytes, shape, prompt, model, cost_usd, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO images (id, draft_id, conversation_id, kind, mime, bytes, shape, prompt, model, cost_usd, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, i.owner.id, i.kind, i.mime, i.bytes, i.shape, i.prompt, i.model, i.cost_usd, now)
+    .bind(id, draftId, conversationId, i.kind, i.mime, i.bytes, i.shape, i.prompt, i.model, i.cost_usd, now)
     .run();
   return { id, kind: i.kind, shape: i.shape, prompt: i.prompt, created_at: now };
 }
 
 /** Newest first. */
 export async function listImages(db: D1Database, owner: ImageOwner): Promise<ImageMeta[]> {
+  const where = ownerWhere(owner);
   const { results } = await db
-    .prepare(`SELECT ${IMAGE_COLUMNS} FROM images WHERE ${ownerColumn(owner)} = ? ORDER BY created_at DESC, rowid DESC`)
-    .bind(owner.id)
+    .prepare(`SELECT ${IMAGE_COLUMNS} FROM images WHERE ${where.sql} ORDER BY created_at DESC, rowid DESC`)
+    .bind(...where.values)
     .all<ImageMeta>();
   return results;
 }
@@ -274,9 +284,10 @@ export async function deleteImage(db: D1Database, id: string): Promise<void> {
 }
 
 export async function imageIdsOf(db: D1Database, owner: ImageOwner): Promise<string[]> {
+  const where = ownerWhere(owner);
   const { results } = await db
-    .prepare(`SELECT id FROM images WHERE ${ownerColumn(owner)} = ?`)
-    .bind(owner.id)
+    .prepare(`SELECT id FROM images WHERE ${where.sql}`)
+    .bind(...where.values)
     .all<{ id: string }>();
   return results.map((r) => r.id);
 }
