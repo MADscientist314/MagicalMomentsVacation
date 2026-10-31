@@ -3,12 +3,8 @@ import { IconArrowLeft, IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tab
 import type { Conversation } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { deleteConversation, listConversations, updateConversation } from "../lib/api";
+import { ago } from "../lib/ago";
 import { clearHandoff } from "../lib/handoff";
-
-const ago = (ms: number) => {
-  const days = Math.floor((Date.now() - ms) / 86_400_000);
-  return days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : new Date(ms).toLocaleDateString();
-};
 
 function TripCard({ trip, onChanged, onError }: { trip: Conversation; onChanged(): void; onError(message: string): void }) {
   const [confirming, setConfirming] = useState(false);

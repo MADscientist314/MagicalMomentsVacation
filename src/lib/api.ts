@@ -1,6 +1,8 @@
-// Small fetch helpers for saved trips, chats and deliverables.
+// Small fetch helpers for saved trips, chats, deliverables and drafts.
 import type { Conversation, ConversationKind, ConversationWithHistory, DeliverableRecord } from "../../shared/conversations";
 import type { DeliverableData, DeliverableKind } from "../../shared/deliverables";
+import type { SavedDraft, SavedDraftMeta } from "../../shared/drafts";
+import type { ToolId } from "../../shared/tools";
 
 export class ApiError extends Error {
   constructor(
@@ -45,3 +47,11 @@ export const deleteConversation = (id: string) => call<{ ok: true }>(`/api/conve
 export const getDeliverable = (id: string) => call<DeliverableRecord>(`/api/deliverables/${id}`);
 export const saveDeliverableEdit = (id: string, data: DeliverableData) =>
   call<{ id: string; kind: DeliverableKind; version: number }>(`/api/deliverables/${id}/edit`, send("POST", { data }));
+
+type DraftBody = Pick<SavedDraft, "request" | "content" | "sources">;
+export const listDrafts = (tool: ToolId) => call<SavedDraftMeta[]>(`/api/drafts?tool=${tool}`);
+export const getDraft = (id: string) => call<SavedDraft>(`/api/drafts/${id}`);
+export const createDraft = (tool: ToolId, body: DraftBody) => call<SavedDraft>("/api/drafts", send("POST", { tool, ...body }));
+export const updateDraft = (id: string, changes: Partial<DraftBody> & { handled?: boolean }) =>
+  call<SavedDraft>(`/api/drafts/${id}`, send("PATCH", changes));
+export const deleteDraft = (id: string) => call<{ ok: true }>(`/api/drafts/${id}`, send("DELETE"));

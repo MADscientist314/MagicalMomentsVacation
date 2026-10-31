@@ -37,7 +37,6 @@ const error = (message: string, status: number) => Response.json({ error: messag
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 
-/** Validates, guards and masks text that will be stored and sent to Claude. */
 /** Blocks sensitive numbers and masks contacts; cuts to `max` only afterwards, so a cut can't split a contact. */
 function checkText(text: string, max = Infinity): Checked<string> {
   const sensitive = findSensitive(text);

@@ -28,12 +28,19 @@ describe("worker routes", () => {
   });
 
   it("refuses saved trips and chats without signing in", async () => {
+    expect((await call("/api/drafts?tool=welcome-center")).status).toBe(401);
     expect((await call("/api/conversations?kind=trip")).status).toBe(401);
     expect((await call("/api/deliverables/abc")).status).toBe(401);
   });
 
   it("lists saved trips for a signed-in visitor", async () => {
     const res = await call("/api/conversations?kind=trip", { headers: { cookie: await loginCookie() } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+  });
+
+  it("lists saved drafts for a signed-in visitor", async () => {
+    const res = await call("/api/drafts?tool=welcome-center", { headers: { cookie: await loginCookie() } });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
   });

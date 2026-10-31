@@ -464,6 +464,59 @@ button:disabled {
   margin-top: 0;
 }
 
+/* ---------- saved drafts (one-off tools) ---------- */
+.saved-drafts h2 {
+  font-size: 18px;
+}
+
+.saved-drafts ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.saved-drafts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 2px 4px 2px 8px;
+}
+
+.saved-drafts li.current,
+.saved-drafts li:hover {
+  background: var(--lavender);
+}
+
+.saved-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 6px 0;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-title.done {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
 .notes {
   background: var(--lavender-deep);
   border-color: var(--lavender-line);

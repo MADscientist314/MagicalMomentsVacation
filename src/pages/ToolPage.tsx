@@ -1,10 +1,13 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { IconArrowLeft } from "@tabler/icons-react";
+import { SAVES_DRAFTS, type SavedDraftMeta } from "../../shared/drafts";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../../shared/guard";
 import type { DraftRequest, ToolDef } from "../../shared/tools";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { DraftPanel } from "../components/DraftPanel";
+import { SavedDrafts } from "../components/SavedDrafts";
 import { ToolForm } from "../components/ToolForm";
+import { createDraft, getDraft, listDrafts, updateDraft } from "../lib/api";
 import { draftReducer, initialDraftState } from "../lib/draftState";
 import { maskedNotice } from "../lib/maskedNotice";
 import { streamDraft } from "../lib/streamDraft";
@@ -15,8 +18,52 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [state, dispatch] = useReducer(draftReducer, initialDraftState);
   const controller = useRef<AbortController | null>(null);
+  const saves = SAVES_DRAFTS(tool.id);
+  const [saved, setSaved] = useState<SavedDraftMeta[]>([]);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const lastSaved = useRef("");
 
   useEffect(() => () => controller.current?.abort(), []);
+
+  const refreshSaved = useCallback(() => {
+    if (saves) listDrafts(tool.id).then(setSaved).catch(() => {});
+  }, [saves, tool.id]);
+
+  useEffect(refreshSaved, [refreshSaved]);
+
+  // Save each finished draft by name, and update the same saved draft after every refine.
+  useEffect(() => {
+    if (!saves || state.phase !== "done" || !state.receiving || state.error || !state.draft || !state.committed) return;
+    if (lastSaved.current === state.draft) return;
+    lastSaved.current = state.draft;
+    const body = {
+      request: { fields: state.committed.fields, refinements: state.committed.refinements },
+      content: state.draft,
+      sources: state.sources,
+    };
+    const work = savedId ? updateDraft(savedId, body) : createDraft(tool.id, body).then((d) => setSavedId(d.id));
+    work.then(refreshSaved).catch(() => setNotice("Couldn't save this draft to your list — copy it before leaving the page."));
+  }, [saves, state.phase, state.receiving, state.error, state.draft, state.committed, state.sources, savedId, tool.id, refreshSaved]);
+
+  const open = async (id: string) => {
+    try {
+      const d = await getDraft(id);
+      controller.current?.abort();
+      setValues(d.request.fields);
+      setFormError(null);
+      setNotice(null);
+      setSavedId(d.id);
+      lastSaved.current = d.content;
+      dispatch({ type: "load", draft: d.content, sources: d.sources, committed: { tool: tool.id, ...d.request } });
+    } catch (e) {
+      setFormError((e as Error).message);
+    }
+  };
+
+  const forgetSaved = () => {
+    setSavedId(null);
+    lastSaved.current = "";
+  };
 
   const run = (body: DraftRequest) => {
     controller.current?.abort();
@@ -52,6 +99,7 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
       fields[k] = m.text;
     }
     setNotice(maskedNotice(emails, phones));
+    forgetSaved();
     run({ tool: tool.id, fields });
   };
 
@@ -69,6 +117,7 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
 
   const startOver = () => {
     controller.current?.abort();
+    forgetSaved();
     dispatch({ type: "reset" });
   };
 
@@ -87,15 +136,29 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
         </div>
       </header>
       <main className="page workspace">
-        <ToolForm
-          tool={tool}
-          values={values}
-          onChange={(id, value) => setValues((v) => ({ ...v, [id]: value }))}
-          onSubmit={submit}
-          busy={busy}
-          error={formError}
-          notice={notice}
-        />
+        <div className="workspace-side">
+          <ToolForm
+            tool={tool}
+            values={values}
+            onChange={(id, value) => setValues((v) => ({ ...v, [id]: value }))}
+            onSubmit={submit}
+            busy={busy}
+            error={formError}
+            notice={notice}
+          />
+          <SavedDrafts
+            tool={tool}
+            drafts={saved}
+            currentId={savedId}
+            onOpen={(id) => void open(id)}
+            onChanged={refreshSaved}
+            onDeleted={(id) => {
+              if (id === savedId) forgetSaved();
+              refreshSaved();
+            }}
+            onError={setFormError}
+          />
+        </div>
         <DraftPanel
           tool={tool}
           draft={state.draft}

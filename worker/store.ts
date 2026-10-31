@@ -1,6 +1,8 @@
-// All D1 queries for saved trips, chats, messages and deliverables.
+// All D1 queries for saved trips, chats, messages, deliverables and drafts.
 import type { DeliverableKind } from "../shared/deliverables";
 import type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage } from "../shared/conversations";
+import type { SavedDraft, SavedDraftMeta } from "../shared/drafts";
+import type { ToolId } from "../shared/tools";
 
 export type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage };
 
@@ -146,6 +148,73 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
     .bind(conversationId)
     .all<DeliverableMeta>();
   return results;
+}
+
+// ---------- saved drafts from the one-off tools ----------
+
+type DraftRow = Omit<SavedDraft, "request" | "sources" | "handled"> & { request: string; sources: string; handled: number };
+
+const toDraft = (r: DraftRow): SavedDraft => ({
+  ...r,
+  request: JSON.parse(r.request),
+  sources: JSON.parse(r.sources),
+  handled: r.handled === 1,
+});
+
+export async function createDraft(
+  db: D1Database,
+  d: { tool: ToolId; title: string; request: SavedDraft["request"]; content: string; sources: Source[] },
+  now: number,
+): Promise<SavedDraft> {
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO drafts (id, tool, title, request, content, sources, handled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)",
+    )
+    .bind(id, d.tool, d.title, JSON.stringify(d.request), d.content, JSON.stringify(d.sources), now, now)
+    .run();
+  return { id, ...d, handled: false, created_at: now, updated_at: now };
+}
+
+/** Still-to-do first (only Inbox Helper marks things handled), then newest first. */
+export async function listDrafts(db: D1Database, tool: ToolId): Promise<SavedDraftMeta[]> {
+  const { results } = await db
+    .prepare("SELECT id, tool, title, handled, created_at, updated_at FROM drafts WHERE tool = ? ORDER BY handled, updated_at DESC")
+    .bind(tool)
+    .all<Omit<SavedDraftMeta, "handled"> & { handled: number }>();
+  return results.map((r) => ({ ...r, handled: r.handled === 1 }));
+}
+
+export async function getDraft(db: D1Database, id: string): Promise<SavedDraft | null> {
+  const row = await db.prepare("SELECT * FROM drafts WHERE id = ?").bind(id).first<DraftRow>();
+  return row ? toDraft(row) : null;
+}
+
+export async function updateDraft(
+  db: D1Database,
+  id: string,
+  changes: { title?: string; request?: SavedDraft["request"]; content?: string; sources?: Source[]; handled?: boolean },
+  now: number,
+): Promise<boolean> {
+  const fields: [string, unknown][] = [];
+  if (changes.title !== undefined) fields.push(["title", changes.title]);
+  if (changes.request !== undefined) fields.push(["request", JSON.stringify(changes.request)]);
+  if (changes.content !== undefined) fields.push(["content", changes.content]);
+  if (changes.sources !== undefined) fields.push(["sources", JSON.stringify(changes.sources)]);
+  if (changes.handled !== undefined) fields.push(["handled", changes.handled ? 1 : 0]);
+  if (!fields.length) return (await getDraft(db, id)) !== null;
+  // Ticking "handled" is housekeeping; it shouldn't reorder the list by itself.
+  if (changes.content !== undefined || changes.request !== undefined) fields.push(["updated_at", now]);
+  const r = await db
+    .prepare(`UPDATE drafts SET ${fields.map(([column]) => `${column} = ?`).join(", ")} WHERE id = ?`)
+    .bind(...fields.map(([, value]) => value), id)
+    .run();
+  return r.meta.changes > 0;
+}
+
+export async function deleteDraft(db: D1Database, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM drafts WHERE id = ?").bind(id).run();
+  return r.meta.changes > 0;
 }
 
 /**

@@ -22,6 +22,8 @@ export type DraftAction =
   | { type: "status"; phase: "searching" | "writing" }
   | { type: "done"; stopReason: string; sources: { title: string; url: string }[] }
   | { type: "error"; message: string }
+  /** Shows a saved draft, ready to refine. */
+  | { type: "load"; draft: string; sources: { title: string; url: string }[]; committed: DraftRequest }
   | { type: "reset" };
 
 export const initialDraftState: DraftState = {
@@ -53,6 +55,8 @@ export function draftReducer(s: DraftState, a: DraftAction): DraftState {
         : { ...s, phase: "done", stopReason: a.stopReason, pending: null };
     case "error":
       return { ...s, phase: "done", error: a.message, pending: null };
+    case "load":
+      return { ...initialDraftState, phase: "done", draft: a.draft, sources: a.sources, receiving: true, committed: a.committed };
     case "reset":
       return initialDraftState;
   }

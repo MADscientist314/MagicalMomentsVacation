@@ -11,6 +11,19 @@ function finishedDraft(): DraftState {
   return draftReducer(s, { type: "done", stopReason: "end_turn", sources: [] });
 }
 
+describe("draftReducer load", () => {
+  it("shows a saved draft as finished and ready to refine", () => {
+    const s = draftReducer(finishedDraft(), {
+      type: "load",
+      draft: "Saved reply",
+      sources: [{ title: "Disney", url: "https://d.test" }],
+      committed: REFINE,
+    });
+    expect(s).toMatchObject({ phase: "done", draft: "Saved reply", receiving: true, committed: REFINE, error: null, pending: null });
+    expect(s.sources).toHaveLength(1);
+  });
+});
+
 describe("draftReducer", () => {
   it("keeps the last good draft when a refine fails before any text arrives", () => {
     let s = draftReducer(finishedDraft(), { type: "start", body: REFINE });

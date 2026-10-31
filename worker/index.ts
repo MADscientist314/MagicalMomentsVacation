@@ -2,6 +2,7 @@ import { handleLogin, handleLogout, hasValidSession } from "./auth";
 import { handleConversations } from "./conversations";
 import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
+import { handleDrafts } from "./drafts";
 
 const SIGNED_OUT = () => Response.json({ error: "Sign in again to keep going." }, { status: 401 });
 
@@ -21,6 +22,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     return handleConversations(request, env, rest, { waitUntil: (work) => ctx.waitUntil(work) });
   }
   if (area === "deliverables") return handleDeliverable(request, env, rest);
+  if (area === "drafts") return handleDrafts(request, env, rest);
   return Response.json({ error: "not found" }, { status: 404 });
 }
 
