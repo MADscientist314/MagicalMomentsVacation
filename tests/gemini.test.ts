@@ -78,6 +78,22 @@ describe("defaultImageClient", () => {
     expect(f.calls).toHaveLength(0);
   });
 
+  it("keeps Google's reason and explanation when it refuses", async () => {
+    const cases: [unknown, string, string | undefined][] = [
+      [{ candidates: [{ finishReason: "IMAGE_SAFETY", finishMessage: "Unable to show the generated image." }] }, "IMAGE_SAFETY", "Unable to show the generated image."],
+      [{ promptFeedback: { blockReason: "OTHER", blockReasonMessage: "Prompt was blocked." } }, "OTHER", "Prompt was blocked."],
+      [{ candidates: [{ finishReason: "IMAGE_RECITATION" }] }, "IMAGE_RECITATION", undefined],
+    ];
+    for (const [body, reason, note] of cases) {
+      const f = fakeFetch(200, body);
+      const err = await defaultImageClient(env(), f.impl)
+        .generate({ prompt: "x", images: [], aspect: "1:1" })
+        .catch((e: ImageError) => e);
+      expect(err).toBeInstanceOf(ImageError);
+      expect(err).toMatchObject({ kind: "blocked", reason, note });
+    }
+  });
+
   it("explains blocked, busy, billing, key and other failures", async () => {
     const cases: [number, unknown, string][] = [
       [200, { promptFeedback: { blockReason: "SAFETY" } }, "blocked"],

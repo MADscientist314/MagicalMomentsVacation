@@ -39,6 +39,25 @@ const IMAGE_ERRORS: Record<ImageError["kind"], [number, string]> = {
   failed: [502, "No image came back — try again."],
 };
 
+/** Why Google refused, by its reason code, finishing "Google wouldn't make that one: …". */
+const REFUSALS: Record<string, string> = {
+  SAFETY: "its safety filter flagged the request",
+  IMAGE_SAFETY: "its safety filter flagged the picture it was making",
+  PROHIBITED_CONTENT: "it treats the request as something it never makes",
+  IMAGE_PROHIBITED_CONTENT: "it treats the picture as something it never makes",
+  RECITATION: "the picture came out too close to an existing image (copyright)",
+  IMAGE_RECITATION: "the picture came out too close to an existing image (copyright)",
+  BLOCKLIST: "a word in the description is on its blocked list",
+  OTHER: "it didn't say why",
+};
+
+function refusal(err: ImageError): string {
+  if (!err.reason) return IMAGE_ERRORS.blocked[1];
+  const why = REFUSALS[err.reason] ?? `it gave the reason ${err.reason}`;
+  const said = err.note?.trim() ? ` Google said: "${err.note.trim().slice(0, 300)}"` : "";
+  return `Google wouldn't make that one: ${why}.${said} Try describing it differently.`;
+}
+
 const error = (message: string, status: number) => Response.json({ error: message }, { status });
 
 /** "draft:<id>", "trip:<id>" or "library". */
@@ -232,9 +251,10 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
     made = await makeClient(env).generate({ prompt, images: inputs, aspect: SHAPES[shape].aspect });
   } catch (err) {
     const kind = err instanceof ImageError ? err.kind : "failed";
-    console.error("image failed:", err instanceof ImageError ? err.kind : err instanceof Error ? err.name : typeof err);
+    // Codes only: Google's note can describe the photo, so it goes to Jillian, not the logs.
+    console.error("image failed:", err instanceof ImageError ? `${err.kind} ${err.reason ?? ""}`.trim() : err instanceof Error ? err.name : typeof err);
     const [status, message] = IMAGE_ERRORS[kind];
-    return error(message, status);
+    return error(kind === "blocked" && err instanceof ImageError ? refusal(err) : message, status);
   }
   const mime = sniff(made.data);
   if (!mime) return error(IMAGE_ERRORS.failed[1], 502);

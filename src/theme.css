@@ -1374,3 +1374,16 @@ a.btn-primary {
   max-width: 920px;
   margin: 0 auto;
 }
+
+/* A field label with the microphone beside it (image descriptions). */
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.field-head .field-label {
+  margin-bottom: 0;
+}

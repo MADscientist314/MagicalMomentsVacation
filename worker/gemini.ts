@@ -9,9 +9,15 @@ export interface ImageClient {
   generate(request: { prompt: string; images: InlineImage[]; aspect: string }): Promise<InlineImage>;
 }
 
-/** What went wrong, without Google's message (which can echo the prompt). */
+/** What went wrong. HTTP error bodies are never kept (they can echo the prompt); a refusal keeps Google's code and note. */
 export class ImageError extends Error {
-  constructor(readonly kind: "no-key" | "billing" | "blocked" | "busy" | "failed") {
+  constructor(
+    readonly kind: "no-key" | "billing" | "blocked" | "busy" | "failed",
+    /** Google's reason code for a refusal, e.g. IMAGE_SAFETY. */
+    readonly reason?: string,
+    /** Google's own one-line explanation of a refusal, when it gives one. */
+    readonly note?: string,
+  ) {
     super(kind);
     this.name = "ImageError";
   }
@@ -32,7 +38,15 @@ export function fromBase64(text: string): Uint8Array {
   return bytes;
 }
 
-const BLOCKED = new Set(["SAFETY", "IMAGE_SAFETY", "PROHIBITED_CONTENT", "IMAGE_PROHIBITED_CONTENT", "BLOCKLIST"]);
+const BLOCKED = new Set([
+  "SAFETY",
+  "IMAGE_SAFETY",
+  "PROHIBITED_CONTENT",
+  "IMAGE_PROHIBITED_CONTENT",
+  "BLOCKLIST",
+  "RECITATION",
+  "IMAGE_RECITATION",
+]);
 
 type Part = {
   text?: string;
@@ -41,8 +55,8 @@ type Part = {
 };
 
 type Reply = {
-  promptFeedback?: { blockReason?: string };
-  candidates?: { content?: { parts?: Part[] }; finishReason?: string }[];
+  promptFeedback?: { blockReason?: string; blockReasonMessage?: string };
+  candidates?: { content?: { parts?: Part[] }; finishReason?: string; finishMessage?: string }[];
 };
 
 async function failure(res: Response): Promise<ImageError> {
@@ -75,14 +89,16 @@ export function defaultImageClient(env: Env, fetchImpl: typeof fetch = fetch): I
       });
       if (!res.ok) throw await failure(res);
       const reply = (await res.json().catch(() => ({}))) as Reply;
-      if (reply.promptFeedback?.blockReason) throw new ImageError("blocked");
+      const feedback = reply.promptFeedback;
+      if (feedback?.blockReason) throw new ImageError("blocked", feedback.blockReason, feedback.blockReasonMessage);
       const candidate = reply.candidates?.[0];
       for (const part of candidate?.content?.parts ?? []) {
         const data = part.inlineData?.data ?? part.inline_data?.data;
         const mimeType = part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? "image/png";
         if (data) return { mimeType, data: fromBase64(data) };
       }
-      throw new ImageError(candidate?.finishReason && BLOCKED.has(candidate.finishReason) ? "blocked" : "failed");
+      const reason = candidate?.finishReason;
+      throw new ImageError(reason && BLOCKED.has(reason) ? "blocked" : "failed", reason, candidate?.finishMessage);
     },
   };
 }

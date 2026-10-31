@@ -229,6 +229,29 @@ describe("making an image", () => {
     expect(r2.objects.size).toBe(0);
   });
 
+  it("says why Google refused, in Google's words when it gives them", async () => {
+    const post = await makePost();
+    const cases: [ImageError, string][] = [
+      [
+        new ImageError("blocked", "IMAGE_SAFETY", "Unable to show the generated image."),
+        `Google wouldn't make that one: its safety filter flagged the picture it was making. Google said: "Unable to show the generated image." Try describing it differently.`,
+      ],
+      [
+        new ImageError("blocked", "IMAGE_RECITATION"),
+        "Google wouldn't make that one: the picture came out too close to an existing image (copyright). Try describing it differently.",
+      ],
+      [new ImageError("blocked", "SOMETHING_NEW"), "Google wouldn't make that one: it gave the reason SOMETHING_NEW. Try describing it differently."],
+    ];
+    for (const [err, message] of cases) {
+      result = async () => {
+        throw err;
+      };
+      const res = await api("POST", "/generate", { owner: `draft:${post.id}`, direction: "x" });
+      expect(res.status).toBe(422);
+      expect(res.json).toEqual({ error: message });
+    }
+  });
+
   it("stops at 100 new images in 24 hours across the site", async () => {
     const post = await makePost();
     for (let i = 0; i < 100; i++) {

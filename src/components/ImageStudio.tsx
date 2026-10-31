@@ -4,6 +4,8 @@ import { CARD_KINDS, MAX_REFERENCE_PHOTOS, ownerKey, SHAPES, type CardKind, type
 import { deleteImage, fetchImage, generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
 import { saveBlob } from "../lib/download";
 import { shrinkPhoto } from "../lib/photos";
+import { joinTranscript } from "../lib/speech";
+import { MicButton } from "./MicButton";
 import { Sparkles } from "./Sparkles";
 
 interface Props {
@@ -201,9 +203,12 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
       )}
 
       <div className="field">
-        <label className="field-label" htmlFor={`direction-${key}`}>
-          {baseId ? "How should I change it?" : purpose === "free" ? "What should it show?" : "What should it show? (optional)"}
-        </label>
+        <div className="field-head">
+          <label className="field-label" htmlFor={`direction-${key}`}>
+            {baseId ? "How should I change it?" : purpose === "free" ? "What should it show?" : "What should it show? (optional)"}
+          </label>
+          <MicButton onSpeech={(heard) => setDirection((d) => joinTranscript(d, heard))} disabled={busy} />
+        </div>
         <textarea
           ref={directionBox}
           id={`direction-${key}`}
