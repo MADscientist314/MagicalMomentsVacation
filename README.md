@@ -88,7 +88,7 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
    Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`. Auto-deploy doesn't touch the database: when a change adds a file to `migrations/`, run `npm run db:migrate` before (or right as) it deploys.
 7. **Cap the spend:** in the Anthropic Console, set a monthly limit for the workspace that owns the key (for example $25).
 
-Rough cost: an everyday draft is a few cents; a trip plan with web searches is about $0.25–0.50, up to about $1 when it uses all 20 of its searches (chat and Spread the Magic stop at 5; each search is $0.01 plus the tokens it reads, and the caps are in `worker/claude.ts`); each follow-up message in a trip or chat re-reads the saved conversation (mostly from the prompt cache, so cheaply); a client document is a few cents to about $0.20.
+Rough cost: an everyday draft is a few cents; a trip plan with web searches is about $0.25–0.50, up to about $1 when it uses all 20 of its searches (every reply that can search, including chat and Spread the Magic, may run up to 20; each search is $0.01 plus the tokens it reads, and the cap is `WEB_SEARCH` in `worker/claude.ts`); each follow-up message in a trip or chat re-reads the saved conversation (mostly from the prompt cache, so cheaply); a client document is a few cents to about $0.20.
 
 ## The Claude app plugin
 

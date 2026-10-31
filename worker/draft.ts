@@ -1,7 +1,7 @@
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { isToolId, TOOLS, type DraftRequest } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, TRIP_WEB_SEARCH, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { baseParams, defaultClient, streamClaude, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { buildSystem, buildUserMessage } from "./prompt";
 
 export type { ClaudeClient as DraftClient } from "./claude";
@@ -87,7 +87,7 @@ export async function handleDraft(
     system: buildSystem(req.tool),
     messages: buildMessages(req),
     output_config: { effort: tool.effort },
-    tools: tool.webSearch ? [tool.id === "adventure-planner" ? TRIP_WEB_SEARCH : WEB_SEARCH] : undefined,
+    tools: tool.webSearch ? [WEB_SEARCH] : undefined,
   });
   return streamClaude(params, env, makeClient, keepaliveMs, `draft (${req.tool})`);
 }

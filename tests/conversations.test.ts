@@ -143,11 +143,11 @@ describe("sending messages", () => {
     const { fake, d } = deps({ events: textEvents("Lots!") });
     await events(await api("POST", `/${created.id}/messages`, { content: "What's new at EPCOT?" }, d));
     expect(JSON.stringify(fake.calls[0].system)).toContain("Chat with Jillian");
-    expect(fake.calls[0].tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 5 }]);
+    expect(fake.calls[0].tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 20 }]);
     expect(await getMessages(env.DB, created.id)).toHaveLength(2);
   });
 
-  it("lets trip replies search up to 20 times (chats stay at 5)", async () => {
+  it("lets trip replies search up to 20 times", async () => {
     const id = await plannedTrip();
     const { fake, d } = deps({ events: textEvents("Sure") });
     await events(await api("POST", `/${id}/messages`, { content: "Add a pool day" }, d));
