@@ -4,7 +4,7 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { DETAILS_CHANGED, TRIP_FIELD_LIMITS } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { baseParams, defaultClient, streamClaude, TRIP_WEB_SEARCH, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
 import * as store from "./store";
@@ -246,7 +246,7 @@ async function reply(
       system: trip ? buildSystem("adventure-planner") : buildChatSystem(),
       messages,
       output_config: { effort: trip ? TOOLS["adventure-planner"].effort : "medium" },
-      tools: [WEB_SEARCH],
+      tools: [trip ? TRIP_WEB_SEARCH : WEB_SEARCH],
     });
   } catch (err) {
     await store.releaseLock(env.DB, convo.id);

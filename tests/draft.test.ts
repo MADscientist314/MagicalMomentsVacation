@@ -260,7 +260,7 @@ describe("handleDraft request to Claude", () => {
     expect(params.model).toBe("claude-opus-5-5");
     expect(params.max_tokens).toBe(64_000);
     expect(params.output_config?.effort).toBe("high");
-    expect(params.tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 5 }]);
+    expect(params.tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 20 }]);
     expect(params.betas).toEqual(["server-side-fallback-2026-07-01"]);
     expect(params.fallbacks).toBe("default");
   });

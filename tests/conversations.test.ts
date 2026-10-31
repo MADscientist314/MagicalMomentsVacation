@@ -147,6 +147,13 @@ describe("sending messages", () => {
     expect(await getMessages(env.DB, created.id)).toHaveLength(2);
   });
 
+  it("lets trip replies search up to 20 times (chats stay at 5)", async () => {
+    const id = await plannedTrip();
+    const { fake, d } = deps({ events: textEvents("Sure") });
+    await events(await api("POST", `/${id}/messages`, { content: "Add a pool day" }, d));
+    expect(fake.calls[0].tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 20 }]);
+  });
+
   it("asks for Plan it before chatting about an unplanned trip", async () => {
     const id = await newTrip();
     expect((await api("POST", `/${id}/messages`, { content: "Hi" })).status).toBe(400);

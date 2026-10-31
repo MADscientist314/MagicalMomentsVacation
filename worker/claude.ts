@@ -11,6 +11,8 @@ import { encodeEvent, KEEPALIVE, type ServerEvent } from "../shared/sse";
 
 export const MODEL = "claude-opus-5-5";
 export const WEB_SEARCH = { type: "web_search_20260209", name: "web_search", max_uses: 5 } as const;
+/** Trip planning checks many things per reply (parks, dining, refurbishments), so it may search more. */
+export const TRIP_WEB_SEARCH = { ...WEB_SEARCH, max_uses: 20 } as const;
 const MAX_PAUSE_RESUMES = 3;
 
 /** The slice of the Anthropic client we use (injectable for tests). */
