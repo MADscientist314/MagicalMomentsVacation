@@ -534,6 +534,13 @@ button:disabled {
   font-size: 20px;
 }
 
+.card-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .field {
   display: block;
   margin-bottom: 14px;

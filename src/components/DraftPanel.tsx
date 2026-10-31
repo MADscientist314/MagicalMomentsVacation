@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { IconMap2, IconRefresh } from "@tabler/icons-react";
+import { IconMap2, IconPhoto, IconRefresh } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
 import type { Phase } from "../lib/draftState";
 import { parseTripHandoff, splitDraft, splitSubject } from "../../shared/sections";
@@ -60,6 +60,7 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
     return (
       <section className="card empty" aria-live="polite">
         Fill in the form and choose <strong>Draft it</strong>. Your draft will appear here for you to review.
+        {tool.id === "spread-the-magic" && " Then you can make an image to go with it, from your own photos or from scratch."}
       </section>
     );
   }
@@ -75,9 +76,21 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
     <section className="card" aria-live="polite">
       <div className="card-head">
         <h2>{blocks.length ? (tool.id === "inbox-helper" ? "Replies" : "Trip plan") : "Draft"}</h2>
-        {!busy && !(blocks.length && tool.id === "inbox-helper") && (
-          <CopyButton markdown={blocks.length ? client : body} label={blocks.length ? "Copy all days" : "Copy"} />
-        )}
+        <span className="card-head-actions">
+          {tool.id === "spread-the-magic" && phase === "done" && (
+            <button
+              type="button"
+              className="btn-quiet"
+              // The image section sits under the notes; take her straight to it.
+              onClick={() => document.getElementById("image-studio")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              <IconPhoto size={16} aria-hidden /> Make an image
+            </button>
+          )}
+          {!busy && !(blocks.length && tool.id === "inbox-helper") && (
+            <CopyButton markdown={blocks.length ? client : body} label={blocks.length ? "Copy all days" : "Copy"} />
+          )}
+        </span>
       </div>
       {subject && (
         <div className="subject">

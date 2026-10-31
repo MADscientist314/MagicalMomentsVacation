@@ -133,7 +133,7 @@ export function ImageStudio({ owner, purpose, defaultShape, fileStem }: Props) {
   const busy = working !== null;
 
   return (
-    <section className="card image-studio" aria-label={purpose === "card" ? "Cards for the family" : "Images for this post"}>
+    <section id="image-studio" className="card image-studio" aria-label={purpose === "card" ? "Cards for the family" : "Images for this post"}>
       <h2>{purpose === "card" ? "Cards for the family" : "Images for this post"}</h2>
       <p className="muted-note">
         {purpose === "card"
