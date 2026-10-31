@@ -2,12 +2,15 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { SAVES_DRAFTS, type SavedDraftMeta } from "../../shared/drafts";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../../shared/guard";
+import { defaultShape } from "../../shared/images";
 import type { DraftRequest, ToolDef } from "../../shared/tools";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { DraftPanel } from "../components/DraftPanel";
+import { ImageStudio } from "../components/ImageStudio";
 import { SavedDrafts } from "../components/SavedDrafts";
 import { ToolForm } from "../components/ToolForm";
 import { createDraft, getDraft, listDrafts, updateDraft } from "../lib/api";
+import { fileStem } from "../lib/deliverableFiles";
 import { draftReducer, initialDraftState } from "../lib/draftState";
 import { maskedNotice } from "../lib/maskedNotice";
 import { streamDraft } from "../lib/streamDraft";
@@ -159,17 +162,28 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
             onError={setFormError}
           />
         </div>
-        <DraftPanel
-          tool={tool}
-          draft={state.draft}
-          phase={state.phase}
-          sources={state.sources}
-          stopReason={state.stopReason}
-          error={state.error}
-          receiving={state.receiving}
-          onRefine={refine}
-          onStartOver={startOver}
-        />
+        <div>
+          <DraftPanel
+            tool={tool}
+            draft={state.draft}
+            phase={state.phase}
+            sources={state.sources}
+            stopReason={state.stopReason}
+            error={state.error}
+            receiving={state.receiving}
+            onRefine={refine}
+            onStartOver={startOver}
+          />
+          {tool.id === "spread-the-magic" && savedId && state.phase === "done" && (
+            <ImageStudio
+              key={savedId}
+              owner={{ type: "draft", id: savedId }}
+              purpose="post"
+              defaultShape={defaultShape(state.committed?.fields.channel)}
+              fileStem={fileStem(saved.find((d) => d.id === savedId)?.title ?? "", "post")}
+            />
+          )}
+        </div>
       </main>
     </>
   );

@@ -4,6 +4,7 @@ import type { DeliverableRecord } from "../../shared/conversations";
 import { DELIVERABLE_LABELS, renderDeliverableHtml, validateDeliverable, type DeliverableData } from "../../shared/deliverables";
 import { getDeliverable, saveDeliverableEdit } from "../lib/api";
 import { downloadName, missingPrices } from "../lib/deliverableFiles";
+import { saveBlob } from "../lib/download";
 import { DataEditor } from "./DataEditor";
 
 interface Props {
@@ -83,17 +84,8 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
 
   const close = () => (dirty ? setClosing(true) : onClose());
 
-  const downloadHtml = () => {
-    const url = URL.createObjectURL(new Blob([html.client], { type: "text/html" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = downloadName(tripTitle, record.kind, record.version);
-    document.body.append(a);
-    a.click();
-    a.remove();
-    // Safari can cancel the download if the URL is revoked straight away.
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  };
+  const downloadHtml = () =>
+    saveBlob(new Blob([html.client], { type: "text/html" }), downloadName(tripTitle, record.kind, record.version));
 
   const printPdf = () => {
     const w = window.open("", "_blank");

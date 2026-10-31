@@ -933,10 +933,17 @@ a.btn-primary {
   .trip-layout {
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
   }
-  .deliverables {
+  /* Documents and cards stay in view beside a long plan, scrolling on their own if they're taller than the window. */
+  .trip-side {
     position: sticky;
     top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
   }
+}
+
+.trip-side {
+  min-width: 0;
 }
 
 .trip-main .empty {
@@ -1246,4 +1253,112 @@ a.btn-primary {
 
 .chat-main .chat-thread {
   margin-bottom: 14px;
+}
+
+/* ---------- images (Nano Banana) ---------- */
+.image-studio {
+  margin-top: 16px;
+}
+
+.image-studio h2 {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.image-studio > .muted-note {
+  margin: 0 0 14px;
+}
+
+.photo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.photo-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.photo-thumb > button[aria-pressed] {
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+}
+
+.photo-thumb.chosen > button[aria-pressed] {
+  border-color: var(--purple);
+}
+
+.photo-thumb img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 7px;
+  opacity: 0.55;
+}
+
+.photo-thumb.chosen img {
+  opacity: 1;
+}
+
+.changing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.changing img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.changing span {
+  flex: 1;
+}
+
+.image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.made-image {
+  margin: 0;
+  min-width: 0;
+}
+
+.made-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: var(--lavender);
+}
+
+.made-image.base img {
+  outline: 3px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.image-notes {
+  margin: 16px 0 0;
+  padding-left: 18px;
 }

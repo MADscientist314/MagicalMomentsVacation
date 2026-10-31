@@ -1,8 +1,11 @@
 import type { DeliverableData, DeliverableKind, Estimate, Proposal } from "../../shared/deliverables";
 
+/** "Whitfield family" → "Whitfield-family", for downloaded file names. */
+export const fileStem = (title: string, fallback: string) =>
+  title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || fallback;
+
 export function downloadName(title: string, kind: DeliverableKind, version: number): string {
-  const base = title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "trip";
-  return `${base}-${kind}-v${version}.html`;
+  return `${fileStem(title, "trip")}-${kind}-v${version}.html`;
 }
 
 /** What still says "Add price", so Jillian is warned before sending it to a client. */

@@ -5,8 +5,10 @@ import { CastleAtDusk } from "../art/CastleAtDusk";
 import { Composer } from "../components/Composer";
 import { ConversationThread } from "../components/ConversationThread";
 import { DeliverablesPanel } from "../components/DeliverablesPanel";
+import { ImageStudio } from "../components/ImageStudio";
 import { TripDetailsForm } from "../components/TripDetailsForm";
 import { getConversation, updateConversation } from "../lib/api";
+import { fileStem } from "../lib/deliverableFiles";
 import { loadThread, planTrip, sendToThread, useThread } from "../lib/threadStore";
 
 const UPDATE_PLAN = "The trip details just changed (see the note above). Please send the full updated day-by-day plan using the new details.";
@@ -150,14 +152,17 @@ export function TripPage({ id }: { id: string }) {
               </>
             )}
           </section>
-          <DeliverablesPanel
-            tripId={id}
-            tripTitle={trip.title}
-            deliverables={trip.deliverables}
-            planned={planned}
-            threadBusy={busy}
-            onChanged={refresh}
-          />
+          <div className="trip-side">
+            <DeliverablesPanel
+              tripId={id}
+              tripTitle={trip.title}
+              deliverables={trip.deliverables}
+              planned={planned}
+              threadBusy={busy}
+              onChanged={refresh}
+            />
+            <ImageStudio key={id} owner={{ type: "trip", id }} purpose="card" defaultShape="portrait" fileStem={fileStem(trip.title, "trip")} />
+          </div>
         </div>
       </main>
     </>
