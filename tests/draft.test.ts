@@ -262,12 +262,12 @@ describe("handleDraft request to Claude", () => {
     expect(params.fallbacks).toBeUndefined();
   });
 
-  it("writes posts on Sonnet 5.5 with web search and the refusal fallback", async () => {
+  it("writes posts on Opus 5.5 with web search and the refusal fallback", async () => {
     const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
     const post_ = { tool: "spread-the-magic", fields: { channel: "Facebook post", topic: "Cruise deals" } };
     await readEvents(await handleDraft(post(post_), ENV, fake.make));
     const params = fake.calls[0];
-    expect(params.model).toBe("claude-sonnet-5-5");
+    expect(params.model).toBe("claude-opus-5-5");
     expect(params.tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 20 }]);
     expect(params.fallbacks).toBe("default");
   });

@@ -41,6 +41,11 @@ describe("draftTitle", () => {
     expect(draftTitle("inbox-helper", { emails: "From: Maria" }, content)).toBe("Replies to Maria, Kevin");
   });
 
+  it("stops a name at a colon too (Reply to Maria: final payment)", () => {
+    const content = "### Reply to Maria: final payment\nHi\n\n### Reply to Kevin: dining\nHi";
+    expect(draftTitle("inbox-helper", { emails: "x" }, content)).toBe("Replies to Maria, Kevin");
+  });
+
   it("names a quick-start email after its kind and the client", () => {
     const content = "### Email to Katie — Payment reminder\nHi Katie\n\n## For Jillian only\nVerify the date";
     expect(draftTitle("inbox-helper", { need: "Payment reminder", emails: "Katie, Universal, June" }, content)).toBe(

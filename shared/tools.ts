@@ -23,7 +23,7 @@ export interface ToolDef {
   /** Tabler icon name, without the `ti-` prefix. */
   icon: string;
   effort: "medium" | "high";
-  /** Picked for the job, so Jillian never chooses: quick writing on Haiku, research on Sonnet, planning on Opus. */
+  /** Picked for the job, so Jillian never chooses: quick writing on Haiku, research and planning on Opus. */
   model: ClaudeModel;
   webSearch: boolean;
   /** Show the "For Jillian only" notes above the client text. */
@@ -127,7 +127,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Marketing posts",
     icon: "wand",
     effort: "medium",
-    model: "claude-sonnet-5-5",
+    model: "claude-opus-5-5",
     webSearch: true,
     notesFirst: false,
     fields: [

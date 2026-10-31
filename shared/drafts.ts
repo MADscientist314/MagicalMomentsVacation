@@ -37,7 +37,8 @@ export function draftTitle(tool: ToolId, fields: Record<string, string>, content
     return name ? `${name} family inquiry` : firstLine(fields.inquiry) || "New inquiry";
   }
   if (tool === "inbox-helper") {
-    const names = [...client.matchAll(/^###\s+(?:Reply|Email) to\s+(.+?)\s*(?:[—–-]\s|$)/gm)].map((m) => m[1].trim());
+    // "### Reply to Maria — Payment" (or "Reply to Maria: payment"): the name ends at the dash or colon.
+    const names = [...client.matchAll(/^###\s+(?:Reply|Email) to\s+(.+?)\s*(?:[—–-]\s|:|$)/gm)].map((m) => m[1].trim());
     const quick = fields.need && fields.need !== "Reply to these emails" ? fields.need : "";
     if (quick) return `${quick} — ${names.join(", ") || firstLine(fields.emails)}`.slice(0, 120);
     return names.length ? `Replies to ${names.join(", ")}`.slice(0, 120) : firstLine(fields.emails) || "Emails";

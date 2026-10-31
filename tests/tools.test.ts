@@ -36,12 +36,12 @@ describe("Adventure Planner destinations", () => {
 });
 
 describe("model per tool", () => {
-  it("uses Haiku for emails and inquiries, Sonnet for posts and Opus for trip plans", () => {
+  it("uses Haiku for emails and inquiries, and Opus for posts and trip plans", () => {
     expect(Object.fromEntries(Object.values(TOOLS).map((t) => [t.id, t.model]))).toEqual({
       "magic-mail": "claude-haiku-5-5",
       "welcome-center": "claude-haiku-5-5",
       "inbox-helper": "claude-haiku-5-5",
-      "spread-the-magic": "claude-sonnet-5-5",
+      "spread-the-magic": "claude-opus-5-5",
       "adventure-planner": "claude-opus-5-5",
     });
   });
