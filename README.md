@@ -84,7 +84,9 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
    - **Build command:** `npm run build`. The Vite build writes the deploy config and bundles `brains/` into the Worker, so `wrangler deploy` on its own won't work.
    - **Deploy command:** `npx wrangler deploy`
 
-   Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`. Auto-deploy doesn't touch the database: when a change adds a file to `migrations/`, run `npm run db:migrate` before (or right as) it deploys.
+   Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`. Auto-deploy doesn't touch the database: when a change adds a file to `migrations/`, run `npm run db:migrate` **before** pushing, because the push deploys the new code straight away.
+
+   **Status:** turned on 2026-10-31. Cloudflare's GitHub app is installed on this repository only; build logs are under **magical-assistant → Deployments** in the Cloudflare dashboard.
 7. **Cap the spend:** in the Anthropic Console, set a monthly limit for the workspace that owns the key (for example $25).
 
 Rough cost: an email, inquiry review or post is a few cents; a trip plan with web searches is about $0.25–0.50, up to about $1 when it uses all 20 of its searches (every reply that can search, including chat and Spread the Magic, may run up to 20; each search is $0.01 plus the tokens it reads, and the cap is `WEB_SEARCH` in `worker/claude.ts`); each follow-up message in a trip or chat re-reads the saved conversation (mostly from the prompt cache, so cheaply); a client document is a few cents to about $0.20.
