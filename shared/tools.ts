@@ -3,8 +3,6 @@
 
 export type ToolId = "magic-mail" | "welcome-center" | "inbox-helper" | "spread-the-magic" | "adventure-planner";
 
-export type ClaudeModel = "claude-opus-5-5" | "claude-sonnet-5-5" | "claude-haiku-5-5";
-
 export interface FieldDef {
   id: string;
   label: string;
@@ -23,8 +21,6 @@ export interface ToolDef {
   /** Tabler icon name, without the `ti-` prefix. */
   icon: string;
   effort: "medium" | "high";
-  /** Picked for the job, so Jillian never chooses: quick writing on Haiku, research and planning on Opus. */
-  model: ClaudeModel;
   webSearch: boolean;
   /** Show the "For Jillian only" notes above the client text. */
   notesFirst: boolean;
@@ -44,7 +40,6 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Client emails",
     icon: "mail-heart",
     effort: "medium",
-    model: "claude-haiku-5-5",
     webSearch: false,
     notesFirst: false,
     fields: [
@@ -73,7 +68,6 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Review a new inquiry",
     icon: "door-enter",
     effort: "medium",
-    model: "claude-haiku-5-5",
     webSearch: false,
     notesFirst: true,
     fields: [
@@ -92,7 +86,6 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Prioritize and reply",
     icon: "inbox",
     effort: "medium",
-    model: "claude-haiku-5-5",
     webSearch: false,
     notesFirst: true,
     fields: [
@@ -127,7 +120,6 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Marketing posts",
     icon: "wand",
     effort: "medium",
-    model: "claude-opus-5-5",
     webSearch: true,
     notesFirst: false,
     fields: [
@@ -149,7 +141,6 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     subtitle: "Trip plans",
     icon: "map-2",
     effort: "high",
-    model: "claude-opus-5-5",
     webSearch: true,
     notesFirst: false,
     fields: [

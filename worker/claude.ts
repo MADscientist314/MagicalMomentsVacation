@@ -8,9 +8,8 @@ import type {
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { encodeEvent, KEEPALIVE, type ServerEvent } from "../shared/sse";
-import type { ClaudeModel } from "../shared/tools";
 
-export const MODEL: ClaudeModel = "claude-opus-5-5";
+export const MODEL = "claude-opus-5-5";
 /** Up to 20 searches per reply: trips check parks, dining and refurbishments; chat and posts check what's new. */
 export const WEB_SEARCH = { type: "web_search_20260209", name: "web_search", max_uses: 20 } as const;
 const MAX_PAUSE_RESUMES = 3;
@@ -29,15 +28,17 @@ export interface ClaudeClient {
 
 export const defaultClient = (env: Env): ClaudeClient => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
-/** Request settings every call shares: model (Opus unless a tool picks another), room to write, refusal fallback. */
+/** Request settings every call shares: model, room to write, refusal fallback. */
 export function baseParams(
   rest: Pick<BetaMessageStreamParams, "system" | "messages" | "output_config" | "tools">,
-  model: ClaudeModel = MODEL,
 ): BetaMessageStreamParams {
-  const params: BetaMessageStreamParams = { model, max_tokens: 64_000, ...rest };
-  // Opus and Sonnet re-run a declined request on a fallback model; Haiku has no server-side fallback.
-  if (model === "claude-haiku-5-5") return params;
-  return { ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" };
+  return {
+    model: MODEL,
+    max_tokens: 64_000,
+    ...rest,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+  };
 }
 
 function collectSources(content: BetaContentBlock[], into: Map<string, { title: string; url: string }>): void {

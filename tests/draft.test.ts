@@ -252,14 +252,20 @@ describe("handleDraft re-checks only what Jillian typed", () => {
 });
 
 describe("handleDraft request to Claude", () => {
-  it("writes inquiry reviews and emails on Haiku 5.5, which has no server-side fallback", async () => {
-    const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
-    await readEvents(await handleDraft(post({ tool: "welcome-center", fields: { inquiry: "We want Disney" } }), ENV, fake.make));
-    const params = fake.calls[0];
-    expect(params.model).toBe("claude-haiku-5-5");
-    expect(params.tools).toBeUndefined();
-    expect(params.betas).toBeUndefined();
-    expect(params.fallbacks).toBeUndefined();
+  it("writes every tool's drafts on Opus 5.5 with the refusal fallback", async () => {
+    const requests = [
+      { tool: "magic-mail", fields: { emailType: "Welcome", clientNames: "The Smiths" } },
+      { tool: "welcome-center", fields: { inquiry: "We want Disney" } },
+      { tool: "inbox-helper", fields: { emails: "From: Maria" } },
+      { tool: "spread-the-magic", fields: { channel: "Facebook post", topic: "Cruise deals" } },
+      { tool: "adventure-planner", fields: { destination: "Walt Disney World", dates: "June", party: "2 adults" } },
+    ];
+    for (const body of requests) {
+      const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
+      await readEvents(await handleDraft(post(body), ENV, fake.make));
+      expect(fake.calls[0].model, body.tool).toBe("claude-opus-5-5");
+      expect(fake.calls[0].fallbacks, body.tool).toBe("default");
+    }
   });
 
   it("writes posts on Opus 5.5 with web search and the refusal fallback", async () => {

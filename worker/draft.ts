@@ -83,14 +83,11 @@ export async function handleDraft(
 
   const { req } = checked;
   const tool = TOOLS[req.tool];
-  const params = baseParams(
-    {
-      system: buildSystem(req.tool),
-      messages: buildMessages(req),
-      output_config: { effort: tool.effort },
-      tools: tool.webSearch ? [WEB_SEARCH] : undefined,
-    },
-    tool.model,
-  );
+  const params = baseParams({
+    system: buildSystem(req.tool),
+    messages: buildMessages(req),
+    output_config: { effort: tool.effort },
+    tools: tool.webSearch ? [WEB_SEARCH] : undefined,
+  });
   return streamClaude(params, env, makeClient, keepaliveMs, `draft (${req.tool})`);
 }
