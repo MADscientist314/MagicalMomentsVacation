@@ -252,6 +252,26 @@ describe("handleDraft re-checks only what Jillian typed", () => {
 });
 
 describe("handleDraft request to Claude", () => {
+  it("writes inquiry reviews and emails on Haiku 5.5, which has no server-side fallback", async () => {
+    const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
+    await readEvents(await handleDraft(post({ tool: "welcome-center", fields: { inquiry: "We want Disney" } }), ENV, fake.make));
+    const params = fake.calls[0];
+    expect(params.model).toBe("claude-haiku-5-5");
+    expect(params.tools).toBeUndefined();
+    expect(params.betas).toBeUndefined();
+    expect(params.fallbacks).toBeUndefined();
+  });
+
+  it("writes posts on Sonnet 5.5 with web search and the refusal fallback", async () => {
+    const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
+    const post_ = { tool: "spread-the-magic", fields: { channel: "Facebook post", topic: "Cruise deals" } };
+    await readEvents(await handleDraft(post(post_), ENV, fake.make));
+    const params = fake.calls[0];
+    expect(params.model).toBe("claude-sonnet-5-5");
+    expect(params.tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 20 }]);
+    expect(params.fallbacks).toBe("default");
+  });
+
   it("uses Opus 5.5 at high effort with web search for trip plans", async () => {
     const fake = fakeClient({ events: [], final: { stop_reason: "end_turn" } });
     const trip = { tool: "adventure-planner", fields: { destination: "Walt Disney World", dates: "June", party: "2 adults" } };

@@ -17,7 +17,7 @@ scripts/           build-plugin.mjs: brains/ → plugin/magical-vacations/ + a z
 plugin/            GENERATED Claude app plugin (don't edit by hand)
 ```
 
-The Worker builds Claude's instructions from `brains/` at deploy time, calls `claude-opus-5-5` with streaming, and re-streams the text to the browser. Card, SSN and passport numbers are blocked in the browser and again in the Worker. Email addresses and phone numbers are masked before anything is sent or saved.
+The Worker builds Claude's instructions from `brains/` at deploy time, calls Claude with streaming, and re-streams the text to the browser. The model is picked per tool (`model` in `shared/tools.ts`), so Jillian never chooses: `claude-haiku-5-5` for emails and inquiry reviews, `claude-sonnet-5-5` for posts (which search the web), and `claude-opus-5-5` for trip plans, chat and client documents. Card, SSN and passport numbers are blocked in the browser and again in the Worker. Email addresses and phone numbers are masked before anything is sent or saved.
 
 ## What's stored
 
@@ -87,7 +87,7 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
    Every push to `main` then redeploys. The Worker name must stay `magical-assistant` to match `wrangler.jsonc`. Auto-deploy doesn't touch the database: when a change adds a file to `migrations/`, run `npm run db:migrate` before (or right as) it deploys.
 7. **Cap the spend:** in the Anthropic Console, set a monthly limit for the workspace that owns the key (for example $25).
 
-Rough cost: an everyday draft is a few cents; a trip plan with web searches is about $0.25–0.50, up to about $1 when it uses all 20 of its searches (every reply that can search, including chat and Spread the Magic, may run up to 20; each search is $0.01 plus the tokens it reads, and the cap is `WEB_SEARCH` in `worker/claude.ts`); each follow-up message in a trip or chat re-reads the saved conversation (mostly from the prompt cache, so cheaply); a client document is a few cents to about $0.20.
+Rough cost: an email or inquiry review on Haiku is well under a cent; a post on Sonnet with a few searches is a few cents; a trip plan with web searches is about $0.25–0.50, up to about $1 when it uses all 20 of its searches (every reply that can search, including chat and Spread the Magic, may run up to 20; each search is $0.01 plus the tokens it reads, and the cap is `WEB_SEARCH` in `worker/claude.ts`); each follow-up message in a trip or chat re-reads the saved conversation (mostly from the prompt cache, so cheaply); a client document is a few cents to about $0.20.
 
 ## The Claude app plugin
 

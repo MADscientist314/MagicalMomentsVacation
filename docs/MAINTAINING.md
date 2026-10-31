@@ -92,6 +92,6 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 
 ## Costs and keys
 
-- Claude usage is billed to the Anthropic account that owns the API key, at about a few cents per email and $0.20–0.50 per trip plan. A monthly spending limit is set in the Anthropic Console (in the workspace's limits settings).
+- Claude usage is billed to the Anthropic account that owns the API key, at well under a cent per email or inquiry review (a faster, cheaper model writes those), a few cents per post, and about $0.25–0.50 per trip plan. A monthly spending limit is set in the Anthropic Console (in the workspace's limits settings).
 - Cloudflare is $5/month (Workers Paid).
 - If the API key ever needs replacing, someone with the code runs `npx wrangler secret put ANTHROPIC_API_KEY` and pastes the new key.
