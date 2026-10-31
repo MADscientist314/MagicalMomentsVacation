@@ -6,6 +6,7 @@ import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard
 import { TOOLS } from "../shared/tools";
 import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
+import { deleteImagesOf } from "./images";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
 import * as store from "./store";
 
@@ -98,7 +99,7 @@ export async function handleConversations(
     }
     if (method === "PATCH") return update(request, env, convo, now());
     if (method === "DELETE") {
-      await store.deleteConversation(env.DB, id);
+      await deleteImagesOf(env, { type: "trip", id }, () => store.deleteConversation(env.DB, id));
       return Response.json({ ok: true });
     }
     return error("Not allowed.", 405);

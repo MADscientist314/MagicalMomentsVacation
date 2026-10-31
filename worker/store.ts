@@ -1,5 +1,6 @@
-// All D1 queries for saved trips, chats, messages, deliverables and drafts.
+// All D1 queries for saved trips, chats, messages, deliverables, drafts and images.
 import type { DeliverableKind } from "../shared/deliverables";
+import type { ImageMeta, ImageOwner, Shape } from "../shared/images";
 import type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage } from "../shared/conversations";
 import type { SavedDraft, SavedDraftMeta } from "../shared/drafts";
 import type { ToolId } from "../shared/tools";
@@ -215,6 +216,77 @@ export async function updateDraft(
 export async function deleteDraft(db: D1Database, id: string): Promise<boolean> {
   const r = await db.prepare("DELETE FROM drafts WHERE id = ?").bind(id).run();
   return r.meta.changes > 0;
+}
+
+// ---------- images (the bytes live in R2; these are the facts about each one) ----------
+
+export type StoredImage = ImageMeta & { mime: string; draft_id: string | null; conversation_id: string | null };
+
+const ownerColumn = (owner: ImageOwner) => (owner.type === "draft" ? "draft_id" : "conversation_id");
+const IMAGE_COLUMNS = "id, kind, shape, prompt, created_at";
+
+export const ownsImage = (owner: ImageOwner, image: StoredImage) =>
+  (owner.type === "draft" ? image.draft_id : image.conversation_id) === owner.id;
+
+export async function addImage(
+  db: D1Database,
+  i: {
+    owner: ImageOwner;
+    kind: ImageMeta["kind"];
+    mime: string;
+    bytes: number;
+    shape: Shape | null;
+    prompt: string;
+    model: string | null;
+    cost_usd: number;
+  },
+  now: number,
+  id: string = crypto.randomUUID(),
+): Promise<ImageMeta> {
+  await db
+    .prepare(
+      `INSERT INTO images (id, ${ownerColumn(i.owner)}, kind, mime, bytes, shape, prompt, model, cost_usd, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(id, i.owner.id, i.kind, i.mime, i.bytes, i.shape, i.prompt, i.model, i.cost_usd, now)
+    .run();
+  return { id, kind: i.kind, shape: i.shape, prompt: i.prompt, created_at: now };
+}
+
+/** Newest first. */
+export async function listImages(db: D1Database, owner: ImageOwner): Promise<ImageMeta[]> {
+  const { results } = await db
+    .prepare(`SELECT ${IMAGE_COLUMNS} FROM images WHERE ${ownerColumn(owner)} = ? ORDER BY created_at DESC, rowid DESC`)
+    .bind(owner.id)
+    .all<ImageMeta>();
+  return results;
+}
+
+export async function getImage(db: D1Database, id: string): Promise<StoredImage | null> {
+  return db
+    .prepare(`SELECT ${IMAGE_COLUMNS}, mime, draft_id, conversation_id FROM images WHERE id = ?`)
+    .bind(id)
+    .first<StoredImage>();
+}
+
+export async function deleteImage(db: D1Database, id: string): Promise<void> {
+  await db.prepare("DELETE FROM images WHERE id = ?").bind(id).run();
+}
+
+export async function imageIdsOf(db: D1Database, owner: ImageOwner): Promise<string[]> {
+  const { results } = await db
+    .prepare(`SELECT id FROM images WHERE ${ownerColumn(owner)} = ?`)
+    .bind(owner.id)
+    .all<{ id: string }>();
+  return results.map((r) => r.id);
+}
+
+export async function countGeneratedSince(db: D1Database, since: number): Promise<number> {
+  const n = await db
+    .prepare("SELECT COUNT(*) AS n FROM images WHERE kind = 'generated' AND created_at >= ?")
+    .bind(since)
+    .first<number>("n");
+  return Number(n ?? 0);
 }
 
 /**

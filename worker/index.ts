@@ -3,6 +3,7 @@ import { handleConversations } from "./conversations";
 import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
 import { handleDrafts } from "./drafts";
+import { handleImages } from "./images";
 
 const SIGNED_OUT = () => Response.json({ error: "Sign in again to keep going." }, { status: 401 });
 
@@ -23,6 +24,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
   if (area === "deliverables") return handleDeliverable(request, env, rest);
   if (area === "drafts") return handleDrafts(request, env, rest);
+  if (area === "images") return handleImages(request, env, rest);
   return Response.json({ error: "not found" }, { status: 404 });
 }
 

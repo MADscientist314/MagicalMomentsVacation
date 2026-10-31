@@ -15,8 +15,11 @@
       "database_id": "f3575c74-2a4a-473b-90a8-ebd141b64bd9",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  // Photos Jillian uploads and the images Nano Banana makes (rows in D1 `images`).
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "magical-assistant-images" }]
   // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
   //   ANTHROPIC_API_KEY  the Claude API key
   //   APP_PASSWORD       the "magic words" Jillian types to sign in
+  //   GEMINI_API_KEY     the Google AI Studio key for Nano Banana images
 }

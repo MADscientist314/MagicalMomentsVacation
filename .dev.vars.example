@@ -2,3 +2,5 @@
 ANTHROPIC_API_KEY=sk-ant-your-key-here
 # The "magic words" to sign in. Case, spaces and punctuation don't matter.
 APP_PASSWORD=choose-your-own-magic-words
+# Google AI Studio key for Nano Banana images (aistudio.google.com/apikey, billing on).
+GEMINI_API_KEY=your-google-ai-studio-key

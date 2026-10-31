@@ -4,6 +4,7 @@ import type { Source } from "../shared/conversations";
 import { draftTitle, SAVES_DRAFTS, type SavedDraft } from "../shared/drafts";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { isToolId, TOOLS, type ToolId } from "../shared/tools";
+import { deleteImagesOf } from "./images";
 import * as store from "./store";
 
 const MAX_CONTENT = 100_000;
@@ -95,7 +96,7 @@ export async function handleDrafts(request: Request, env: Env, segments: string[
   if (method === "GET") return Response.json(draft);
   if (method === "PATCH") return update(request, env, draft, now());
   if (method === "DELETE") {
-    await store.deleteDraft(env.DB, id);
+    await deleteImagesOf(env, { type: "draft", id }, () => store.deleteDraft(env.DB, id));
     return Response.json({ ok: true });
   }
   return error("Not allowed.", 405);
