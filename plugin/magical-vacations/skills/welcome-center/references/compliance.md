@@ -28,4 +28,4 @@ Every marketing piece (posts, newsletters, website promos) and every client emai
 
 <!-- TODO(Jillian): paste the MMV brand guide rules and Disney's EarMarked branding rules here (approved name formats, required wording, anything forbidden). The assistant only applies rules written in this file, so until then it uses the basics above. -->
 
-<!-- TODO(Jillian): client document disclaimer. If proposals, itineraries and estimates need a line such as "Prices are subject to availability until booked", write the exact wording here. Until then, client documents end with only the footer above. -->
+<!-- TODO(Jillian/MMV): client document disclaimer, PENDING APPROVAL. Do not use this wording anywhere until it's approved and moved out of this comment. John's suggested draft (10/31/2026): "This plan was prepared to help you plan your trip. It is for planning purposes only: prices, availability and schedules can change until booked, and you're responsible for confirming the details." Until it's approved, client documents end with only the footer above. -->
