@@ -75,8 +75,14 @@ describe("parseTripHandoff", () => {
     expect(long?.summary).toHaveLength(TRIP_FIELD_LIMITS.summary);
   });
 
-  it("leaves the destination blank when it isn't one of the planner's choices", () => {
-    expect(parseTripHandoff(HANDOFF.replace("Walt Disney World", "Disneyland Paris"))?.destination).toBe("");
+  it("files a destination outside the planner's list under Other and keeps the place in priorities", () => {
+    const h = parseTripHandoff(HANDOFF.replace("Walt Disney World", "Disneyland Paris"));
+    expect(h?.destination).toBe("Other");
+    expect(h?.priorities.startsWith("Destination: Disneyland Paris")).toBe(true);
+  });
+
+  it("matches a listed destination exactly", () => {
+    expect(parseTripHandoff(HANDOFF.replace("Walt Disney World", "Adventures by Disney"))?.destination).toBe("Adventures by Disney");
   });
 
   it("treats 'unknown' as blank", () => {

@@ -18,6 +18,23 @@ describe("TOOLS", () => {
   });
 });
 
+describe("Adventure Planner destinations", () => {
+  it("offers every kind of trip Jillian books, plus Other", () => {
+    const destination = TOOLS["adventure-planner"].fields.find((f) => f.id === "destination");
+    expect(destination?.options).toEqual([
+      "Walt Disney World",
+      "Disneyland",
+      "Universal Orlando",
+      "Disney Cruise Line",
+      "Royal Caribbean cruise",
+      "Other cruise",
+      "All-inclusive resort",
+      "Adventures by Disney",
+      "Other",
+    ]);
+  });
+});
+
 describe("isToolId", () => {
   it("accepts known ids and rejects others", () => {
     expect(isToolId("magic-mail")).toBe(true);

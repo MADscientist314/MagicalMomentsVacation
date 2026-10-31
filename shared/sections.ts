@@ -66,6 +66,11 @@ export function parseTripHandoff(internal: string): TripHandoff | null {
     if (key && !/^\(?unknown\)?$/i.test(value)) out[key] = value.slice(0, TRIP_FIELD_LIMITS[key]);
   }
   const destinations = TOOLS["adventure-planner"].fields.find((f) => f.id === "destination")?.options ?? [];
-  if (!destinations.includes(out.destination)) out.destination = "";
+  if (out.destination && !destinations.includes(out.destination)) {
+    // A place outside the list is filed under Other, and the place itself is kept for the planner.
+    const place = `Destination: ${out.destination}`;
+    out.priorities = (out.priorities ? `${place}. ${out.priorities}` : place).slice(0, TRIP_FIELD_LIMITS.priorities);
+    out.destination = "Other";
+  }
   return out.lastName ? out : null;
 }
