@@ -15,7 +15,9 @@ Parks, castles, ships, rides and characters are all fine in the picture. The rul
 
 ## Style
 - Warm, bright, joyful and family-friendly.
-- Brand colors: TODO(Jillian): add her brand colors and fonts from the MMV brand guide. Until then, use soft, cheerful colors.
+- Her colors, from her website (magicalvacationsbyjillian.com): royal purple `#7B3F99`, soft lavender `#F2DFFC`, warm cream `#FFFBF5`, with dark charcoal `#2C3333` for small text. Use them for words, borders, banners and accents, and let the photo or scene keep its natural colors.
+- Her fonts: headings in an elegant, rounded serif like Recoleta (her website's heading font); anything smaller in a clean, modern sans-serif like Wix Madefor Text.
+- TODO(Jillian): check these against the MMV brand guide when it arrives.
 - Leave a little space around the edges so the image can be cropped for each app.
 
 ## Words on the image
