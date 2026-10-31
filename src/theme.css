@@ -1387,3 +1387,56 @@ a.btn-primary {
 .field-head .field-label {
   margin-bottom: 0;
 }
+
+/* ---------- pictures in an itinerary ---------- */
+.document-pictures {
+  border: 1px solid var(--lavender-line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.document-pictures h3 {
+  margin: 0 0 4px;
+}
+
+.document-pictures > .muted-note {
+  margin: 0 0 12px;
+}
+
+.picture-slots {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.picture-slot {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.picture-slot img,
+.picture-empty {
+  width: 112px;
+  height: 63px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.picture-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lavender);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.picture-slot-body .image-actions {
+  margin-top: 4px;
+}

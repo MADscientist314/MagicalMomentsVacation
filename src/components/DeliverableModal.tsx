@@ -1,14 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconDeviceFloppy, IconDownload, IconPrinter, IconX } from "@tabler/icons-react";
 import type { DeliverableRecord } from "../../shared/conversations";
-import { DELIVERABLE_LABELS, renderDeliverableHtml, validateDeliverable, type DeliverableData } from "../../shared/deliverables";
-import { getDeliverable, saveDeliverableEdit } from "../lib/api";
+import {
+  DELIVERABLE_LABELS,
+  itineraryPhotoIds,
+  renderDeliverableHtml,
+  validateDeliverable,
+  type DeliverableData,
+  type Itinerary,
+} from "../../shared/deliverables";
+import { fetchImage, getDeliverable, saveDeliverableEdit } from "../lib/api";
 import { downloadName, missingPrices } from "../lib/deliverableFiles";
 import { saveBlob } from "../lib/download";
 import { DataEditor } from "./DataEditor";
+import { DocumentPictures } from "./DocumentPictures";
+
+const toDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 
 interface Props {
   id: string;
+  tripId: string;
   tripTitle: string;
   onClose(): void;
   /** Called after Jillian saves edits as a new version. */
@@ -17,7 +34,7 @@ interface Props {
 
 type Pending = "html" | "print" | null;
 
-export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
+export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Props) {
   const [record, setRecord] = useState<DeliverableRecord | null>(null);
   const [data, setData] = useState<DeliverableData | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -26,6 +43,9 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
   const [pending, setPending] = useState<Pending>(null);
   const [currentId, setCurrentId] = useState(id);
   const [closing, setClosing] = useState(false);
+  // Pictures are put into the page as data: URLs, so the HTML file and the PDF carry them ("" while loading).
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const photoIds = record?.kind === "itinerary" && data ? itineraryPhotoIds(data as Itinerary) : [];
 
   useEffect(() => {
     let live = true;
@@ -42,15 +62,27 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
     };
   }, [currentId]);
 
+  useEffect(() => {
+    for (const photoId of photoIds) {
+      if (photos[photoId] !== undefined) continue;
+      setPhotos((p) => ({ ...p, [photoId]: p[photoId] ?? "" }));
+      fetchImage(photoId)
+        .then(toDataUrl)
+        .then((url) => setPhotos((p) => ({ ...p, [photoId]: url })))
+        // A picture that can't load (deleted, offline) is left out rather than holding up the PDF.
+        .catch(() => setPhotos((p) => ({ ...p, [photoId]: "unavailable" })));
+    }
+  }, [photoIds.join(",")]);
+
   const html = useMemo(
     () =>
       record && data
         ? {
-            review: renderDeliverableHtml(record.kind, data, { footer: record.footer, signature: record.signature, mode: "review" }),
-            client: renderDeliverableHtml(record.kind, data, { footer: record.footer, signature: record.signature, mode: "client" }),
+            review: renderDeliverableHtml(record.kind, data, { footer: record.footer, signature: record.signature, mode: "review", photos }),
+            client: renderDeliverableHtml(record.kind, data, { footer: record.footer, signature: record.signature, mode: "client", photos }),
           }
         : null,
-    [record, data],
+    [record, data, photos],
   );
 
   if (!record || !data || !html) {
@@ -62,6 +94,7 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
   }
 
   const missing = missingPrices(record.kind, data);
+  const picturesLoading = photoIds.some((photoId) => !photos[photoId]);
 
   /** Saves the edits as a new version; true when saved. */
   const save = async (): Promise<boolean> => {
@@ -131,10 +164,10 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
                 <IconDeviceFloppy size={16} aria-hidden /> Save as new version
               </button>
             )}
-            <button type="button" className="btn-quiet" onClick={() => act("print")}>
+            <button type="button" className="btn-quiet" disabled={picturesLoading} title={picturesLoading ? "Loading pictures…" : undefined} onClick={() => act("print")}>
               <IconPrinter size={16} aria-hidden /> PDF
             </button>
-            <button type="button" className="btn-quiet" onClick={() => act("html")}>
+            <button type="button" className="btn-quiet" disabled={picturesLoading} title={picturesLoading ? "Loading pictures…" : undefined} onClick={() => act("html")}>
               <IconDownload size={16} aria-hidden /> HTML
             </button>
             <button type="button" className="btn-quiet" aria-label="Close" onClick={close}>
@@ -176,6 +209,18 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
         {tab === "review" ? (
           <div className="modal-body review-layout">
             <div className="editor">
+              {record.kind === "itinerary" && (
+                <DocumentPictures
+                  tripId={tripId}
+                  deliverableId={record.id}
+                  savedDays={(record.data as Itinerary).days.length}
+                  plan={data as Itinerary}
+                  onChange={(update) => {
+                    setData((d) => update(d as Itinerary));
+                    setDirty(true);
+                  }}
+                />
+              )}
               <DataEditor
                 value={data}
                 onChange={(v) => {

@@ -3,7 +3,7 @@ import { handleConversations, type ConversationDeps } from "../worker/conversati
 import { handleDeliverable } from "../worker/deliverables";
 import { extractFooter, extractSignature } from "../worker/prompt";
 import { BRAINS } from "../worker/brains";
-import { addDeliverable, appendMessages, createConversation, getDeliverable, listDeliverables, tryLock } from "../worker/store";
+import { addDeliverable, addImage, appendMessages, createConversation, getDeliverable, listDeliverables, tryLock } from "../worker/store";
 import { EventParser, type ServerEvent } from "../shared/sse";
 import type { Itinerary, Proposal } from "../shared/deliverables";
 import { fakeD1 } from "./helpers/fakeD1";
@@ -175,6 +175,22 @@ describe("reading and editing a deliverable", () => {
     const saved = (await res.json()) as { id: string; version: number };
     expect(saved.version).toBe(2);
     expect((await getDeliverable(env.DB, saved.id))?.data).toEqual(edited);
+  });
+
+  it("keeps pictures from this trip and refuses pictures from another one", async () => {
+    const c = await plannedTrip();
+    const other = await createConversation(env.DB, { kind: "trip", title: "Other family", details: {} }, 1);
+    const image = (owner: string, kind: "upload" | "generated") =>
+      addImage(env.DB, { owner: { type: "trip", id: owner }, kind, mime: "image/jpeg", bytes: 1, shape: null, prompt: "", model: null, cost_usd: 0 }, 2);
+    const mine = await image(c.id, "generated");
+    const theirs = await image(other.id, "upload");
+    const { id } = await addDeliverable(env.DB, c.id, "itinerary", ITINERARY, 3);
+
+    const ok = await call("POST", [id, "edit"], { data: { ...ITINERARY, coverPhoto: mine.id } });
+    expect(ok.status).toBe(200);
+    const bad = await call("POST", [id, "edit"], { data: { ...ITINERARY, days: [{ ...ITINERARY.days[0], photo: theirs.id }] } });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: "One of those pictures isn't part of this trip." });
   });
 
   it("rejects an edit that breaks the shape", async () => {

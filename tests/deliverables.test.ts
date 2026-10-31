@@ -3,9 +3,11 @@ import {
   applyPriceProvenance,
   estimateTotals,
   numbersIn,
+  DELIVERABLE_SCHEMAS,
   renderDeliverableHtml,
   validateDeliverable,
   type Estimate,
+  type Itinerary,
   type Proposal,
 } from "../shared/deliverables";
 
@@ -123,5 +125,48 @@ describe("renderDeliverableHtml", () => {
     );
     expect(html).toContain("Day 1 — Arrival");
     expect(html).toContain("3:00 PM");
+  });
+});
+
+describe("pictures in an itinerary", () => {
+  const PHOTO = "0b8f6f2e-3c1d-4c7a-9a39-5d2f1e6a7b8c";
+  const DAY_PHOTO = "1c9a7a3f-4d2e-4d8b-8b4a-6e3a2f7b8c9d";
+  const TRIP: Itinerary = {
+    title: "Your Disney week",
+    intro: "Here's the plan.",
+    coverPhoto: PHOTO,
+    days: [
+      { title: "Day 1 — Pool day", items: [{ time: null, text: "Swim" }], photo: DAY_PHOTO },
+      { title: "Day 2 — Magic Kingdom", items: [{ time: "9 AM", text: "Rope drop" }] },
+    ],
+    tips: [],
+    verifyNotes: [],
+  };
+  const brand = { footer: "Legal", signature: "Jillian", mode: "client" as const };
+
+  it("accepts picture ids on the cover and days, and nothing else there", () => {
+    expect(validateDeliverable("itinerary", TRIP).ok).toBe(true);
+    expect(validateDeliverable("itinerary", { ...TRIP, coverPhoto: "javascript:alert(1)" }).ok).toBe(false);
+    expect(validateDeliverable("itinerary", { ...TRIP, days: [{ ...TRIP.days[0], photo: "<img>" }] }).ok).toBe(false);
+  });
+
+  it("puts the pictures in the page when they've been loaded, and skips the rest", () => {
+    const html = renderDeliverableHtml("itinerary", TRIP, { ...brand, photos: { [PHOTO]: "data:image/jpeg;base64,AAAA" } });
+    expect(html).toContain('<figure class="cover"><img src="data:image/jpeg;base64,AAAA" alt=""></figure>');
+    expect(html).not.toContain(DAY_PHOTO);
+    expect(renderDeliverableHtml("itinerary", TRIP, brand)).not.toContain("<figure");
+  });
+
+  it("only takes data: images, so a document can't load anything from elsewhere", () => {
+    const html = renderDeliverableHtml("itinerary", TRIP, {
+      ...brand,
+      photos: { [PHOTO]: "https://example.com/x.jpg", [DAY_PHOTO]: "data:image/png;base64,BBBB" },
+    });
+    expect(html).not.toContain("example.com");
+    expect(html).toContain('<img class="day-photo" src="data:image/png;base64,BBBB" alt="">');
+  });
+
+  it("never asks Claude for picture ids", () => {
+    expect(JSON.stringify(DELIVERABLE_SCHEMAS.itinerary)).not.toContain("photo");
   });
 });

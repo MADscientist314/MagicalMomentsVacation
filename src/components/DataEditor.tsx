@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { emptyLike, humanize, toPrice } from "../lib/editorHelpers";
+import { emptyLike, humanize, PICTURE_KEYS, toPrice } from "../lib/editorHelpers";
 
 const STRING_LISTS = new Set(["highlights", "nextSteps", "verifyNotes", "tips", "notes"]);
 const LONG_TEXT = new Set(["intro", "summary", "recommendation", "text"]);
@@ -78,7 +78,7 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
   }
 
   if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>);
+    const entries = Object.entries(value as Record<string, unknown>).filter(([k]) => !PICTURE_KEYS.has(k));
     const fields = entries.map(([k, v]) => (
       <DataEditor key={k} keyName={k} value={v} onChange={(nv) => onChange({ ...(value as object), [k]: nv })} />
     ));

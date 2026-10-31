@@ -269,6 +269,60 @@ describe("making an image", () => {
   });
 });
 
+describe("pictures for an itinerary", () => {
+  const PLAN = {
+    title: "The Testfam family's Disney week",
+    intro: "Here's your plan.",
+    days: [
+      { title: "Day 1 — Arrival and pool", items: [{ time: null, text: "Check in, then the lazy river" }] },
+      { title: "Day 2 — Magic Kingdom", items: [{ time: "9 AM", text: "Rope drop and the teacups" }] },
+    ],
+    tips: [],
+    verifyNotes: [],
+  };
+
+  async function tripWithItinerary() {
+    const trip = await makeTrip();
+    const doc = await store.addDeliverable(env.DB, trip.id, "itinerary", PLAN, clock);
+    return { trip, doc };
+  }
+
+  it("makes a wide picture of a family doing that day, kept out of the cards gallery", async () => {
+    const { trip, doc } = await tripWithItinerary();
+    const made = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 1 });
+    expect(made.status).toBe(201);
+    expect(made.json.shape).toBe("wide");
+    expect(calls[0].aspect).toBe("16:9");
+    for (const text of ["Day 2 — Magic Kingdom", "Rope drop and the teacups", "Walt Disney World", "2 adults, kids 6 and 9", "No words"]) {
+      expect(calls[0].prompt).toContain(text);
+    }
+    expect((await api<ImageMeta[]>("GET", `?owner=trip:${trip.id}`)).json).toEqual([]);
+  });
+
+  it("makes a cover from the whole plan, with the family's own photos when chosen", async () => {
+    const { trip, doc } = await tripWithItinerary();
+    const family = await upload(`trip:${trip.id}`, JPEG(8));
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: "cover", photoIds: [family.json.id] });
+    expect(calls[0].prompt).toContain("The Testfam family's Disney week");
+    expect(calls[0].prompt).toContain("Day 1 — Arrival and pool");
+    expect(calls[0].prompt).toContain("looking like themselves");
+    expect(calls[0].images.map((i) => i.data)).toEqual([JPEG(8)]);
+  });
+
+  it("refuses a day that isn't there, another trip's itinerary, or a proposal", async () => {
+    const { trip, doc } = await tripWithItinerary();
+    const owner = `trip:${trip.id}`;
+    expect((await api("POST", "/generate", { owner, deliverableId: doc.id, slot: 2 })).status).toBe(400);
+    expect((await api("POST", "/generate", { owner, deliverableId: doc.id, slot: "back" })).status).toBe(400);
+    const other = await makeTrip();
+    const theirs = await store.addDeliverable(env.DB, other.id, "itinerary", PLAN, clock);
+    expect((await api("POST", "/generate", { owner, deliverableId: theirs.id, slot: 0 })).status).toBe(400);
+    const proposal = await store.addDeliverable(env.DB, trip.id, "proposal", { title: "x" }, clock);
+    expect((await api("POST", "/generate", { owner, deliverableId: proposal.id, slot: 0 })).status).toBe(400);
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe("standalone images (Picture Perfect)", () => {
   it("keeps photos and images that belong to no post or trip", async () => {
     const photo = await upload("library", JPEG(1));

@@ -34,6 +34,8 @@ export function humanize(key: string): string {
 }
 
 const PRICE_KEYS = new Set(["amount", "unitPrice"]);
+/** Picture ids: set from the Pictures panel, never typed or copied into a new row. */
+export const PICTURE_KEYS = new Set(["photo", "coverPhoto"]);
 
 /** A blank row shaped like an existing one, for "Add another". */
 export function emptyLike(value: unknown, key = ""): unknown {
@@ -41,7 +43,11 @@ export function emptyLike(value: unknown, key = ""): unknown {
   if (value === null || PRICE_KEYS.has(key) || key === "time") return null;
   if (typeof value === "number") return key === "qty" ? 1 : 0;
   if (typeof value === "object") {
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, emptyLike(v, k)]));
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([k]) => !PICTURE_KEYS.has(k))
+        .map(([k, v]) => [k, emptyLike(v, k)]),
+    );
   }
   return "";
 }

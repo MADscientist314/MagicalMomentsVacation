@@ -34,6 +34,7 @@ describe("editor helpers", () => {
     expect(humanize("qty")).toBe("How many");
     expect(humanize("unit")).toBe("Of what (nights, tickets…)");
     expect(emptyLike({ time: "9 AM", text: "Rope drop" })).toEqual({ time: null, text: "" });
+    expect(emptyLike({ title: "Day 1", items: [], photo: "abc" })).toEqual({ title: "", items: [] });
   });
 
   it("reads a typed price, leaving blanks as missing", () => {

@@ -17,6 +17,7 @@ import {
   type ImageOwner,
   type Shape,
 } from "../shared/images";
+import type { Itinerary } from "../shared/deliverables";
 import { splitDraft } from "../shared/sections";
 import { BRAINS } from "./brains";
 import { defaultImageClient, IMAGE_MODEL, ImageError, type ImageClient, type InlineImage } from "./gemini";
@@ -83,6 +84,8 @@ interface OwnerContext {
   /** A standalone image has nothing to go on but her words and photos. */
   standalone: boolean;
   subject(card?: CardKind): string;
+  /** Set for trips, which can also make pictures for their itineraries. */
+  trip?: store.Conversation;
 }
 
 async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Response> {
@@ -115,6 +118,7 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
     shape: "portrait",
     isTrip: true,
     standalone: false,
+    trip,
     subject: (card) =>
       [
         `Make a "${CARD_KINDS[card ?? "countdown"]}" card for the ${trip.title}'s trip, for Jillian to send them.`,
@@ -190,6 +194,31 @@ async function readImage(env: Env, id: string): Promise<InlineImage | null> {
   return image && object ? { mimeType: image.mime, data: new Uint8Array(await object.arrayBuffer()) } : null;
 }
 
+/**
+ * A picture for an itinerary: the cover (from the whole plan) or one day. With the family's photos it's
+ * them in the picture; without, a stock-style family that matches who's going.
+ */
+function itinerarySubject(trip: store.Conversation, plan: Itinerary, slot: "cover" | number, familyPhotos: boolean): string {
+  const d = trip.details;
+  const where = [d.destination, d.resort].filter(Boolean).join(", ");
+  const look = "It should look like a bright, natural travel photo, like a travel magazine.";
+  const scene =
+    slot === "cover"
+      ? `Make the cover picture for the ${trip.title}'s itinerary, "${plan.title}": the family enjoying this trip. ${look}\nThe plan: ${plan.days.map((day) => day.title).join("; ")}.`
+      : `Make a picture for one day of the ${trip.title}'s itinerary: the family enjoying this day. ${look}\nThe day: ${plan.days[slot].title}\nPlans: ${plan.days[slot].items.map((i) => i.text).join("; ")}`;
+  return [
+    scene,
+    where && `Where: ${where}.`,
+    d.party && `Who's going: ${d.party}.`,
+    familyPhotos
+      ? "The attached photos show this family. Put these people in the picture, looking like themselves."
+      : "Show a family that matches who's going.",
+    "No words on the image.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function buildPrompt(subject: string, direction: string, editing: boolean, photos: number): string {
   const others = editing ? "other " : "";
   return [
@@ -211,9 +240,22 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   const ctx = await loadOwner(env, owner);
   if (ctx instanceof Response) return ctx;
 
+  // An itinerary picture: this trip's itinerary, and the cover or a day that's in it.
+  let itinerary: { plan: Itinerary; slot: "cover" | number } | null = null;
+  if (body.deliverableId !== undefined) {
+    const doc = typeof body.deliverableId === "string" ? await store.getDeliverable(env.DB, body.deliverableId) : null;
+    const plan = doc?.kind === "itinerary" ? (doc.data as Itinerary) : undefined;
+    const slot = body.slot;
+    const validSlot = slot === "cover" || (Number.isInteger(slot) && (slot as number) >= 0 && (slot as number) < (plan?.days.length ?? 0));
+    if (!ctx.trip || !doc || !plan || doc.conversation_id !== ctx.trip.id || !validSlot) {
+      return error(BAD_REQUEST, 400);
+    }
+    itinerary = { plan, slot: slot as "cover" | number };
+  }
+
   if (body.shape !== undefined && !isShape(body.shape)) return error(BAD_REQUEST, 400);
-  const shape = (body.shape as Shape | undefined) ?? ctx.shape;
-  if (ctx.isTrip && !isCardKind(body.card)) return error(BAD_REQUEST, 400);
+  const shape = (body.shape as Shape | undefined) ?? (itinerary ? "wide" : ctx.shape);
+  if (ctx.isTrip && !itinerary && !isCardKind(body.card)) return error(BAD_REQUEST, 400);
 
   const raw = body.direction ?? "";
   if (typeof raw !== "string" || raw.length > MAX_DIRECTION) return error(BAD_REQUEST, 400);
@@ -245,7 +287,10 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   }
 
   const card = isCardKind(body.card) ? body.card : undefined;
-  const prompt = buildPrompt(ctx.subject(card), direction, body.baseImageId !== undefined, photoIds.length);
+  const prompt =
+    itinerary && ctx.trip
+      ? buildPrompt(itinerarySubject(ctx.trip, itinerary.plan, itinerary.slot, photoIds.length > 0), direction, false, 0)
+      : buildPrompt(ctx.subject(card), direction, body.baseImageId !== undefined, photoIds.length);
   let made: InlineImage;
   try {
     made = await makeClient(env).generate({ prompt, images: inputs, aspect: SHAPES[shape].aspect });
@@ -264,7 +309,17 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
   const meta = await store
     .addImage(
       env.DB,
-      { owner, kind: "generated", mime, bytes: made.data.length, shape, prompt: direction, model: IMAGE_MODEL, cost_usd: IMAGE_COST_USD },
+      {
+        owner,
+        kind: "generated",
+        mime,
+        bytes: made.data.length,
+        shape,
+        prompt: direction,
+        model: IMAGE_MODEL,
+        cost_usd: IMAGE_COST_USD,
+        purpose: itinerary ? "document" : "gallery",
+      },
       now,
       id,
     )

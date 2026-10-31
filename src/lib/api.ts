@@ -66,6 +66,9 @@ export const generateImage = (body: {
   photoIds: string[];
   baseImageId?: string;
   card?: CardKind;
+  /** An itinerary picture: which saved itinerary, and its cover or a day (0-based). */
+  deliverableId?: string;
+  slot?: "cover" | number;
 }) => call<ImageMeta>("/api/images/generate", send("POST", { ...body, owner: ownerKey(body.owner) }));
 export const deleteImage = (id: string) => call<{ ok: true }>(`/api/images/${id}`, send("DELETE"));
 

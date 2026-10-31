@@ -246,6 +246,8 @@ export async function addImage(
     prompt: string;
     model: string | null;
     cost_usd: number;
+    /** 'document' pictures go in client documents and stay out of the galleries. */
+    purpose?: "gallery" | "document";
   },
   now: number,
   id: string = crypto.randomUUID(),
@@ -254,19 +256,19 @@ export async function addImage(
   const conversationId = i.owner.type === "trip" ? i.owner.id : null;
   await db
     .prepare(
-      `INSERT INTO images (id, draft_id, conversation_id, kind, mime, bytes, shape, prompt, model, cost_usd, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO images (id, draft_id, conversation_id, kind, mime, bytes, shape, prompt, model, cost_usd, purpose, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, draftId, conversationId, i.kind, i.mime, i.bytes, i.shape, i.prompt, i.model, i.cost_usd, now)
+    .bind(id, draftId, conversationId, i.kind, i.mime, i.bytes, i.shape, i.prompt, i.model, i.cost_usd, i.purpose ?? "gallery", now)
     .run();
   return { id, kind: i.kind, shape: i.shape, prompt: i.prompt, created_at: now };
 }
 
-/** Newest first. */
+/** A gallery's images, newest first (itinerary pictures aren't listed; their documents point at them). */
 export async function listImages(db: D1Database, owner: ImageOwner): Promise<ImageMeta[]> {
   const where = ownerWhere(owner);
   const { results } = await db
-    .prepare(`SELECT ${IMAGE_COLUMNS} FROM images WHERE ${where.sql} ORDER BY created_at DESC, rowid DESC`)
+    .prepare(`SELECT ${IMAGE_COLUMNS} FROM images WHERE ${where.sql} AND purpose = 'gallery' ORDER BY created_at DESC, rowid DESC`)
     .bind(...where.values)
     .all<ImageMeta>();
   return results;

@@ -27,9 +27,16 @@ export interface Proposal {
 export interface Itinerary {
   title: string;
   intro: string;
-  days: { title: string; items: { time: string | null; text: string }[] }[];
+  /** Image id of the cover picture; Jillian adds pictures herself, Claude never writes these. */
+  coverPhoto?: string;
+  days: { title: string; items: { time: string | null; text: string }[]; photo?: string }[];
   tips: string[];
   verifyNotes: string[];
+}
+
+/** Every picture an itinerary uses: the cover, then each day's. */
+export function itineraryPhotoIds(i: Itinerary): string[] {
+  return [i.coverPhoto, ...i.days.map((d) => d.photo)].filter((id): id is string => typeof id === "string");
 }
 
 export interface Estimate {
@@ -103,6 +110,7 @@ const isText = (x: unknown, required = false): x is string =>
 const isTextList = (x: unknown): x is string[] => Array.isArray(x) && x.length <= 50 && x.every((s) => isText(s));
 const isPrice = (x: unknown): x is number | null => x === null || (typeof x === "number" && Number.isFinite(x) && x >= 0);
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
+const isPhotoId = (x: unknown) => x === undefined || (typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x));
 
 function checkProposal(d: Record<string, unknown>): string | null {
   if (!isText(d.title, true) || !isText(d.intro) || !isText(d.recommendation)) return "missing text";
@@ -119,10 +127,12 @@ function checkProposal(d: Record<string, unknown>): string | null {
 
 function checkItinerary(d: Record<string, unknown>): string | null {
   if (!isText(d.title, true) || !isText(d.intro)) return "missing text";
+  if (!isPhotoId(d.coverPhoto)) return "bad picture";
   if (!isTextList(d.tips) || !isTextList(d.verifyNotes)) return "bad lists";
   if (!Array.isArray(d.days) || d.days.length < 1 || d.days.length > 60) return "needs days";
   for (const day of d.days) {
     if (!isObject(day) || !isText(day.title, true) || !Array.isArray(day.items)) return "bad day";
+    if (!isPhotoId(day.photo)) return "bad picture";
     for (const item of day.items) {
       if (!isObject(item) || !isText(item.text, true) || !(item.time === null || item.time === undefined || isText(item.time))) {
         return "bad item";
@@ -207,13 +217,23 @@ ${p.recommendation.trim() ? `<section><h2>My recommendation</h2>${para(p.recomme
 ${p.nextSteps.length ? `<section><h2>Next steps</h2>${list(p.nextSteps)}</section>` : ""}`;
 }
 
-function itineraryBody(i: Itinerary): string {
+/** Picture id → its data: URL, loaded by the browser so the page works offline and in a PDF. */
+type Photos = Record<string, string>;
+
+/** Only an inline JPEG, PNG or WebP: a document never loads anything from elsewhere. */
+function photoSrc(photos: Photos | undefined, id: string | undefined): string | null {
+  const src = id ? photos?.[id] : undefined;
+  return src && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : null;
+}
+
+function itineraryBody(i: Itinerary, photos?: Photos): string {
   const days = i.days
-    .map(
-      (d) => `<section class="day"><h2>${esc(d.title)}</h2><ul class="items">${d.items
+    .map((d) => {
+      const src = photoSrc(photos, d.photo);
+      return `<section class="day"><h2>${esc(d.title)}</h2>${src ? `<img class="day-photo" src="${src}" alt="">` : ""}<ul class="items">${d.items
         .map((it) => `<li>${it.time ? `<span class="time">${esc(it.time)}</span>` : ""}${esc(it.text)}</li>`)
-        .join("")}</ul></section>`,
-    )
+        .join("")}</ul></section>`;
+    })
     .join("\n");
   return `${days}${i.tips.length ? `<section><h2>Good to know</h2>${list(i.tips)}</section>` : ""}`;
 }
@@ -243,7 +263,9 @@ header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px
 .option{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;break-inside:avoid}
 .option h2{margin-top:0}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
 .missing{background:#fff1c9;color:#7a5a00;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:600}
-.day{break-inside:avoid}.items{padding-left:18px}.time{display:inline-block;min-width:84px;font-weight:600;color:var(--purple)}
+.day{break-inside:avoid}.items{padding-left:18px}
+.cover{margin:18px 0 6px}.cover img,.day-photo{display:block;width:100%;object-fit:cover;border-radius:12px}
+.cover img{max-height:380px}.day-photo{max-height:260px;margin:4px 0 10px}.time{display:inline-block;min-width:84px;font-weight:600;color:var(--purple)}
 table.estimate{width:100%;border-collapse:collapse;margin-top:18px;background:#fff}
 .estimate th,.estimate td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
 .estimate .num{text-align:right;white-space:nowrap}.estimate tfoot td{font-weight:700;border-bottom:none}
@@ -257,14 +279,16 @@ footer{margin-top:32px;border-top:2px solid var(--line);padding-top:14px}
 export function renderDeliverableHtml(
   kind: DeliverableKind,
   data: DeliverableData,
-  brand: { footer: string; signature: string; mode: "client" | "review" },
+  brand: { footer: string; signature: string; mode: "client" | "review"; photos?: Photos },
 ): string {
   const body =
     kind === "proposal"
       ? proposalBody(data as Proposal)
       : kind === "itinerary"
-        ? itineraryBody(data as Itinerary)
+        ? itineraryBody(data as Itinerary, brand.photos)
         : estimateBody(data as Estimate);
+  const coverSrc = kind === "itinerary" ? photoSrc(brand.photos, (data as Itinerary).coverPhoto) : null;
+  const cover = coverSrc ? `<figure class="cover"><img src="${coverSrc}" alt=""></figure>` : "";
   const intro = "intro" in data ? para(data.intro) : "";
   const notes =
     brand.mode === "review" && data.verifyNotes.length
@@ -277,7 +301,7 @@ export function renderDeliverableHtml(
 <style>${STYLE}</style></head>
 <body><main class="doc">
 <header><div class="brand">Magical Vacations by Jillian</div><h1>${esc(data.title)}</h1>${intro}</header>
-${body}
+${cover}${body}
 ${notes}
 <footer><div class="sig">${esc(brand.signature)}</div><p class="legal">${esc(brand.footer)}</p></footer>
 </main></body></html>`;

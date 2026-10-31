@@ -149,7 +149,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
         </>
       )}
 
-      {openId && <DeliverableModal key={openId} id={openId} tripTitle={tripTitle} onClose={() => setOpenId(null)} onSaved={onChanged} />}
+      {openId && <DeliverableModal key={openId} id={openId} tripId={tripId} tripTitle={tripTitle} onClose={() => setOpenId(null)} onSaved={onChanged} />}
     </aside>
   );
 }
