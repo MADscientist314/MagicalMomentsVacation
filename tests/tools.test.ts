@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isToolId, TOOLS } from "../shared/tools";
+import { HOME_TOOLS, isToolId, TOOLS } from "../shared/tools";
 
 describe("TOOLS", () => {
   it("gives every tool at least one required field", () => {
@@ -35,6 +35,12 @@ describe("Adventure Planner destinations", () => {
   });
 });
 
+describe("HOME_TOOLS", () => {
+  it("shows Inbox Helper in place of Magic Mail, in the order Jillian works", () => {
+    expect(HOME_TOOLS).toEqual(["welcome-center", "inbox-helper", "adventure-planner", "spread-the-magic"]);
+  });
+});
+
 describe("isToolId", () => {
   it("accepts known ids and rejects others", () => {
     expect(isToolId("magic-mail")).toBe(true);
@@ -49,6 +55,23 @@ describe("Inbox Helper", () => {
     expect(tool.name).toBe("Inbox Helper");
     expect(tool.webSearch).toBe(false);
     expect(tool.notesFirst).toBe(true);
-    expect(tool.fields.map((f) => [f.id, f.required, f.maxLength])).toEqual([["emails", true, 20000]]);
+    expect(tool.fields.map((f) => [f.id, f.required ?? false, f.maxLength])).toEqual([
+      ["need", false, 40],
+      ["emails", true, 20000],
+    ]);
+  });
+
+  it("offers one-click starts for the emails Magic Mail used to write", () => {
+    const need = TOOLS["inbox-helper"].fields[0];
+    expect(need.kind).toBe("choice");
+    expect(need.options).toEqual([
+      "Reply to these emails",
+      "New client welcome",
+      "Check in (hasn't booked)",
+      "Pre-trip reminder",
+      "Itinerary and quote",
+      "Payment reminder",
+      "Welcome home",
+    ]);
   });
 });

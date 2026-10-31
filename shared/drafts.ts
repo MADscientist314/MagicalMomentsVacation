@@ -37,7 +37,9 @@ export function draftTitle(tool: ToolId, fields: Record<string, string>, content
     return name ? `${name} family inquiry` : firstLine(fields.inquiry) || "New inquiry";
   }
   if (tool === "inbox-helper") {
-    const names = [...client.matchAll(/^###\s+Reply to\s+(.+?)\s*(?:[—–-]\s|$)/gm)].map((m) => m[1].trim());
+    const names = [...client.matchAll(/^###\s+(?:Reply|Email) to\s+(.+?)\s*(?:[—–-]\s|$)/gm)].map((m) => m[1].trim());
+    const quick = fields.need && fields.need !== "Reply to these emails" ? fields.need : "";
+    if (quick) return `${quick} — ${names.join(", ") || firstLine(fields.emails)}`.slice(0, 120);
     return names.length ? `Replies to ${names.join(", ")}`.slice(0, 120) : firstLine(fields.emails) || "Emails";
   }
   if (tool === "magic-mail") return [fields.clientNames, fields.emailType].filter(Boolean).join(" — ") || "Email";

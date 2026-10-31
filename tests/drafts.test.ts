@@ -41,6 +41,13 @@ describe("draftTitle", () => {
     expect(draftTitle("inbox-helper", { emails: "From: Maria" }, content)).toBe("Replies to Maria, Kevin");
   });
 
+  it("names a quick-start email after its kind and the client", () => {
+    const content = "### Email to Katie — Payment reminder\nHi Katie\n\n## For Jillian only\nVerify the date";
+    expect(draftTitle("inbox-helper", { need: "Payment reminder", emails: "Katie, Universal, June" }, content)).toBe(
+      "Payment reminder — Katie",
+    );
+  });
+
   it("names posts and emails from their fields", () => {
     expect(draftTitle("spread-the-magic", { channel: "Facebook post", topic: "Disney cruise deals" }, "x")).toBe("Facebook post: Disney cruise deals");
     expect(draftTitle("magic-mail", { clientNames: "The Riveras", emailType: "Welcome" }, "x")).toBe("The Riveras — Welcome");

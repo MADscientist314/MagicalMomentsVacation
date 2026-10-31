@@ -23,6 +23,28 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
       {tool.fields.map((f) => {
         const id = `field-${f.id}`;
         const value = values[f.id] ?? "";
+        if (f.kind === "choice") {
+          const chosen = value || f.options?.[0];
+          return (
+            <fieldset key={f.id} className={`field field-${f.id}`}>
+              <legend className="field-label">{f.label}</legend>
+              <div className="choices" role="radiogroup" aria-label={f.label}>
+                {f.options?.map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    role="radio"
+                    aria-checked={chosen === o}
+                    className={chosen === o ? "choice chosen" : "choice"}
+                    onClick={() => onChange(f.id, o)}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          );
+        }
         return (
           <label key={f.id} className={`field field-${f.id}`} htmlFor={id}>
             <span className="field-label">

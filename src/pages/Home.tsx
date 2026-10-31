@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconDoorEnter, IconInbox, IconMailHeart, IconMap2, IconSend, IconWand, type Icon } from "@tabler/icons-react";
-import { TOOLS } from "../../shared/tools";
+import { HOME_TOOLS, TOOLS } from "../../shared/tools";
 import { FireworksNight } from "../art/FireworksNight";
 import { MagicLamp } from "../art/MagicLamp";
 import { MicButton } from "../components/MicButton";
@@ -42,7 +42,7 @@ export function Home({ onSignOut }: { onSignOut(): void }) {
       </header>
       <main className="page">
         <nav className="tiles" aria-label="Tools">
-          {Object.values(TOOLS).map((t) => {
+          {HOME_TOOLS.map((id) => TOOLS[id]).map((t) => {
             const ToolIcon = ICONS[t.icon];
             return (
               <a key={t.id} className="tile" href={t.id === "adventure-planner" ? "#/trips" : `#/${t.id}`}>

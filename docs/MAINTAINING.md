@@ -68,7 +68,9 @@ On the home screen ("Or just ask me anything") and on the chat page there's a **
 
 ## Saved trips and chats
 
-Trips (Adventure Planner) and chats ("Ask me anything") are saved on Cloudflare, behind the magic words, so Jillian can pick them up on any device. The quick tools (Magic Mail, Welcome Center, Inbox Helper, Spread the Magic) save nothing.
+Trips (Adventure Planner), chats ("Ask me anything") and every finished draft from Welcome Center, Inbox Helper and Spread the Magic are saved on Cloudflare, behind the magic words, so Jillian can pick them up on any device. Each tool page lists its saved drafts by name under the form; Inbox Helper's list works as a to-do list with a **Handled** checkbox.
+
+Magic Mail's tile is gone from the home screen: its emails (welcome, payment reminder, pre-trip, welcome home and more) are now the quick-start buttons in Inbox Helper. Its old address still works.
 
 - **Nothing is deleted automatically.** To delete a trip, use the trash icon on the trips list and confirm; its conversation and documents go with it. Chats have a trash icon in **Your chats**.
 - **Deleted by mistake?** Someone with the code can roll the whole database back to a moment before the delete (Cloudflare "D1 Time Travel", up to 30 days). It rolls back everything, so do it soon.

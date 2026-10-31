@@ -21,15 +21,14 @@ The Worker builds Claude's instructions from `brains/` at deploy time, calls `cl
 
 ## What's stored
 
-Magic Mail, Welcome Center, Inbox Helper and Spread the Magic store nothing: each draft lives only in the open tab.
-
-Trips and chats are saved in a Cloudflare **D1** database (`magical-assistant`, binding `DB`) so Jillian can come back to them:
+Trips, chats and every tool's finished drafts are saved in a Cloudflare **D1** database (`magical-assistant`, binding `DB`) so Jillian can come back to them:
 - `conversations`: one row per trip (titled "<last name> family") or chat, with the trip details and a pin flag.
 - `messages`: the conversation, saved as masked text. Jillian's message and Claude's reply are saved together only once the reply finishes, so a reload mid-reply leaves nothing half-saved.
 - `deliverables`: every version of each proposal, itinerary and estimate, as JSON.
-- `login_failures`: failed sign-ins by IP, for the rate limit.
+- `drafts`: Welcome Center, Inbox Helper, Spread the Magic and Magic Mail drafts, saved when they finish and updated after each refine. Each has a recognizable name ("Whitfield family inquiry") plus the masked form fields, so a reopened draft can be refined further. Inbox Helper drafts can be ticked **Handled**.
+- `login_failures`: sign-in attempts by IP, for the rate limit.
 
-Nothing expires on its own. Deleting a trip or chat deletes its messages and documents. D1 Time Travel can restore the whole database to any minute in the last 30 days (7 on the free plan): `npx wrangler d1 time-travel restore magical-assistant --timestamp=<when>`. That rolls back every trip, not just one, so export first if other work has happened since.
+Nothing expires on its own. Deleting a trip or chat deletes its messages and documents; a saved draft has its own trash icon. D1 Time Travel can restore the whole database to any minute in the last 30 days (7 on the free plan): `npx wrangler d1 time-travel restore magical-assistant --timestamp=<when>`. That rolls back every trip, not just one, so export first if other work has happened since.
 
 ## Trips and client documents
 

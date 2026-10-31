@@ -6,7 +6,8 @@ export type ToolId = "magic-mail" | "welcome-center" | "inbox-helper" | "spread-
 export interface FieldDef {
   id: string;
   label: string;
-  kind: "text" | "textarea" | "select";
+  /** "choice" shows the options as one-click buttons; blank means the first option. */
+  kind: "text" | "textarea" | "select" | "choice";
   options?: string[];
   required?: boolean;
   placeholder?: string;
@@ -89,11 +90,26 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     notesFirst: true,
     fields: [
       {
+        id: "need",
+        label: "What do you need?",
+        kind: "choice",
+        options: [
+          "Reply to these emails",
+          "New client welcome",
+          "Check in (hasn't booked)",
+          "Pre-trip reminder",
+          "Itinerary and quote",
+          "Payment reminder",
+          "Welcome home",
+        ],
+        maxLength: 40,
+      },
+      {
         id: "emails",
-        label: "Paste the emails or thread",
+        label: "Paste the email thread, or jot down the client, trip and what to include",
         kind: "textarea",
         required: true,
-        placeholder: "Paste one or more emails here: who they're from, the subject and the message.",
+        placeholder: "Paste one or more emails (who they're from, the subject and the message), or a few notes like: Katie, Universal in June, final payment due May 1.",
         maxLength: 20000,
       },
     ],
@@ -153,6 +169,9 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     ],
   },
 };
+
+/** The tiles on the home screen, in the order Jillian works. Magic Mail's emails now live in Inbox Helper. */
+export const HOME_TOOLS: ToolId[] = ["welcome-center", "inbox-helper", "adventure-planner", "spread-the-magic"];
 
 export function isToolId(x: unknown): x is ToolId {
   return typeof x === "string" && Object.hasOwn(TOOLS, x);

@@ -672,6 +672,37 @@ button:disabled {
   margin-top: 16px;
 }
 
+fieldset.field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 14px;
+  min-width: 0;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.choice {
+  border: 1px solid var(--lavender-line);
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.choice.chosen {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+}
+
 .quick-refines {
   display: flex;
   flex-wrap: wrap;
