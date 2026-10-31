@@ -34,7 +34,8 @@ export interface Itinerary {
 
 export interface Estimate {
   title: string;
-  lineItems: { label: string; qty: number; unitPrice: number | null; note: string }[];
+  /** `unit` says what `qty` counts ("nights", "tickets"); estimates saved before it existed have none. */
+  lineItems: { label: string; qty: number; unit?: string; unitPrice: number | null; note: string }[];
   notes: string[];
   verifyNotes: string[];
 }
@@ -86,7 +87,7 @@ export const DELIVERABLE_SCHEMAS: Record<DeliverableKind, Record<string, unknown
   }),
   estimate: object({
     title: str,
-    lineItems: { type: "array", items: object({ label: str, qty: { type: "number" }, unitPrice: nullableNumber, note: str }) },
+    lineItems: { type: "array", items: object({ label: str, qty: { type: "number" }, unit: str, unitPrice: nullableNumber, note: str }) },
     notes: strList,
     verifyNotes: strList,
   }),
@@ -136,6 +137,7 @@ function checkEstimate(d: Record<string, unknown>): string | null {
   if (!Array.isArray(d.lineItems) || d.lineItems.length < 1 || d.lineItems.length > 100) return "needs line items";
   for (const l of d.lineItems) {
     if (!isObject(l) || !isText(l.label, true) || !isPrice(l.unitPrice) || !isText(l.note)) return "bad line";
+    if (l.unit !== undefined && !isText(l.unit)) return "bad line";
     if (typeof l.qty !== "number" || !Number.isFinite(l.qty) || l.qty <= 0) return "bad quantity";
   }
   return null;
@@ -220,10 +222,10 @@ function estimateBody(e: Estimate): string {
   const { total, missing } = estimateTotals(e);
   const rows = e.lineItems
     .map(
-      (l) => `<tr><td>${esc(l.label)}${l.note.trim() ? `<div class="note">${esc(l.note)}</div>` : ""}</td><td class="num">${l.qty}</td><td class="num">${priceOrGap(l.unitPrice)}</td><td class="num">${l.unitPrice === null ? "—" : esc(money(l.qty * l.unitPrice))}</td></tr>`,
+      (l) => `<tr><td>${esc(l.label)}${l.note.trim() ? `<div class="note">${esc(l.note)}</div>` : ""}</td><td class="num">${l.qty}${l.unit?.trim() ? ` ${esc(l.unit.trim())}` : ""}</td><td class="num">${priceOrGap(l.unitPrice)}</td><td class="num">${l.unitPrice === null ? "—" : esc(money(l.qty * l.unitPrice))}</td></tr>`,
     )
     .join("");
-  return `<table class="estimate"><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Subtotal</th></tr></thead>
+  return `<table class="estimate"><thead><tr><th>Item</th><th class="num">How many</th><th class="num">Price each</th><th class="num">Subtotal</th></tr></thead>
 <tbody>${rows}</tbody>
 <tfoot><tr><td colspan="3">${missing.length ? "Total so far (some prices still to add)" : "Estimated total"}</td><td class="num">${esc(money(total))}</td></tr></tfoot></table>
 ${e.notes.length ? `<section><h2>Notes</h2>${list(e.notes)}</section>` : ""}`;

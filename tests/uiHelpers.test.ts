@@ -29,7 +29,9 @@ describe("editor helpers", () => {
   });
 
   it("makes a blank copy for a new row", () => {
-    expect(emptyLike({ label: "Tickets", qty: 4, unitPrice: 600, note: "x" })).toEqual({ label: "", qty: 1, unitPrice: null, note: "" });
+    expect(emptyLike({ label: "Tickets", qty: 4, unit: "tickets", unitPrice: 600, note: "x" })).toEqual({ label: "", qty: 1, unit: "", unitPrice: null, note: "" });
+    expect(humanize("qty")).toBe("How many");
+    expect(humanize("unit")).toBe("Of what (nights, tickets…)");
     expect(emptyLike({ time: "9 AM", text: "Rope drop" })).toEqual({ time: null, text: "" });
   });
 

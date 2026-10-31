@@ -24,6 +24,7 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [currentId, setCurrentId] = useState(id);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -61,21 +62,26 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
 
   const missing = missingPrices(record.kind, data);
 
-  const save = async () => {
+  /** Saves the edits as a new version; true when saved. */
+  const save = async (): Promise<boolean> => {
     const checked = validateDeliverable(record.kind, data);
     if (!checked.ok) {
       setError("Something in that edit doesn't fit — check every field has a value.");
-      return;
+      return false;
     }
     try {
       const saved = await saveDeliverableEdit(record.id, data);
       setError(null);
       setCurrentId(saved.id);
       onSaved();
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     }
   };
+
+  const close = () => (dirty ? setClosing(true) : onClose());
 
   const downloadHtml = () => {
     const url = URL.createObjectURL(new Blob([html.client], { type: "text/html" }));
@@ -104,8 +110,11 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
   const act = (what: Exclude<Pending, null>, force = false) => {
     if (missing.length && !force) return setPending(what);
     setPending(null);
+    // Download or print right away (browsers only allow it straight after the click), and keep the
+    // edits by saving them as a new version at the same time.
     if (what === "html") downloadHtml();
     else printPdf();
+    if (dirty) void save();
   };
 
   return (
@@ -136,13 +145,27 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
             <button type="button" className="btn-quiet" onClick={() => act("html")}>
               <IconDownload size={16} aria-hidden /> HTML
             </button>
-            <button type="button" className="btn-quiet" aria-label="Close" onClick={onClose}>
+            <button type="button" className="btn-quiet" aria-label="Close" onClick={close}>
               <IconX size={16} aria-hidden />
             </button>
           </div>
         </div>
 
         {error && <p className="message message-error">{error}</p>}
+        {closing && (
+          <div className="message message-warning" role="alert">
+            You have edits that aren't saved yet.{" "}
+            <button type="button" className="btn-quiet" onClick={() => void save().then((ok) => ok && onClose())}>
+              Save and close
+            </button>{" "}
+            <button type="button" className="btn-quiet" onClick={onClose}>
+              Close without saving
+            </button>{" "}
+            <button type="button" className="btn-quiet" onClick={() => setClosing(false)}>
+              Keep editing
+            </button>
+          </div>
+        )}
         {pending && (
           <div className="message message-warning" role="alert">
             Still says “Add price”: {missing.join(", ")}.{" "}
@@ -154,7 +177,9 @@ export function DeliverableModal({ id, tripTitle, onClose, onSaved }: Props) {
             </button>
           </div>
         )}
-        {dirty && <p className="message message-info">The client copy downloads what you see here; save to keep it as a new version.</p>}
+        {dirty && !closing && (
+          <p className="message message-info">Unsaved edits. PDF and HTML download what you see here and save it as a new version.</p>
+        )}
 
         {tab === "review" ? (
           <div className="modal-body review-layout">

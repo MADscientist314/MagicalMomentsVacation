@@ -50,6 +50,7 @@ describe("validateDeliverable", () => {
     // The renderer relies on every line having a note (even an empty one).
     const { note: _, ...noNote } = ESTIMATE.lineItems[0];
     expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [noNote] }).ok).toBe(false);
+    expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [{ ...ESTIMATE.lineItems[0], unit: 4 }] }).ok).toBe(false);
   });
 });
 
@@ -81,6 +82,18 @@ describe("renderDeliverableHtml", () => {
     const html = renderDeliverableHtml("proposal", { ...PROPOSAL, intro: "<script>alert(1)</script>" }, { ...BRAND, mode: "client" });
     expect(html).not.toContain("<script>alert");
     expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("shows what an estimate line counts, e.g. 4 nights", () => {
+    const est: Estimate = { ...ESTIMATE, lineItems: [{ label: "Hard Rock Hotel", qty: 4, unit: "nights", unitPrice: 400, note: "" }] };
+    const html = renderDeliverableHtml("estimate", est, { ...BRAND, mode: "client" });
+    expect(html).toContain(">4 nights<");
+    expect(html).toContain("$1,600.00");
+  });
+
+  it("still renders older estimate lines that have no unit", () => {
+    const html = renderDeliverableHtml("estimate", ESTIMATE, { ...BRAND, mode: "client" });
+    expect(html).toContain(">4<");
   });
 
   it("includes her signature and the legal footer", () => {
