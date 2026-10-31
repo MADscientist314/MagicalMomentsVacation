@@ -1,6 +1,6 @@
 ---
 name: adventure-planner
-description: Draft a day-by-day trip plan for a Jillian Jochum (Magical Moments Vacations) client — Walt Disney World, Universal Orlando, Royal Caribbean, or an all-inclusive — with dining and Lightning Lane / Express strategy, formatted to paste into Travefy. Use when Jillian asks for an itinerary or trip plan.
+description: Draft a day-by-day trip plan for a Jillian Jochum (Magical Moments Vacations) client — Disney World or Disneyland, Universal Orlando, a cruise, an all-inclusive, Adventures by Disney or elsewhere — with dining and Lightning Lane / Express strategy, formatted to paste into Travefy. Use when Jillian asks for an itinerary or trip plan.
 ---
 
 # Adventure Planner: trip plans
@@ -14,7 +14,7 @@ Before writing, read:
 - `references/compliance.md` for the rules on claims
 
 ## What you need
-- Destination: Walt Disney World, Universal Orlando, Royal Caribbean cruise, or all-inclusive resort.
+- Destination: Walt Disney World, Disneyland, Universal Orlando, Disney Cruise Line, Royal Caribbean cruise, another cruise line (e.g. Viking), an all-inclusive resort (e.g. Sandals, Beaches), Adventures by Disney, or Other. For Other or another cruise, the place or ship is in "Resort, ship or place" or the priorities.
 - Travel dates.
 - Who's going, with ages (heights matter for rides, so ask if the kids are young and heights weren't given).
 - Resort or ship, if booked.

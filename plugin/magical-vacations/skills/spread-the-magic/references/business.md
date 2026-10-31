@@ -9,10 +9,12 @@ Facebook: facebook.com/MMVbyJillian
 Instagram: @mmvbyjillian
 
 ## Where she travels
-- **Walt Disney World:** family adventures across the parks.
-- **Universal Orlando:** Islands of Adventure, the Wizarding World of Harry Potter and the rest of the resort.
-- **Cruises:** Royal Caribbean and other cruise lines, plus luxury and intimate voyages.
-- **All-inclusive resorts.**
+- **Walt Disney World and Disneyland:** family adventures across the parks.
+- **Universal Orlando:** Universal Studios Florida, Islands of Adventure, Epic Universe, Volcano Bay and the rest of the resort.
+- **Cruises:** mostly Royal Caribbean and Disney Cruise Line; she books any cruise line, including Viking.
+- **All-inclusive resorts:** for example Sandals and Beaches. She prefers fewer of these, but requests are growing as friends' kids get older, and the commission is good.
+- **Adventures by Disney:** guided all-inclusive trips around the world. Occasional requests.
+- **Anything else** is case by case.
 
 ## Planning tiers (wording from her website)
 - **Magical Vacations:** for families who want a seamless experience. Jillian handles the heavy lifting, from booking tickets to arranging transportation.

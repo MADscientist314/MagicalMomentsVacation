@@ -18,7 +18,7 @@ All of them are in the `brains/` folder on GitHub.
 | What goes into proposals, itineraries and estimates | `brains/deliverables.md` |
 
 Look for lines marked **TODO**. Those are the gaps Jillian still needs to fill in. Until she does, the assistant leaves placeholders and says "verify" instead of guessing. Most urgent:
-1. `fit-rules.md`: until it's filled in, Welcome Center can't say whether an inquiry is a fit.
+1. `fit-rules.md`: a first draft from John's numbers (commission, the about-$5,000 rule of thumb, lead time). Jillian should confirm them and fill in the remaining TODOs; Welcome Center's "worth your time" estimate depends on them.
 2. `compliance.md`: paste in the MMV brand guide and EarMarked rules.
 3. `voice.md`: paste 2–3 real emails Jillian has sent (with client names removed).
 4. `business.md`: add the Blueprint Call booking link and the payment-reminder schedule.

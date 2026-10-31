@@ -27,6 +27,20 @@ function Markdown({ md }: { md: string }) {
   return <div className="draft-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(md) }} />;
 }
 
+/** One-click rewrites offered under a finished draft, per tool. */
+const QUICK_REFINES: Partial<Record<ToolDef["id"], { label: string; request: string }[]>> = {
+  "welcome-center": [
+    {
+      label: "Let's plan it reply",
+      request: "Rewrite the reply as a \"Let's plan it\" reply, as your instructions describe. Keep the notes for Jillian.",
+    },
+    {
+      label: "Quick ideas reply",
+      request: "Rewrite the reply as a \"Quick ideas\" reply, as your instructions describe. Keep the notes for Jillian.",
+    },
+  ],
+};
+
 const STOP_NOTES: Record<string, string> = {
   refusal: "I can't help with that one — try rewording.",
   max_tokens: "That got long — try asking for less.",
@@ -124,6 +138,15 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
         </p>
       )}
       {stopReason && STOP_NOTES[stopReason] && <p className="message message-info">{STOP_NOTES[stopReason]}</p>}
+      {phase === "done" && draft && QUICK_REFINES[tool.id] && (
+        <div className="quick-refines">
+          {QUICK_REFINES[tool.id]!.map((q) => (
+            <button key={q.label} type="button" className="btn-quiet" onClick={() => onRefine(q.request)}>
+              {q.label}
+            </button>
+          ))}
+        </div>
+      )}
       {phase === "done" && draft && (
         <form
           className="refine"

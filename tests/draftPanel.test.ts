@@ -28,6 +28,15 @@ describe("DraftPanel", () => {
     expect(html).not.toContain("Copy all days");
   });
 
+  it("lets Welcome Center switch the reply style in one click", () => {
+    const done = { ...props, phase: "done" as const, receiving: false, draft: "Hi!\n\n## For Jillian only\n- Verdict: Maybe" };
+    const welcome = renderToStaticMarkup(createElement(DraftPanel, { ...done, tool: TOOLS["welcome-center"] }));
+    expect(welcome).toContain("Let&#x27;s plan it reply");
+    expect(welcome).toContain("Quick ideas reply");
+    const mail = renderToStaticMarkup(createElement(DraftPanel, { ...done, tool: TOOLS["magic-mail"] }));
+    expect(mail).not.toContain("Quick ideas reply");
+  });
+
   it("offers Start over while waiting for the first words", () => {
     const html = renderToStaticMarkup(createElement(DraftPanel, { ...props, phase: "waiting", draft: "", receiving: false }));
     expect(html).toContain("Start over");

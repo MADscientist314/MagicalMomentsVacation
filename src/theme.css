@@ -619,6 +619,13 @@ button:disabled {
   margin-top: 16px;
 }
 
+.quick-refines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
