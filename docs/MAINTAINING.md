@@ -16,6 +16,7 @@ All of them are in the `brains/` folder on GitHub.
 | How a whole tool behaves | `brains/skills/<tool>/SKILL.md` |
 | How the "Ask me anything" chat talks and what it won't do | `brains/chat.md` |
 | What goes into proposals, itineraries and estimates | `brains/deliverables.md` |
+| Rules for every image (branding, words on images, her photos, brand colors) | `brains/images.md` |
 
 Look for lines marked **TODO**. Those are the gaps Jillian still needs to fill in. Until she does, the assistant leaves placeholders and says "verify" instead of guessing. Most urgent:
 1. `fit-rules.md`: a first draft from John's numbers (commission, the about-$5,000 rule of thumb, lead time). Jillian should confirm them and fill in the remaining TODOs; Welcome Center's "worth your time" estimate depends on them.
@@ -68,13 +69,25 @@ On the home screen ("Or just ask me anything") and on the chat page there's a **
 
 ## Saved trips and chats
 
-Trips (Adventure Planner), chats ("Ask me anything") and every finished draft from Welcome Center, Inbox Helper and Spread the Magic are saved on Cloudflare, behind the magic words, so Jillian can pick them up on any device. Each tool page lists its saved drafts by name under the form; Inbox Helper's list works as a to-do list with a **Handled** checkbox.
+Trips (Adventure Planner), chats ("Ask me anything"), every finished draft from Welcome Center, Inbox Helper and Spread the Magic, and their images are saved on Cloudflare, behind the magic words, so Jillian can pick them up on any device. Each tool page lists its saved drafts by name under the form; Inbox Helper's list works as a to-do list with a **Handled** checkbox.
 
 Magic Mail's tile is gone from the home screen: its emails (welcome, payment reminder, pre-trip, welcome home and more) are now the quick-start buttons in Inbox Helper. Its old address still works.
 
 - **Nothing is deleted automatically.** To delete a trip, use the trash icon on the trips list and confirm; its conversation and documents go with it. Chats have a trash icon in **Your chats**.
 - **Deleted by mistake?** Someone with the code can roll the whole database back to a moment before the delete (Cloudflare "D1 Time Travel", up to 30 days). It rolls back everything, so do it soon.
 - Email addresses and phone numbers are hidden before a message is saved, just as before sending.
+
+## Images and cards
+
+Images are made by Google's **Nano Banana**, about 3¢ each.
+
+- **For a post:** in Spread the Magic, once a post is finished, **Images for this post** appears under it. Pick a shape (Portrait suits Facebook and Instagram, Wide suits newsletters and the website), optionally add photos, say what it should show ("our family by the pool at sunset, with the words 'Book by Dec 1'"), and click **Make an image**.
+- **For a family:** each trip page has **Cards for the family**: a countdown, birthday, welcome-home or bon voyage card made from the trip's details.
+- **Her photos:** **Add photos** takes up to 3 at a time into an image (tap a photo to use it or not). They're shrunk before uploading and kept with that post or trip. Don't upload photos of passports, IDs or cards.
+- **Not quite right?** **Change this one** and say what to change. Every version is kept until she deletes it.
+- **Finishing in Canva:** **Download** saves the image; drag it into a Canva design to add her brand kit, a QR code or exact text.
+- **The rules:** `brains/images.md` only blocks branding problems (copied logos, an "official" look, a character used as her logo, anything suggesting she works for Disney or Universal) and prices or dates she didn't give. Parks, castles and characters are otherwise allowed; Google may still refuse some requests ("Google wouldn't make that one"). Add her brand colors there once the brand guide arrives.
+- **Limits:** 100 new images a day across the site, so a leaked password can't run up a big bill.
 
 ## Client documents
 
@@ -93,5 +106,6 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 ## Costs and keys
 
 - Claude usage is billed to the Anthropic account that owns the API key, at a few cents per email, inquiry review or post, and about $0.25–0.50 per trip plan. A monthly spending limit is set in the Anthropic Console (in the workspace's limits settings).
+- Images are billed by Google to the account that owns the Gemini key, about 3¢ each. A monthly spend cap is set on AI Studio's **Spend** page. Image files are stored in Cloudflare R2, free at her volume.
 - Cloudflare is $5/month (Workers Paid).
-- If the API key ever needs replacing, someone with the code runs `npx wrangler secret put ANTHROPIC_API_KEY` and pastes the new key.
+- If the API key ever needs replacing, someone with the code runs `npx wrangler secret put ANTHROPIC_API_KEY` and pastes the new key (`GEMINI_API_KEY` for the Google image key).
