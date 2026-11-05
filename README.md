@@ -2,6 +2,7 @@
 
 A small, password-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, sorts and answers her inbox, writes compliant marketing posts and makes images for them, plans trips with clients' families and turns them into proposals, itineraries and estimates, or just chats with the assistant, by typing or by talking into the microphone. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
 
+- **Live:** https://magicalvacations.pilotandproof.com (since 2026-11-05; before that, https://magical-assistant.magicalvacations.workers.dev)
 - **Design:** [docs/superpowers/specs/2026-10-22-jillian-assistant-design.md](docs/superpowers/specs/2026-10-22-jillian-assistant-design.md)
 - **For the person maintaining what it says:** [docs/MAINTAINING.md](docs/MAINTAINING.md)
 
@@ -93,7 +94,7 @@ You need a Cloudflare account on **Workers Paid ($5/month)**, because the free p
 4. `npx wrangler d1 create magical-assistant`, then copy the `database_id` it prints into `wrangler.jsonc`, and run `npm run db:migrate` to create the tables.
    Then `npx wrangler r2 bucket create magical-assistant-images` for the images.
    For images, make a key at https://aistudio.google.com/apikey (restrict it to the Gemini API, turn on billing, and set a monthly spend cap on the **Spend** page), then `npx wrangler secret put GEMINI_API_KEY`. Without it, everything else works and images say "Images aren't connected yet".
-5. `npm run deploy`. The site is now at `https://magical-assistant.<your-subdomain>.workers.dev`.
+5. `npm run deploy`. The site is now at `https://magical-assistant.<your-subdomain>.workers.dev`, and at the custom domain in `routes` in `wrangler.jsonc` (`magicalvacations.pilotandproof.com`, a Custom Domain on the pilotandproof.com zone in the same Cloudflare account; the deploy creates its DNS record and certificate). `workers_dev: true` keeps the workers.dev address on, because adding `routes` would otherwise turn it off.
 6. **Auto-deploy from GitHub:** **Settings → Builds → Connect** to this repository, and set:
    - **Build command:** `npm run build`. The Vite build writes the deploy config and bundles `brains/` into the Worker, so `wrangler deploy` on its own won't work.
    - **Deploy command:** `npx wrangler deploy`

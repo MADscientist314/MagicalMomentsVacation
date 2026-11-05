@@ -3,6 +3,10 @@
   "name": "magical-assistant",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  // The address Jillian uses (a Custom Domain on the pilotandproof.com zone; Cloudflare makes the
+  // DNS record and certificate on deploy). The old workers.dev address stays on so bookmarks work.
+  "routes": [{ "pattern": "magicalvacations.pilotandproof.com", "custom_domain": true }],
+  "workers_dev": true,
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]

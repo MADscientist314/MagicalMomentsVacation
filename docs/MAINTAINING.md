@@ -1,6 +1,6 @@
 # Looking after Jillian's assistant
 
-This guide is for whoever keeps the assistant up to date: changing its voice, adding Jillian's rules, or updating booking windows. No coding is needed. Everything it knows lives in a handful of plain text files, and changing one is like editing a document.
+The assistant is at **https://magicalvacations.pilotandproof.com**. This guide is for whoever keeps the assistant up to date: changing its voice, adding Jillian's rules, or updating booking windows. No coding is needed. Everything it knows lives in a handful of plain text files, and changing one is like editing a document.
 
 ## Which file controls what
 
