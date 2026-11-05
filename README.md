@@ -2,7 +2,7 @@
 
 A small, password-protected website where Jillian Jochum (Magical Moments Vacations) drafts client emails, reviews new inquiries, sorts and answers her inbox, writes compliant marketing posts and makes images for them, plans trips with clients' families and turns them into proposals, itineraries and estimates, or just chats with the assistant, by typing or by talking into the microphone. Claude does the drafting; Jillian reviews and sends everything herself. The same "brains" also ship as a Claude app plugin.
 
-- **Live:** https://magicalvacations.pilotandproof.com (since 2026-11-05; before that, https://magical-assistant.magicalvacations.workers.dev)
+- **Live:** https://magicalvacations.pilotandproof.com (since 2026-11-05). The old address, https://magical-assistant.magicalvacations.workers.dev, still works and forwards there, to the same page (`src/lib/moved.ts`).
 - **Design:** [docs/superpowers/specs/2026-10-22-jillian-assistant-design.md](docs/superpowers/specs/2026-10-22-jillian-assistant-design.md)
 - **For the person maintaining what it says:** [docs/MAINTAINING.md](docs/MAINTAINING.md)
 
