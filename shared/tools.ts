@@ -12,6 +12,8 @@ export interface FieldDef {
   required?: boolean;
   placeholder?: string;
   maxLength: number;
+  /** Show the paperclip: she can attach a PDF or a saved email, whose text is read into the box. */
+  attach?: boolean;
 }
 
 export interface ToolDef {
@@ -109,8 +111,10 @@ export const TOOLS: Record<ToolId, ToolDef> = {
         label: "Paste the email thread, or jot down the client, trip and what to include",
         kind: "textarea",
         required: true,
-        placeholder: "Paste one or more emails (who they're from, the subject and the message), or a few notes like: Katie, Universal in June, final payment due May 1.",
-        maxLength: 20000,
+        placeholder:
+          "Paste one or more emails (who they're from, the subject and the message), attach a saved email or PDF with the paperclip, or jot down a few notes like: Katie, Universal in June, final payment due May 1.",
+        maxLength: 50_000,
+        attach: true,
       },
     ],
   },
@@ -172,6 +176,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
         kind: "textarea",
         placeholder: "Paste an email or a supplier's draft itinerary, or attach the PDF or saved email.",
         maxLength: 50_000,
+        attach: true,
       },
     ],
   },

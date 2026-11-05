@@ -1,5 +1,6 @@
 import { IconSparkles } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
+import { AttachField } from "./AttachField";
 import { TextBox } from "./TextBox";
 
 interface Props {
@@ -25,6 +26,11 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
       {tool.fields.map((f) => {
         const id = `field-${f.id}`;
         const value = values[f.id] ?? "";
+        if (f.kind === "textarea" && f.attach) {
+          return (
+            <AttachField key={f.id} id={id} field={f} value={value} rows={8} className={`field-${f.id}`} onChange={(v) => onChange(f.id, v)} />
+          );
+        }
         if (f.kind === "choice") {
           const chosen = value || f.options?.[0];
           return (

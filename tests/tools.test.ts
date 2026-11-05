@@ -57,8 +57,9 @@ describe("Inbox Helper", () => {
     expect(tool.notesFirst).toBe(true);
     expect(tool.fields.map((f) => [f.id, f.required ?? false, f.maxLength])).toEqual([
       ["need", false, 40],
-      ["emails", true, 20000],
+      ["emails", true, 50_000],
     ]);
+    expect(tool.fields[1].attach).toBe(true);
   });
 
   it("offers one-click starts for the emails Magic Mail used to write", () => {

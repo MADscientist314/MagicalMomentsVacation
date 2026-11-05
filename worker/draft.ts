@@ -7,7 +7,7 @@ import { buildSystem, buildUserMessage } from "./prompt";
 export type { ClaudeClient as DraftClient } from "./claude";
 
 const MAX_REFINEMENTS = 5;
-const MAX_TOTAL_CHARS = 60_000;
+const MAX_TOTAL_CHARS = 120_000;
 const MAX_REFINE_REQUEST = 2_000;
 
 type Validated = { ok: true; req: DraftRequest } | { ok: false; status: number; error: string };

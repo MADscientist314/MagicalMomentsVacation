@@ -104,9 +104,9 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 
 ## Pasting emails and attaching files
 
-- The trip chat and the new trip's **Supplier itinerary, client email or notes** box take up to 50,000 characters each (about 20 pages). The other tools' boxes have their own limits (Inbox Helper 20,000, Welcome Center 12,000). Every box grows as she types, and a counter appears when she's close to the limit.
+- The trip chat, the new trip's **Supplier itinerary, client email or notes** box and Inbox Helper's email box take up to 50,000 characters each (about 20 pages). Welcome Center's inquiry box takes 12,000. Every box grows as she types, and a counter appears when she's close to the limit.
 - Pasting an email that arrives as code (lots of `<div>` and `&nbsp;`) is turned into plain text automatically.
-- In Adventure Planner, the **paperclip** (or dragging a file onto the box) reads a PDF, such as a supplier's draft itinerary, or a saved email (.eml, including any PDF attached to it). Its text goes into the box between `[Attached: …]` and `[End of …]` lines, so she can check it before sending. The file itself isn't kept.
+- In Adventure Planner and Inbox Helper, the **paperclip** (or dragging a file onto the box) reads a PDF, such as a supplier's draft itinerary, or a saved email (.eml, including any PDF attached to it). Its text goes into the box between `[Attached: …]` and `[End of …]` lines, so she can check it before sending. The file itself isn't kept.
 - A scanned PDF (a picture of the pages) has no text to read: she should ask the supplier for the original PDF or copy the text in. Outlook .msg files can't be read: forward the email to herself and paste it, or save it as a PDF.
 
 ## What never to paste in

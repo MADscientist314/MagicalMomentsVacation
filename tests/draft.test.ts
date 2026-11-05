@@ -115,8 +115,8 @@ describe("handleDraft validation", () => {
     expect(res.status).toBe(413);
   });
 
-  it("refuses a conversation over 60,000 characters", async () => {
-    const refinements = [{ draft: "x".repeat(60_001), request: "shorter" }];
+  it("refuses a conversation over 120,000 characters", async () => {
+    const refinements = [{ draft: "x".repeat(120_001), request: "shorter" }];
     const res = await handleDraft(post({ ...MAIL, refinements }), ENV, fakeClient().make);
     expect(res.status).toBe(413);
   });

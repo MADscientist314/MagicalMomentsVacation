@@ -1,37 +1,10 @@
 import { useState } from "react";
 import { IconSparkles } from "@tabler/icons-react";
-import { TOOLS, type FieldDef } from "../../shared/tools";
-import { AttachButton, AttachStatus, useAttach } from "./AttachButton";
+import { TOOLS } from "../../shared/tools";
+import { AttachField } from "./AttachField";
 import { TextBox } from "./TextBox";
 
 const PLANNER = TOOLS["adventure-planner"];
-const MATERIAL = PLANNER.fields.find((f) => f.id === "material")!;
-
-/** The pasted email or supplier itinerary: a big box with the paperclip beside its label. */
-function MaterialField({ field, value, onChange }: { field: FieldDef; value: string; onChange(value: string): void }) {
-  const attacher = useAttach(value, onChange, field.maxLength);
-  const id = `trip-${field.id}`;
-  return (
-    <div className="field field-material">
-      <div className="field-head">
-        <label className="field-label" htmlFor={id}>
-          {field.label} (optional)
-        </label>
-        <AttachButton attacher={attacher} />
-      </div>
-      <TextBox
-        id={id}
-        rows={5}
-        limit={field.maxLength}
-        value={value}
-        placeholder={field.placeholder}
-        onChange={onChange}
-        onFiles={(files) => void attacher.attach(files)}
-      />
-      <AttachStatus attacher={attacher} />
-    </div>
-  );
-}
 
 interface Props {
   initial: Record<string, string>;
@@ -71,7 +44,9 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
       {PLANNER.fields.map((f) => {
         const id = `trip-${f.id}`;
         const value = values[f.id] ?? "";
-        if (f === MATERIAL) return <MaterialField key={f.id} field={f} value={value} onChange={(v) => set(f.id, v)} />;
+        if (f.attach) {
+          return <AttachField key={f.id} id={id} field={f} value={value} rows={5} className="field-material" onChange={(v) => set(f.id, v)} />;
+        }
         return (
           <label key={f.id} className="field" htmlFor={id}>
             <span className="field-label">
