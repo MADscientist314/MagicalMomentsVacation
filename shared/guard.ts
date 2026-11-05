@@ -60,6 +60,44 @@ export function findSensitive(text: string): SensitiveKind[] {
   return kinds;
 }
 
+const SSN_FORMATTED_ALL = new RegExp(SSN_FORMATTED.source, "g");
+const SSN_KEYWORD_ALL = /((?:ssn|social security)\D{0,20})(\d{3}[- ]?\d{2}[- ]?\d{4})(?!\d)/gi;
+
+export const REDACTED: Record<SensitiveKind, string> = {
+  card: "[card number removed]",
+  ssn: "[SSN removed]",
+  passport: "[passport number removed]",
+};
+
+/**
+ * Replaces card, SSN and passport numbers instead of refusing the whole text. Used for files she
+ * attaches (a cruise document can carry passport numbers), which she can't edit the way she can
+ * edit what she types. The result passes findSensitive.
+ */
+export function redactSensitive(text: string): { text: string; removed: Record<SensitiveKind, number> } {
+  const removed: Record<SensitiveKind, number> = { card: 0, ssn: 0, passport: 0 };
+  let out = text.replace(CARD_RUN, (run) => {
+    if (!luhnValid(run.replace(/[ -]/g, ""))) return run;
+    removed.card++;
+    return REDACTED.card;
+  });
+  out = out
+    .replace(SSN_KEYWORD_ALL, (_m, label: string) => {
+      removed.ssn++;
+      return `${label}${REDACTED.ssn}`;
+    })
+    .replace(SSN_FORMATTED_ALL, () => {
+      removed.ssn++;
+      return REDACTED.ssn;
+    })
+    .replace(PASSPORT_NUMBER, (match, number: string) => {
+      if ((number.match(/\d/g)?.length ?? 0) < 6) return match;
+      removed.passport++;
+      return match.slice(0, match.length - number.length) + REDACTED.passport;
+    });
+  return { text: out, removed };
+}
+
 export function maskContacts(text: string): { text: string; emails: number; phones: number } {
   let emails = 0;
   let phones = 0;

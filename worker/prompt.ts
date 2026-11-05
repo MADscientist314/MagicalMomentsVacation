@@ -69,9 +69,13 @@ export function extractSignature(voice: string): string {
   return out.join("\n");
 }
 
+/** One labelled line per filled field; a value with line breaks (a pasted email) starts on its own line. */
 export function buildUserMessage(tool: ToolId, fields: Record<string, string>): string {
   return TOOLS[tool].fields
     .filter((f) => fields[f.id]?.trim())
-    .map((f) => `**${f.label}:** ${fields[f.id].trim()}`)
+    .map((f) => {
+      const value = fields[f.id].trim();
+      return value.includes("\n") ? `**${f.label}:**\n${value}` : `**${f.label}:** ${value}`;
+    })
     .join("\n");
 }

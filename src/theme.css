@@ -1440,3 +1440,111 @@ a.btn-primary {
 .picture-slot-body .image-actions {
   margin-top: 4px;
 }
+
+/* ---------- text boxes that grow, take pastes and files ---------- */
+.textbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.composer .textbox {
+  flex: 1;
+}
+
+/* Inside the column wrapper, flex: 1 from .composer textarea would pin the height to two rows. */
+.composer .textbox textarea {
+  flex: none;
+}
+
+.textbox textarea {
+  resize: none;
+}
+
+.textbox.dragging textarea {
+  border-color: var(--purple);
+  background: var(--lavender);
+  outline: 2px dashed var(--purple);
+  outline-offset: 2px;
+}
+
+.textbox-foot {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.textbox-notice {
+  color: var(--purple-dark);
+}
+
+.char-count {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.char-count.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.field-material textarea {
+  min-height: 140px;
+}
+
+.btn-attach {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--lavender-line);
+  background: #fff;
+  color: var(--purple);
+}
+
+.btn-attach:hover:not(:disabled) {
+  border-color: var(--purple);
+}
+
+.field-head .btn-attach {
+  width: 36px;
+  height: 36px;
+}
+
+.attach-status {
+  margin: 8px 0 12px;
+}
+
+.attach-status .link-button {
+  margin-left: 4px;
+}
+
+.attached-files {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-weight: 500;
+}
+
+.bubble-more {
+  display: block;
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.proposal-panel .choices {
+  margin-bottom: 10px;
+}

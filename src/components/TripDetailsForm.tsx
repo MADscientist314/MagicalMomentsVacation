@@ -1,8 +1,37 @@
 import { useState } from "react";
 import { IconSparkles } from "@tabler/icons-react";
-import { TOOLS } from "../../shared/tools";
+import { TOOLS, type FieldDef } from "../../shared/tools";
+import { AttachButton, AttachStatus, useAttach } from "./AttachButton";
+import { TextBox } from "./TextBox";
 
 const PLANNER = TOOLS["adventure-planner"];
+const MATERIAL = PLANNER.fields.find((f) => f.id === "material")!;
+
+/** The pasted email or supplier itinerary: a big box with the paperclip beside its label. */
+function MaterialField({ field, value, onChange }: { field: FieldDef; value: string; onChange(value: string): void }) {
+  const attacher = useAttach(value, onChange, field.maxLength);
+  const id = `trip-${field.id}`;
+  return (
+    <div className="field field-material">
+      <div className="field-head">
+        <label className="field-label" htmlFor={id}>
+          {field.label} (optional)
+        </label>
+        <AttachButton attacher={attacher} />
+      </div>
+      <TextBox
+        id={id}
+        rows={5}
+        limit={field.maxLength}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={onChange}
+        onFiles={(files) => void attacher.attach(files)}
+      />
+      <AttachStatus attacher={attacher} />
+    </div>
+  );
+}
 
 interface Props {
   initial: Record<string, string>;
@@ -17,13 +46,14 @@ interface Props {
 export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<Record<string, string>>(initial);
   const set = (id: string, v: string) => setValues((old) => ({ ...old, [id]: v }));
+  const tooLong = PLANNER.fields.find((f) => (values[f.id] ?? "").length > f.maxLength);
 
   return (
     <form
       className="card trip-form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!busy) onSubmit(values);
+        if (!busy && !tooLong) onSubmit(values);
       }}
     >
       <label className="field" htmlFor="trip-lastName">
@@ -41,6 +71,7 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
       {PLANNER.fields.map((f) => {
         const id = `trip-${f.id}`;
         const value = values[f.id] ?? "";
+        if (f === MATERIAL) return <MaterialField key={f.id} field={f} value={value} onChange={(v) => set(f.id, v)} />;
         return (
           <label key={f.id} className="field" htmlFor={id}>
             <span className="field-label">
@@ -57,7 +88,7 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
                 ))}
               </select>
             ) : f.kind === "textarea" ? (
-              <textarea id={id} value={value} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => set(f.id, e.target.value)} />
+              <TextBox id={id} rows={3} value={value} limit={f.maxLength} placeholder={f.placeholder} onChange={(v) => set(f.id, v)} />
             ) : (
               <input
                 id={id}
@@ -77,9 +108,9 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
           <strong>From the inquiry:</strong> {values.summary}
         </div>
       )}
-      {error && (
+      {(error || tooLong) && (
         <p className="message message-error" role="alert">
-          {error}
+          {tooLong ? `“${tooLong.label}” is too long — keep it under ${tooLong.maxLength.toLocaleString("en-US")} characters.` : error}
         </p>
       )}
       <div className="proposal-actions">
@@ -88,7 +119,7 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
             Cancel
           </button>
         )}
-        <button type="submit" className="btn-primary" disabled={busy}>
+        <button type="submit" className="btn-primary" disabled={busy || Boolean(tooLong)}>
           <IconSparkles size={18} aria-hidden />
           {busy ? "Working on it…" : submitLabel}
         </button>

@@ -4,6 +4,9 @@ import type { DeliverableKind } from "./deliverables";
 export type ConversationKind = "trip" | "chat";
 export type Source = { title: string; url: string };
 
+/** The longest one message may be (characters): room for a pasted email or a supplier's itinerary. */
+export const MAX_MESSAGE = 50_000;
+
 /** The longest each trip detail may be (characters). */
 export const TRIP_FIELD_LIMITS: Record<string, number> = {
   lastName: 80,
@@ -11,7 +14,8 @@ export const TRIP_FIELD_LIMITS: Record<string, number> = {
   dates: 200,
   party: 300,
   resort: 200,
-  priorities: 4_000,
+  priorities: 10_000,
+  material: 50_000,
   summary: 2_000,
 };
 

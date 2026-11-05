@@ -165,7 +165,14 @@ export const TOOLS: Record<ToolId, ToolDef> = {
       { id: "dates", label: "Travel dates", kind: "text", required: true, placeholder: "March 14–20, 2027", maxLength: 200 },
       { id: "party", label: "Who's going (ages)", kind: "text", required: true, placeholder: "2 adults, kids 6 and 9", maxLength: 300 },
       { id: "resort", label: "Resort, ship or place", kind: "text", placeholder: "Polynesian Village, Viking Rhine cruise…", maxLength: 200 },
-      { id: "priorities", label: "Must-dos and priorities", kind: "textarea", maxLength: 4000 },
+      { id: "priorities", label: "Must-dos and priorities", kind: "textarea", maxLength: 10_000 },
+      {
+        id: "material",
+        label: "Supplier itinerary, client email or notes",
+        kind: "textarea",
+        placeholder: "Paste an email or a supplier's draft itinerary, or attach the PDF or saved email.",
+        maxLength: 50_000,
+      },
     ],
   },
 };

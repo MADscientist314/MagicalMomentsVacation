@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { emptyLike, humanize, PICTURE_KEYS, toPrice } from "../lib/editorHelpers";
+import { LIST_LIMITS } from "../../shared/deliverables";
+import { emptyLike, humanize, PICTURE_KEYS, ROW_TEMPLATES, toPrice } from "../lib/editorHelpers";
 
 const STRING_LISTS = new Set(["highlights", "nextSteps", "verifyNotes", "tips", "notes"]);
 const LONG_TEXT = new Set(["intro", "summary", "recommendation", "text"]);
@@ -29,20 +30,25 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
   }
 
   if (Array.isArray(value)) {
+    // A proposal keeps at least one option (and at most four); an itinerary at least one day.
+    const { min, max } = LIST_LIMITS[keyName] ?? { min: 0, max: Infinity };
+    const template = value.length ? value[0] : ROW_TEMPLATES[keyName];
     return (
       <fieldset className="editor-group">
         <legend>{label}</legend>
         {value.map((item, i) => (
           <div key={i} className="editor-row">
             <DataEditor value={item} onChange={(v) => onChange(value.map((old, j) => (j === i ? v : old)))} />
-            <button type="button" className="btn-quiet" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-              <IconTrash size={14} aria-hidden /> Remove
-            </button>
+            {value.length > min && (
+              <button type="button" className="btn-quiet" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+                <IconTrash size={14} aria-hidden /> Remove
+              </button>
+            )}
           </div>
         ))}
-        {value.length > 0 && (
-          <button type="button" className="btn-quiet" onClick={() => onChange([...value, emptyLike(value[0])])}>
-            <IconPlus size={14} aria-hidden /> Add another
+        {template !== undefined && value.length < max && (
+          <button type="button" className="btn-quiet" onClick={() => onChange([...value, emptyLike(template)])}>
+            <IconPlus size={14} aria-hidden /> Add {value.length ? "another" : "one"}
           </button>
         )}
       </fieldset>

@@ -11,6 +11,7 @@ Before writing, read:
 - `references/voice.md` for her tone and exact signature block
 - `references/business.md` for her services and how she works
 - `references/compliance.md` for the legal footer and the rules on claims
+- `references/know-how.md` for the practical tips she gives clients (all "verify"), when a client asks how something works
 
 ## What you need
 - **What she needs.** Usually "Reply to these emails" (the default when nothing is chosen). Otherwise it names one quick-start email (below).

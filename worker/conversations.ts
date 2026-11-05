@@ -1,7 +1,7 @@
 // Saved trips and chats: /api/conversations[/:id[/plan|/messages|/deliverables]].
 // The server keeps the history; the browser only ever sends the new message.
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { DETAILS_CHANGED, TRIP_FIELD_LIMITS } from "../shared/conversations";
+import { DETAILS_CHANGED, MAX_MESSAGE, TRIP_FIELD_LIMITS } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
 import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
@@ -17,8 +17,8 @@ export interface ConversationDeps {
   waitUntil?: (work: Promise<unknown>) => void;
 }
 
-const MAX_MESSAGE = 4_000;
-const MAX_HISTORY = 200_000;
+// About 100k tokens: room for several attached itineraries, well inside the model's context.
+const MAX_HISTORY = 400_000;
 const MAX_TITLE = 120;
 const LOCK_MS = 10 * 60_000;
 const TRIP_FIELDS = TRIP_FIELD_LIMITS;
@@ -29,6 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   party: "who's going",
   resort: "resort or ship",
   priorities: "priorities",
+  material: "pasted email or itinerary",
   summary: "inquiry summary",
 };
 const BAD_REQUEST = "That request didn't make sense — try again.";
@@ -209,7 +210,7 @@ async function sendMessage(
   const body = await readJson(request);
   const content = typeof body?.content === "string" ? body.content.trim() : "";
   if (!content || content.length > MAX_MESSAGE) {
-    return error(content ? "That message is too long — keep it under 4,000 characters." : BAD_REQUEST, 400);
+    return error(content ? `That message is too long — keep it under ${MAX_MESSAGE.toLocaleString("en-US")} characters.` : BAD_REQUEST, 400);
   }
   const checked = checkText(content);
   if (!checked.ok) return error(checked.error, 400);

@@ -8,8 +8,10 @@ import {
   DELIVERABLE_SCHEMAS,
   documentPhotoIds,
   numbersIn,
+  tidyDeliverable,
   validateDeliverable,
   type DeliverableKind,
+  type Proposal,
 } from "../shared/deliverables";
 import { DETAILS_CHANGED } from "../shared/conversations";
 import { findSensitive, SENSITIVE_MESSAGES } from "../shared/guard";
@@ -31,9 +33,11 @@ export async function handleGenerateDeliverable(
   deps: ConversationDeps,
 ): Promise<Response> {
   const now = deps.now ?? Date.now;
-  const body = (await request.json().catch(() => null)) as { kind?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { kind?: unknown; options?: unknown } | null;
   const kind = body?.kind;
   if (convo.kind !== "trip" || !isKind(kind)) return error("That request didn't make sense — try again.", 400);
+  // "one": a proposal for the trip as planned (say, from a supplier's itinerary), with no alternatives.
+  const single = kind === "proposal" && body?.options === "one";
   const history = await store.getMessages(env.DB, convo.id);
   if (!history.length) return error("Plan the trip first.", 400);
   if (!(await store.tryLock(env.DB, convo.id, now(), LOCK_MS))) {
@@ -47,7 +51,7 @@ export async function handleGenerateDeliverable(
       content: [
         {
           type: "text",
-          text: `Create the client ${DELIVERABLE_LABELS[kind].toLowerCase()} for this trip, following the rules for a ${kind}.`,
+          text: `Create the client ${DELIVERABLE_LABELS[kind].toLowerCase()} for this trip, following the rules for a ${kind}.${single ? " Make it a one-option proposal: the trip as planned here, with no alternatives." : ""}`,
           cache_control: { type: "ephemeral" },
         },
       ],
@@ -59,10 +63,11 @@ export async function handleGenerateDeliverable(
     // No web search here: citations and structured output can't be combined.
     output_config: { effort: "medium", format: { type: "json_schema", schema: DELIVERABLE_SCHEMAS[kind] } },
   });
-  // Only amounts Jillian typed herself may reach the client document. The server wrote the first
-  // message (trip details and Claude's inquiry summary, which can hold a budget) and any details-changed notes.
+  // Only amounts Jillian gave may reach the client document: what she typed, pasted or attached. The
+  // server wrote the first message (trip details and Claude's inquiry summary, which can hold a budget)
+  // and any details-changed notes; of those, only the supplier itinerary or email she pasted counts.
   const typed = history.filter((m, i) => m.role === "user" && i > 0 && !m.content.startsWith(DETAILS_CHANGED));
-  const allowed = new Set(typed.flatMap((m) => numbersIn(m.content)));
+  const allowed = new Set([...typed.flatMap((m) => numbersIn(m.content)), ...numbersIn(convo.details.material ?? "")]);
 
   return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${kind} deliverable`, {
     forwardText: false,
@@ -75,8 +80,9 @@ export async function handleGenerateDeliverable(
       } catch {
         throw new UserFacingError(NOT_RIGHT);
       }
-      const checked = validateDeliverable(kind, parsed);
+      const checked = validateDeliverable(kind, tidyDeliverable(kind, parsed));
       if (!checked.ok) throw new UserFacingError(NOT_RIGHT);
+      if (single) (checked.data as Proposal).options.splice(1);
       const data = applyPriceProvenance(kind, checked.data, allowed);
       const saved = await store.addDeliverable(env.DB, convo.id, kind, data, now());
       return [{ event: "deliverable", data: { id: saved.id, kind, version: saved.version } }];
@@ -107,8 +113,8 @@ export async function handleDeliverable(
 
   if (action === "edit" && request.method === "POST") {
     const body = (await request.json().catch(() => null)) as { data?: unknown } | null;
-    const checked = validateDeliverable(existing.kind, body?.data);
-    if (!checked.ok) return error("Something in that edit doesn't fit — check every field has a value.", 400);
+    const checked = validateDeliverable(existing.kind, tidyDeliverable(existing.kind, body?.data));
+    if (!checked.ok) return error(checked.error, 400);
     const sensitive = findSensitive(JSON.stringify(checked.data));
     if (sensitive.length) return error(SENSITIVE_MESSAGES[sensitive[0]], 400);
     const trip = { type: "trip", id: existing.conversation_id } as const;

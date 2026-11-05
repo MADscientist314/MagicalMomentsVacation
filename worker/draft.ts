@@ -27,7 +27,7 @@ function validate(body: unknown): Validated {
     if (typeof value !== "string") return { ok: false, status: 400, error: BAD_REQUEST };
     if (f.required && !value.trim()) return { ok: false, status: 400, error: `Fill in “${f.label}” first.` };
     if (value.length > f.maxLength) {
-      return { ok: false, status: 400, error: `“${f.label}” is too long — keep it under ${f.maxLength} characters.` };
+      return { ok: false, status: 400, error: `“${f.label}” is too long — keep it under ${f.maxLength.toLocaleString("en-US")} characters.` };
     }
     if (f.options && value && !f.options.includes(value)) return { ok: false, status: 400, error: BAD_REQUEST };
     clean[f.id] = value;

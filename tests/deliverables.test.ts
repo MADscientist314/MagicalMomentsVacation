@@ -6,6 +6,7 @@ import {
   DELIVERABLE_SCHEMAS,
   documentPhotoIds,
   renderDeliverableHtml,
+  tidyDeliverable,
   validateDeliverable,
   type Estimate,
   type Itinerary,
@@ -42,8 +43,31 @@ describe("validateDeliverable", () => {
     expect(validateDeliverable("proposal", PROPOSAL)).toEqual({ ok: true, data: PROPOSAL });
   });
 
-  it("needs two to four proposal options", () => {
-    expect(validateDeliverable("proposal", { ...PROPOSAL, options: [PROPOSAL.options[0]] }).ok).toBe(false);
+  it("takes one to four proposal options, and says so otherwise", () => {
+    expect(validateDeliverable("proposal", { ...PROPOSAL, options: [PROPOSAL.options[0]] }).ok).toBe(true);
+    expect(validateDeliverable("proposal", { ...PROPOSAL, options: [] })).toEqual({ ok: false, error: "A proposal needs at least one option." });
+    const five = Array.from({ length: 5 }, () => PROPOSAL.options[0]);
+    expect(validateDeliverable("proposal", { ...PROPOSAL, options: five })).toEqual({ ok: false, error: "A proposal can have up to 4 options." });
+  });
+
+  it("says which field to fix", () => {
+    const unnamed = { ...PROPOSAL, options: [PROPOSAL.options[0], { ...PROPOSAL.options[1], name: " " }] };
+    expect(validateDeliverable("proposal", unnamed)).toEqual({ ok: false, error: "Option 2 needs a name — fill it in or remove the option." });
+    expect(validateDeliverable("proposal", { ...PROPOSAL, title: "" })).toEqual({ ok: false, error: "Give the proposal a title." });
+    expect(validateDeliverable("proposal", { ...PROPOSAL, intro: "x".repeat(5_001) })).toEqual({
+      ok: false,
+      error: "The opening note is too long — keep it under 5,000 characters.",
+    });
+    const day = { title: "Day 1", items: [{ time: "9:00 AM", text: "Rope drop" }, { time: "1:00 PM", text: "" }] };
+    expect(validateDeliverable("itinerary", { title: "Trip", intro: "", days: [day], tips: [], verifyNotes: [] })).toEqual({
+      ok: false,
+      error: "Day 1, activity 2 needs a description — fill it in or remove it.",
+    });
+    const line = { ...ESTIMATE.lineItems[0], label: "" };
+    expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [line] })).toEqual({
+      ok: false,
+      error: "Line 1 needs an item name — fill it in or remove the line.",
+    });
   });
 
   it("rejects the wrong shape", () => {
@@ -54,6 +78,41 @@ describe("validateDeliverable", () => {
     const { note: _, ...noNote } = ESTIMATE.lineItems[0];
     expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [noNote] }).ok).toBe(false);
     expect(validateDeliverable("estimate", { ...ESTIMATE, lineItems: [{ ...ESTIMATE.lineItems[0], unit: 4 }] }).ok).toBe(false);
+  });
+});
+
+describe("tidyDeliverable", () => {
+  it("drops what an edit left empty, so it can be saved", () => {
+    const emptyOption = { name: "", summary: "", highlights: [""], bestFor: "", price: { amount: null, note: "" } };
+    const edited = { ...PROPOSAL, options: [PROPOSAL.options[0], emptyOption], nextSteps: ["Pick one", "", "  "] };
+    const tidy = tidyDeliverable("proposal", edited) as Proposal;
+    expect(tidy.options).toEqual([PROPOSAL.options[0]]);
+    expect(tidy.nextSteps).toEqual(["Pick one"]);
+    expect(validateDeliverable("proposal", tidy).ok).toBe(true);
+  });
+
+  it("drops blank activities and empty days, but keeps half-filled ones for the check to flag", () => {
+    const itinerary: Itinerary = {
+      title: "Trip",
+      intro: "",
+      days: [
+        { title: "Day 1", items: [{ time: null, text: "Swim" }, { time: null, text: " " }] },
+        { title: "", items: [] },
+        { title: "Day 3", items: [{ time: "2:00 PM", text: "" }] },
+      ],
+      tips: [""],
+      verifyNotes: [],
+    };
+    const tidy = tidyDeliverable("itinerary", itinerary) as Itinerary;
+    expect(tidy.days.map((d) => d.title)).toEqual(["Day 1", "Day 3"]);
+    expect(tidy.days[0].items).toEqual([{ time: null, text: "Swim" }]);
+    expect(tidy.tips).toEqual([]);
+    expect(validateDeliverable("itinerary", tidy)).toEqual({ ok: false, error: "Day 2, activity 1 needs a description — fill it in or remove it." });
+  });
+
+  it("leaves a complete document exactly as it was", () => {
+    expect(tidyDeliverable("proposal", PROPOSAL)).toEqual(PROPOSAL);
+    expect(tidyDeliverable("estimate", ESTIMATE)).toEqual(ESTIMATE);
   });
 });
 
@@ -103,6 +162,15 @@ describe("renderDeliverableHtml", () => {
     const html = renderDeliverableHtml("proposal", PROPOSAL, { ...BRAND, mode: "client" });
     expect(html).toContain("Magical Moments Vacations");
     expect(html).toContain("© Disney.");
+  });
+
+  it("lays out a one-option proposal as a single wide card", () => {
+    const one = { ...PROPOSAL, options: [PROPOSAL.options[0]], recommendation: "Close to the parks, easy on the budget." };
+    const html = renderDeliverableHtml("proposal", one, { ...BRAND, mode: "client" });
+    expect(html).toContain('class="options single"');
+    expect(html).toContain("Why it's a great fit");
+    expect(html).not.toContain("My recommendation");
+    expect(renderDeliverableHtml("proposal", PROPOSAL, { ...BRAND, mode: "client" })).toContain("My recommendation");
   });
 
   it("shows 'Add price' where a price is missing", () => {

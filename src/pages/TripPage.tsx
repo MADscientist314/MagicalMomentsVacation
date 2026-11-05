@@ -159,6 +159,7 @@ export function TripPage({ id }: { id: string }) {
               deliverables={trip.deliverables}
               planned={planned}
               threadBusy={busy}
+              hasMaterial={Boolean(d.material) || trip.messages.some((m) => m.role === "user" && m.content.includes("[Attached: "))}
               onChanged={refresh}
             />
             <ImageStudio key={id} owner={{ type: "trip", id }} purpose="card" defaultShape="portrait" fileStem={fileStem(trip.title, "trip")} />

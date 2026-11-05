@@ -6,6 +6,7 @@ import {
   documentPhotoIds,
   HAS_PICTURES,
   renderDeliverableHtml,
+  tidyDeliverable,
   validateDeliverable,
   type DeliverableData,
   type Itinerary,
@@ -100,13 +101,14 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
 
   /** Saves the edits as a new version; true when saved. */
   const save = async (): Promise<boolean> => {
-    const checked = validateDeliverable(record.kind, data);
+    // Empty rows (a removed option's leftovers, a blank activity) are dropped rather than refused.
+    const checked = validateDeliverable(record.kind, tidyDeliverable(record.kind, data));
     if (!checked.ok) {
-      setError("Something in that edit doesn't fit — check every field has a value.");
+      setError(checked.error);
       return false;
     }
     try {
-      const saved = await saveDeliverableEdit(record.id, data);
+      const saved = await saveDeliverableEdit(record.id, checked.data);
       setError(null);
       setCurrentId(saved.id);
       onSaved();
@@ -231,6 +233,7 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
                 onChange={(v) => {
                   setData(v as DeliverableData);
                   setDirty(true);
+                  setError(null);
                 }}
               />
             </div>

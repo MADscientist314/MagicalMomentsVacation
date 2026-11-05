@@ -37,6 +37,14 @@ const PRICE_KEYS = new Set(["amount", "unitPrice"]);
 /** Picture ids: set from the Pictures panel, never typed or copied into a new row. */
 export const PICTURE_KEYS = new Set(["photo", "coverPhoto"]);
 
+/** What a new row looks like when a list is empty (normally a new row copies the shape of the first). */
+export const ROW_TEMPLATES: Record<string, unknown> = {
+  items: { time: null, text: "" },
+  days: { title: "", items: [] },
+  options: { name: "", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } },
+  lineItems: { label: "", qty: 1, unit: "", unitPrice: null, note: "" },
+};
+
 /** A blank row shaped like an existing one, for "Add another". */
 export function emptyLike(value: unknown, key = ""): unknown {
   if (Array.isArray(value)) return [];

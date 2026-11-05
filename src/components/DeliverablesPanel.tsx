@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { IconFileText, IconSparkles } from "@tabler/icons-react";
-import type { DeliverableMeta } from "../../shared/conversations";
+import { MAX_MESSAGE, type DeliverableMeta } from "../../shared/conversations";
 import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind } from "../../shared/deliverables";
 import { streamPost } from "../lib/streamDraft";
 import { sendToThread } from "../lib/threadStore";
 import { DeliverableModal } from "./DeliverableModal";
 import { Sparkles } from "./Sparkles";
+import { TextBox } from "./TextBox";
 
 const SUGGEST =
   "Research and suggest 2–3 options for this trip (resorts, ships or packages) that suit this family: what's included, who each suits, and sources. Mark any prices \"verify before quoting\".";
@@ -16,28 +17,35 @@ interface Props {
   deliverables: DeliverableMeta[];
   planned: boolean;
   threadBusy: boolean;
+  /** The trip came with a supplier itinerary or email, so a one-option proposal is the likely ask. */
+  hasMaterial: boolean;
   onChanged(): void;
 }
+
+type Shape = "one" | "compare";
+const OPTIONS_PREFIX = "Here are the options I'd like to compare:\n";
 
 const when = (ms: number) =>
   new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
-export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, threadBusy, onChanged }: Props) {
+export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, threadBusy, hasMaterial, onChanged }: Props) {
   const [making, setMaking] = useState<DeliverableKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [proposalOpen, setProposalOpen] = useState(false);
+  const [shape, setShape] = useState<Shape>(hasMaterial ? "one" : "compare");
   const [myOptions, setMyOptions] = useState("");
 
   const busy = making !== null || threadBusy;
+  const optionsLimit = MAX_MESSAGE - OPTIONS_PREFIX.length;
 
-  const make = (kind: DeliverableKind) => {
+  const make = (kind: DeliverableKind, options?: Shape) => {
     if (busy) return;
     setMaking(kind);
     setError(null);
     void streamPost(
       `/api/conversations/${tripId}/deliverables`,
-      { kind },
+      options ? { kind, options } : { kind },
       {
         text: () => {},
         status: () => {},
@@ -87,32 +95,59 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
 
           {proposalOpen && (
             <div className="proposal-panel">
-              <p className="muted-note">
-                Compare 2–4 options. I can research ideas online, you can list your own, or both. Real availability and prices
-                come from your supplier and Travefy tools; I'll leave “Add price” for you to fill in.
-              </p>
-              <button type="button" className="btn-quiet" disabled={busy} onClick={() => addToConversation(SUGGEST)}>
-                <IconSparkles size={14} aria-hidden /> Suggest options for me
-              </button>
-              <label className="field" htmlFor="my-options">
-                <span className="field-label">My options (and prices, if you have them)</span>
-                <textarea
-                  id="my-options"
-                  value={myOptions}
-                  placeholder={"Pop Century, 7 nights $4,200\nPolynesian, 7 nights $9,800"}
-                  onChange={(e) => setMyOptions(e.target.value)}
-                />
-              </label>
+              <div className="choices" role="radiogroup" aria-label="What kind of proposal?">
+                {(["one", "compare"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={shape === s}
+                    className={shape === s ? "choice chosen" : "choice"}
+                    onClick={() => setShape(s)}
+                  >
+                    {s === "one" ? "Just this trip" : "Compare options"}
+                  </button>
+                ))}
+              </div>
+              {shape === "one" ? (
+                <p className="muted-note">
+                  One polished option: the trip as planned here, including any itinerary you pasted or attached. You can change the
+                  wording before you send it.
+                </p>
+              ) : (
+                <>
+                  <p className="muted-note">
+                    Compare 2–4 options. I can research ideas online, you can list your own, or both. Real availability and prices
+                    come from your supplier and Travefy tools; I'll leave “Add price” for you to fill in.
+                  </p>
+                  <button type="button" className="btn-quiet" disabled={busy} onClick={() => addToConversation(SUGGEST)}>
+                    <IconSparkles size={14} aria-hidden /> Suggest options for me
+                  </button>
+                  <label className="field" htmlFor="my-options">
+                    <span className="field-label">My options (and prices, if you have them)</span>
+                    <TextBox
+                      id="my-options"
+                      rows={3}
+                      limit={optionsLimit}
+                      value={myOptions}
+                      placeholder={"Pop Century, 7 nights $4,200\nPolynesian, 7 nights $9,800"}
+                      onChange={setMyOptions}
+                    />
+                  </label>
+                </>
+              )}
               <div className="proposal-actions">
-                <button
-                  type="button"
-                  className="btn-quiet"
-                  disabled={busy || !myOptions.trim()}
-                  onClick={() => addToConversation(`Here are the options I'd like to compare:\n${myOptions.trim()}`) && setMyOptions("")}
-                >
-                  Add to the trip chat
-                </button>
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => make("proposal")}>
+                {shape === "compare" && (
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    disabled={busy || !myOptions.trim() || myOptions.length > optionsLimit}
+                    onClick={() => addToConversation(`${OPTIONS_PREFIX}${myOptions.trim()}`) && setMyOptions("")}
+                  >
+                    Add to the trip chat
+                  </button>
+                )}
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => make("proposal", shape)}>
                   Make the proposal
                 </button>
               </div>

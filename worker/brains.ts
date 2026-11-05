@@ -4,6 +4,7 @@ import business from "../brains/reference/business.md?raw";
 import compliance from "../brains/reference/compliance.md?raw";
 import bookingWindows from "../brains/reference/booking-windows.md?raw";
 import fitRules from "../brains/reference/fit-rules.md?raw";
+import knowHow from "../brains/reference/know-how.md?raw";
 import magicMail from "../brains/skills/magic-mail/SKILL.md?raw";
 import welcomeCenter from "../brains/skills/welcome-center/SKILL.md?raw";
 import inboxHelper from "../brains/skills/inbox-helper/SKILL.md?raw";
@@ -19,6 +20,7 @@ export const BRAINS: Record<string, string> = {
   "reference/compliance": compliance,
   "reference/booking-windows": bookingWindows,
   "reference/fit-rules": fitRules,
+  "reference/know-how": knowHow,
   "skills/magic-mail": magicMail,
   "skills/welcome-center": welcomeCenter,
   "skills/inbox-helper": inboxHelper,

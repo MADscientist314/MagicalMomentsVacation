@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { splitDraft } from "../../shared/sections";
 import type { ChatState, ChatTurn } from "../lib/chatState";
 import { renderMarkdown } from "../lib/markdown";
@@ -11,6 +11,34 @@ function Markdown({ md }: { md: string }) {
 }
 
 const DAY_PLAN = /^###\s+Day\b/m;
+const LONG = 1_500;
+
+/**
+ * Her message. An attached file shows as its name, with its text folded away; a long paste shows
+ * its start, with the rest a click away.
+ */
+function UserBubble({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const at = text.indexOf("[Attached: ");
+  if (at < 0 && text.length <= LONG) return <div className="bubble bubble-user">{text}</div>;
+  const files = [...text.matchAll(/^\[Attached: (.+)\]$/gm)].map((m) => m[1]);
+  const own = at < 0 ? `${text.slice(0, 600).trimEnd()}…` : text.slice(0, at).trim();
+  return (
+    <div className="bubble bubble-user">
+      {open ? text : own}
+      {!open && files.length > 0 && (
+        <ul className="attached-files">
+          {files.map((f, i) => (
+            <li key={i}>📎 {f}</li>
+          ))}
+        </ul>
+      )}
+      <button type="button" className="bubble-more" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {open ? "Show less" : files.length ? "Show what was attached" : "Show all"}
+      </button>
+    </div>
+  );
+}
 
 /** A trip reply: day blocks with Copy day, Jillian-only notes folded away, sources. */
 function TripReply({ turn, current, busy }: { turn: ChatTurn; current: boolean; busy: boolean }) {
@@ -81,11 +109,7 @@ export function ConversationThread({ state, mode }: { state: ChatState; mode: "t
               </details>
             );
           }
-          return (
-            <div key={i} className="bubble bubble-user">
-              {t.content}
-            </div>
-          );
+          return <UserBubble key={i} text={t.content} />;
         }
         if (mode === "trip") return <TripReply key={i} turn={t} current={i === currentPlan} busy={busy && last} />;
         return (

@@ -1,5 +1,6 @@
 import { IconSparkles } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
+import { TextBox } from "./TextBox";
 
 interface Props {
   tool: ToolDef;
@@ -12,12 +13,13 @@ interface Props {
 }
 
 export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice }: Props) {
+  const tooLong = tool.fields.find((f) => (values[f.id] ?? "").length > f.maxLength);
   return (
     <form
       className="card"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!busy) onSubmit();
+        if (!busy && !tooLong) onSubmit();
       }}
     >
       {tool.fields.map((f) => {
@@ -61,13 +63,14 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
                 ))}
               </select>
             ) : f.kind === "textarea" ? (
-              <textarea
+              <TextBox
                 id={id}
+                rows={f.maxLength > 5_000 ? 8 : 4}
                 value={value}
                 required={f.required}
-                maxLength={f.maxLength}
+                limit={f.maxLength}
                 placeholder={f.placeholder}
-                onChange={(e) => onChange(f.id, e.target.value)}
+                onChange={(v) => onChange(f.id, v)}
               />
             ) : (
               <input
@@ -83,13 +86,13 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
           </label>
         );
       })}
-      {error && (
+      {(error || tooLong) && (
         <p className="message message-error" role="alert">
-          {error}
+          {tooLong ? `“${tooLong.label}” is too long — keep it under ${tooLong.maxLength.toLocaleString("en-US")} characters.` : error}
         </p>
       )}
       {notice && <p className="message message-info">{notice}</p>}
-      <button type="submit" className="btn-primary" disabled={busy}>
+      <button type="submit" className="btn-primary" disabled={busy || Boolean(tooLong)}>
         <IconSparkles size={18} aria-hidden />
         {busy ? "Working on it…" : "Draft it"}
       </button>

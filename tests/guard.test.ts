@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findSensitive, luhnValid, maskContacts } from "../shared/guard";
+import { findSensitive, luhnValid, maskContacts, redactSensitive } from "../shared/guard";
 
 describe("findSensitive", () => {
   it("flags a spaced Visa test number", () => {
@@ -72,5 +72,22 @@ describe("findSensitive with travel wording", () => {
   it("still flags a passport number written right after the word passport", () => {
     expect(findSensitive("Passport # X12345678")).toEqual(["passport"]);
     expect(findSensitive("passport 567891234")).toEqual(["passport"]);
+  });
+});
+
+describe("redactSensitive", () => {
+  it("takes card, SSN and passport numbers out of an attached document and counts them", () => {
+    const doc = "Guest: Ana R. Passport No. X12345678. Paid with 4111 1111 1111 1111. SSN 123-45-6789. Booking 87654321.";
+    const { text, removed } = redactSensitive(doc);
+    expect(text).toBe(
+      "Guest: Ana R. Passport No. [passport number removed]. Paid with [card number removed]. SSN [SSN removed]. Booking 87654321.",
+    );
+    expect(removed).toEqual({ card: 1, ssn: 1, passport: 1 });
+    expect(findSensitive(text)).toEqual([]);
+  });
+
+  it("leaves confirmation numbers, phone numbers and dates alone", () => {
+    const doc = "Confirmation 12345678, call 555-123-4567, sail 2027-06-14. Bring your passports; booking 1234567.";
+    expect(redactSensitive(doc)).toEqual({ text: doc, removed: { card: 0, ssn: 0, passport: 0 } });
   });
 });

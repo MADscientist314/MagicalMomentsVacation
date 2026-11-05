@@ -39,11 +39,11 @@ async function plannedTrip(jillianSays?: string) {
   return c;
 }
 
-async function generate(id: string, kind: string, d: ConversationDeps) {
+async function generate(id: string, kind: string, d: ConversationDeps, options?: string) {
   const req = new Request(`https://app.test/api/conversations/${id}/deliverables`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind }),
+    body: JSON.stringify(options ? { kind, options } : { kind }),
   });
   const res = await handleConversations(req, env, [id, "deliverables"], d);
   if (!res.headers.get("content-type")?.includes("event-stream")) return { res, events: [] as ServerEvent[] };
@@ -111,6 +111,31 @@ describe("generating a deliverable", () => {
     const { events } = await generate(c.id, "proposal", deps({ events: json(proposal) }).d);
     const saved = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data as Proposal;
     expect(saved.options.map((o) => o.price.amount)).toEqual([null, null, null]);
+  });
+
+  it("keeps prices from the supplier itinerary or email pasted into the trip details", async () => {
+    const c = await createConversation(
+      env.DB,
+      { kind: "trip", title: "Rivera family", details: { lastName: "Rivera", material: "Package total: $3,450.00 for 4 nights" } },
+      1,
+    );
+    await appendMessages(env.DB, c.id, [{ role: "user", content: "**Client:** Rivera family" }, { role: "assistant", content: "### Day 1\nRest" }], 2);
+    const option = (name: string, amount: number) => ({ name, summary: "", highlights: [], bestFor: "", price: { amount, note: "" } });
+    const proposal: Proposal = { title: "Your trip", intro: "", options: [option("Portofino Bay", 3450)], recommendation: "", nextSteps: [], verifyNotes: [] };
+    const { events } = await generate(c.id, "proposal", deps({ events: json(proposal) }).d);
+    const saved = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data as Proposal;
+    expect(saved.options.map((o) => o.price.amount)).toEqual([3450]);
+  });
+
+  it("makes a one-option proposal when asked for just this trip", async () => {
+    const c = await plannedTrip("Portofino Bay is $3,450");
+    const option = (name: string) => ({ name, summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } });
+    const proposal: Proposal = { title: "Your trip", intro: "", options: [option("Portofino Bay"), option("Extra")], recommendation: "", nextSteps: [], verifyNotes: [] };
+    const { fake, d } = deps({ events: json(proposal) });
+    const { events } = await generate(c.id, "proposal", d, "one");
+    expect(JSON.stringify(fake.calls[0].messages)).toContain("one-option proposal");
+    const saved = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data as Proposal;
+    expect(saved.options.map((o) => o.name)).toEqual(["Portofino Bay"]);
   });
 
   it("reports a friendly error and saves nothing when the JSON doesn't fit", async () => {
@@ -211,6 +236,28 @@ describe("reading and editing a deliverable", () => {
     const { id } = await addDeliverable(env.DB, c.id, "proposal", proposal, 3);
     const bad = await call("POST", [id, "edit"], { data: { ...proposal, coverPhoto: theirs.id } });
     expect(bad.status).toBe(400);
+  });
+
+  it("saves a proposal trimmed down to one option (John's beta test)", async () => {
+    const c = await plannedTrip();
+    const option = (name: string) => ({ name, summary: "Nice", highlights: ["Pool"], bestFor: "Families", price: { amount: null, note: "" } });
+    const three: Proposal = { title: "Options", intro: "", options: [option("A"), option("B"), option("C")], recommendation: "", nextSteps: [], verifyNotes: [] };
+    const { id } = await addDeliverable(env.DB, c.id, "proposal", three, 3);
+    const trimmed = { ...three, title: "Your Universal trip", options: [option("A")] };
+    const res = await call("POST", [id, "edit"], { data: trimmed });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()) as { id: string; version: number };
+    expect(saved.version).toBe(2);
+    expect(((await getDeliverable(env.DB, saved.id))?.data as Proposal).options).toHaveLength(1);
+  });
+
+  it("says what to fix when an edit can't be saved", async () => {
+    const c = await plannedTrip();
+    const { id } = await addDeliverable(env.DB, c.id, "itinerary", ITINERARY, 3);
+    const edited = { ...ITINERARY, days: [{ title: "Day 1 — Arrival", items: [{ time: "3:00 PM", text: "" }] }] };
+    const res = await call("POST", [id, "edit"], { data: edited });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Day 1, activity 1 needs a description — fill it in or remove it." });
   });
 
   it("rejects an edit that breaks the shape", async () => {

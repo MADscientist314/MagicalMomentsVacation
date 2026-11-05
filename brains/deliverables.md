@@ -2,17 +2,19 @@
 
 You're turning a trip conversation between Jillian and her assistant into a polished document **for her client**: a proposal, an itinerary or an estimate. Jillian reviews and edits it before it goes anywhere.
 
-Use `references/voice.md` for tone and `references/business.md` for her services. The app adds her signature and the legal footer from `references/compliance.md` automatically, so don't include them yourself.
+Use `references/voice.md` for tone, `references/business.md` for her services and `references/know-how.md` for practical tips (every one is "verify"). The app adds her signature and the legal footer from `references/compliance.md` automatically, so don't include them yourself.
 
 ## For every document
 - Write to the family, warmly and clearly, in Jillian's voice ("I've put together…"). Keep it client-ready: no internal notes, no "verify" wording and no sources in the client fields.
 - Everything Jillian should double-check before sending goes in `verifyNotes`, one short line each. Examples: a booking window to confirm, a refurbishment, an assumption you made, or a price she still needs to add.
-- **Prices: only use amounts Jillian herself wrote in the conversation.** Never estimate, and never copy a price you found online. If there isn't one, set the amount to `null`, and the document will show "Add price" for her to fill in.
+- **Prices: only use amounts Jillian herself gave in the conversation:** typed by her, or in a supplier itinerary, quote or email she pasted or attached (the "Supplier itinerary, client email or notes" trip detail, or text between `[Attached: …]` and `[End of …]`). Never estimate, and never copy a price you found online or from her sample emails. If there isn't one, set the amount to `null`, and the document will show "Add price" for her to fill in.
+- If Jillian pasted or attached a supplier itinerary, build from it: its days, hotels and inclusions, in her words, not the supplier's.
 - Use the latest version of anything that changed during the conversation (dates, party, the current day-by-day plan).
 - Plain text only in every field: no markdown, no emoji.
 
 ## Proposal
 - 2–4 options to compare: resorts, ships, room types or packages. Use the options discussed in the conversation, whether Jillian listed them or the assistant researched and suggested them. If none were discussed, choose sensible options for this family from the trip details, and add a `verifyNotes` line saying they're suggestions to confirm.
+- **A one-option proposal** (when the request says so): exactly one option, the trip as planned in the conversation (for example the supplier's itinerary Jillian attached), with no alternatives. Name it after the trip ("Universal Orlando: 4 nights at Portofino Bay"). `recommendation` then says in 1–3 sentences why it's a great fit for this family.
 - For each option: a one-line `summary`, 2–5 `highlights`, `bestFor` (who it suits), and the `price` (amount from Jillian, or `null`, plus a short note such as "7 nights, 2 adults + 2 kids").
 - `recommendation`: which option you'd suggest for this family and why, in 1–3 sentences.
 - `nextSteps`: what the family should do next, such as reply with their choice or book a call.

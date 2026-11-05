@@ -12,6 +12,7 @@ All of them are in the `brains/` folder on GitHub.
 | Her services, planning tiers, Blueprint Call link, payment-reminder timing | `brains/reference/business.md` |
 | The legal footer, name format, MMV and Disney EarMarked rules | `brains/reference/compliance.md` |
 | When dining, Lightning Lane, Express Pass and cruise reservations open | `brains/reference/booking-windows.md` |
+| Practical tips she gives clients (getting around, documents, rope drop, what to pack), all marked "verify" | `brains/reference/know-how.md` |
 | Her rules for which inquiries are a good fit (budgets, lead time, destinations) | `brains/reference/fit-rules.md` |
 | How a whole tool behaves | `brains/skills/<tool>/SKILL.md` |
 | How the "Ask me anything" chat talks and what it won't do | `brains/chat.md` |
@@ -21,7 +22,7 @@ All of them are in the `brains/` folder on GitHub.
 Look for lines marked **TODO**. Those are the gaps Jillian still needs to fill in. Until she does, the assistant leaves placeholders and says "verify" instead of guessing. Most urgent:
 1. `fit-rules.md`: a first draft from John's numbers (commission, the about-$5,000 rule of thumb, lead time). Jillian should confirm them and fill in the remaining TODOs; Welcome Center's "worth your time" estimate depends on them.
 2. `compliance.md`: paste in the MMV brand guide and EarMarked rules.
-3. `voice.md`: paste 2–3 real emails Jillian has sent (with client names removed).
+3. `voice.md`: three of her real emails are in (November 2026), with client names, emails, booking numbers, prices and her payment link taken out. Her signature still needs her phone number (TODO).
 4. `business.md`: add the Blueprint Call booking link and the payment-reminder schedule.
 5. `compliance.md`: if client documents need a disclaimer (e.g. "prices subject to availability"), write its exact wording there.
 
@@ -95,14 +96,22 @@ Images are made by Google's **Nano Banana**, about 3¢ each.
 
 On a trip's page, the **Client deliverables** panel makes a proposal, an itinerary or an estimate from the conversation.
 
-- **Prices only come from Jillian.** Any price she didn't type into the trip conversation herself shows as **Add price**. Prices Claude found online are only hints, so she should check them with the supplier.
-- **Review & edit** lets her change any text or price and **Save as new version**; older versions are kept. **Client copy** is what the family sees: no internal notes.
+- **Just this trip or Compare options.** A proposal can be one polished option (the trip as planned, for example from a supplier's itinerary she attached) or 2–4 options side by side. When the trip has a pasted or attached itinerary, **Just this trip** is picked for her.
+- **Prices only come from Jillian.** Any price she didn't type into the trip conversation herself, or that isn't in the email or itinerary she pasted or attached, shows as **Add price**. Prices Claude found online are only hints, so she should check them with the supplier.
+- **Review & edit** lets her change any text or price, add or remove options, days and lines, and **Save as new version**; older versions are kept. Empty lines are dropped when she saves. If something is still missing, the message says exactly which field to fill in. **Client copy** is what the family sees: no internal notes.
 - **PDF** opens the print dialog; choose **Save as PDF**. **HTML** saves a single web page she can attach or upload. If a price still says "Add price", both warn first.
 - Her signature and the legal footer are added automatically from `voice.md` and `compliance.md`, so changing those files changes new documents too.
 
+## Pasting emails and attaching files
+
+- The trip chat and the new trip's **Supplier itinerary, client email or notes** box take up to 50,000 characters each (about 20 pages). The other tools' boxes have their own limits (Inbox Helper 20,000, Welcome Center 12,000). Every box grows as she types, and a counter appears when she's close to the limit.
+- Pasting an email that arrives as code (lots of `<div>` and `&nbsp;`) is turned into plain text automatically.
+- In Adventure Planner, the **paperclip** (or dragging a file onto the box) reads a PDF, such as a supplier's draft itinerary, or a saved email (.eml, including any PDF attached to it). Its text goes into the box between `[Attached: …]` and `[End of …]` lines, so she can check it before sending. The file itself isn't kept.
+- A scanned PDF (a picture of the pages) has no text to read: she should ask the supplier for the original PDF or copy the text in. Outlook .msg files can't be read: forward the email to herself and paste it, or save it as a PDF.
+
 ## What never to paste in
 
-- **Card numbers, Social Security numbers or passport numbers.** The assistant blocks these and won't send them, but don't paste them anyway.
+- **Card numbers, Social Security numbers or passport numbers.** The assistant blocks these when typed and takes them out of pasted text and attached files (it says when it did), but don't paste them anyway.
 - Client email addresses and phone numbers are fine to leave in a pasted inquiry. They're hidden automatically before anything is sent, because no draft needs them.
 
 ## Costs and keys

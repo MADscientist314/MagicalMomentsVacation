@@ -116,61 +116,168 @@ export const DELIVERABLE_SCHEMAS: Record<DeliverableKind, Record<string, unknown
 
 type Result = { ok: true; data: DeliverableData } | { ok: false; error: string };
 const MAX_TEXT = 5_000;
+const MAX_LIST = 50;
 
-const isText = (x: unknown, required = false): x is string =>
-  typeof x === "string" && x.length <= MAX_TEXT && (!required || x.trim().length > 0);
-const isTextList = (x: unknown): x is string[] => Array.isArray(x) && x.length <= 50 && x.every((s) => isText(s));
+/** Fewest and most rows each list can have; the editor hides Remove and "Add another" at these. */
+export const LIST_LIMITS: Record<string, { min: number; max: number }> = {
+  options: { min: 1, max: 4 },
+  days: { min: 1, max: 60 },
+  lineItems: { min: 1, max: 100 },
+  items: { min: 0, max: 100 },
+};
+
 const isPrice = (x: unknown): x is number | null => x === null || (typeof x === "number" && Number.isFinite(x) && x >= 0);
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
 const isPhotoId = (x: unknown) => x === undefined || (typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x));
+const TOO_LONG = `keep it under ${MAX_TEXT.toLocaleString("en-US")} characters`;
+
+/** A problem with one piece of text, said the way Jillian would fix it, or null. */
+function text(x: unknown, what: string, ifBlank?: string): string | null {
+  if (typeof x !== "string") return `${what} is missing.`;
+  if (x.length > MAX_TEXT) return `${what} is too long — ${TOO_LONG}.`;
+  if (ifBlank && !x.trim()) return ifBlank;
+  return null;
+}
+
+function lines(x: unknown, what: string): string | null {
+  if (!Array.isArray(x) || !x.every((s) => typeof s === "string")) return `${what} is missing.`;
+  if (x.length > MAX_LIST) return `${what} can have up to ${MAX_LIST} lines.`;
+  const long = x.findIndex((s: string) => s.length > MAX_TEXT);
+  return long < 0 ? null : `${what}, line ${long + 1} is too long — ${TOO_LONG}.`;
+}
+
+function rows(x: unknown, key: string, none: string, many: string): string | null {
+  const { min, max } = LIST_LIMITS[key];
+  if (!Array.isArray(x) || x.length < min) return none;
+  return x.length > max ? many : null;
+}
+
+const first = (...problems: (string | null)[]) => problems.find((p) => p !== null) ?? null;
+const BAD_PICTURE = "One of the pictures isn't right — remove it and add it again.";
 
 function checkProposal(d: Record<string, unknown>): string | null {
-  if (!isText(d.title, true) || !isText(d.intro) || !isText(d.recommendation)) return "missing text";
-  if (!isPhotoId(d.coverPhoto)) return "bad picture";
-  if (!isTextList(d.nextSteps) || !isTextList(d.verifyNotes)) return "bad lists";
-  if (!Array.isArray(d.options) || d.options.length < 2 || d.options.length > 4) return "needs 2–4 options";
-  for (const o of d.options) {
-    if (!isObject(o) || !isText(o.name, true) || !isText(o.summary) || !isText(o.bestFor) || !isTextList(o.highlights)) {
-      return "bad option";
-    }
-    if (!isObject(o.price) || !isPrice(o.price.amount) || !isText(o.price.note)) return "bad price";
-    if (!isPhotoId(o.photo)) return "bad picture";
+  const top = first(
+    text(d.title, "The title", "Give the proposal a title."),
+    text(d.intro, "The opening note"),
+    text(d.recommendation, "The recommendation"),
+    lines(d.nextSteps, "Next steps"),
+    lines(d.verifyNotes, "Your notes"),
+    isPhotoId(d.coverPhoto) ? null : BAD_PICTURE,
+    rows(d.options, "options", "A proposal needs at least one option.", `A proposal can have up to ${LIST_LIMITS.options.max} options.`),
+  );
+  if (top) return top;
+  for (const [i, o] of (d.options as unknown[]).entries()) {
+    const n = `Option ${i + 1}`;
+    if (!isObject(o)) return `${n} is missing.`;
+    const problem = first(
+      text(o.name, `${n}'s name`, `${n} needs a name — fill it in or remove the option.`),
+      text(o.summary, `${n}'s summary`),
+      lines(o.highlights, `${n}'s highlights`),
+      text(o.bestFor, `${n}'s “best for”`),
+      isObject(o.price) && isPrice(o.price.amount) ? text(o.price.note, `${n}'s price note`) : `${n}'s price should be a number of dollars.`,
+      isPhotoId(o.photo) ? null : BAD_PICTURE,
+    );
+    if (problem) return problem;
   }
   return null;
 }
 
 function checkItinerary(d: Record<string, unknown>): string | null {
-  if (!isText(d.title, true) || !isText(d.intro)) return "missing text";
-  if (!isPhotoId(d.coverPhoto)) return "bad picture";
-  if (!isTextList(d.tips) || !isTextList(d.verifyNotes)) return "bad lists";
-  if (!Array.isArray(d.days) || d.days.length < 1 || d.days.length > 60) return "needs days";
-  for (const day of d.days) {
-    if (!isObject(day) || !isText(day.title, true) || !Array.isArray(day.items)) return "bad day";
-    if (!isPhotoId(day.photo)) return "bad picture";
-    for (const item of day.items) {
-      if (!isObject(item) || !isText(item.text, true) || !(item.time === null || item.time === undefined || isText(item.time))) {
-        return "bad item";
-      }
+  const top = first(
+    text(d.title, "The title", "Give the itinerary a title."),
+    text(d.intro, "The opening note"),
+    lines(d.tips, "Good to know"),
+    lines(d.verifyNotes, "Your notes"),
+    isPhotoId(d.coverPhoto) ? null : BAD_PICTURE,
+    rows(d.days, "days", "An itinerary needs at least one day.", `An itinerary can have up to ${LIST_LIMITS.days.max} days.`),
+  );
+  if (top) return top;
+  for (const [i, day] of (d.days as unknown[]).entries()) {
+    const n = `Day ${i + 1}`;
+    if (!isObject(day)) return `${n} is missing.`;
+    const problem = first(
+      text(day.title, `${n}'s title`, `${n} needs a title.`),
+      isPhotoId(day.photo) ? null : BAD_PICTURE,
+      rows(day.items, "items", `${n}'s activities are missing.`, `${n} can have up to ${LIST_LIMITS.items.max} activities.`),
+    );
+    if (problem) return problem;
+    for (const [j, item] of (day.items as unknown[]).entries()) {
+      const a = `${n}, activity ${j + 1}`;
+      if (!isObject(item)) return `${a} is missing.`;
+      const itemProblem = first(
+        text(item.text, a, `${a} needs a description — fill it in or remove it.`),
+        item.time === null || item.time === undefined ? null : text(item.time, `${a}'s time`),
+      );
+      if (itemProblem) return itemProblem;
     }
   }
   return null;
 }
 
 function checkEstimate(d: Record<string, unknown>): string | null {
-  if (!isText(d.title, true) || !isTextList(d.notes) || !isTextList(d.verifyNotes)) return "missing text";
-  if (!Array.isArray(d.lineItems) || d.lineItems.length < 1 || d.lineItems.length > 100) return "needs line items";
-  for (const l of d.lineItems) {
-    if (!isObject(l) || !isText(l.label, true) || !isPrice(l.unitPrice) || !isText(l.note)) return "bad line";
-    if (l.unit !== undefined && !isText(l.unit)) return "bad line";
-    if (typeof l.qty !== "number" || !Number.isFinite(l.qty) || l.qty <= 0) return "bad quantity";
+  const top = first(
+    text(d.title, "The title", "Give the estimate a title."),
+    lines(d.notes, "Notes"),
+    lines(d.verifyNotes, "Your notes"),
+    rows(d.lineItems, "lineItems", "An estimate needs at least one line.", `An estimate can have up to ${LIST_LIMITS.lineItems.max} lines.`),
+  );
+  if (top) return top;
+  for (const [i, l] of (d.lineItems as unknown[]).entries()) {
+    const n = `Line ${i + 1}`;
+    if (!isObject(l)) return `${n} is missing.`;
+    const problem = first(
+      text(l.label, `${n}'s item`, `${n} needs an item name — fill it in or remove the line.`),
+      isPrice(l.unitPrice) ? null : `${n}'s price should be a number of dollars.`,
+      text(l.note, `${n}'s note`),
+      l.unit === undefined ? null : text(l.unit, `${n}'s “of what”`),
+      typeof l.qty === "number" && Number.isFinite(l.qty) && l.qty > 0 ? null : `${n}'s “how many” should be more than 0.`,
+    );
+    if (problem) return problem;
   }
   return null;
 }
 
+/** Checks a deliverable's shape; a failure says what to fix ("Option 2 needs a name…"). */
 export function validateDeliverable(kind: DeliverableKind, data: unknown): Result {
-  if (!isObject(data)) return { ok: false, error: "not an object" };
+  if (!isObject(data)) return { ok: false, error: "That document is empty." };
   const problem = kind === "proposal" ? checkProposal(data) : kind === "itinerary" ? checkItinerary(data) : checkEstimate(data);
   return problem ? { ok: false, error: problem } : { ok: true, data: data as unknown as DeliverableData };
+}
+
+const blank = (x: unknown) => typeof x !== "string" || !x.trim();
+const dropBlankLines = (x: unknown) => (Array.isArray(x) ? x.filter((s) => !blank(s)) : x);
+
+/**
+ * Clears out what an edit leaves empty before it's checked and saved: blank lines in lists,
+ * activities and estimate lines with nothing in them, and options or days that are wholly empty.
+ * Anything half filled in is kept, so the check can say what's missing.
+ */
+export function tidyDeliverable(kind: DeliverableKind, data: unknown): unknown {
+  if (!isObject(data)) return data;
+  const d: Record<string, unknown> = { ...data };
+  for (const key of ["nextSteps", "verifyNotes", "tips", "notes"]) if (key in d) d[key] = dropBlankLines(d[key]);
+  if (kind === "proposal" && Array.isArray(d.options)) {
+    d.options = d.options
+      .map((o) => (isObject(o) ? { ...o, highlights: dropBlankLines(o.highlights) } : o))
+      .filter((o) => {
+        if (!isObject(o)) return true;
+        const price: Record<string, unknown> = isObject(o.price) ? o.price : {};
+        const empty = blank(o.name) && blank(o.summary) && blank(o.bestFor) && Array.isArray(o.highlights) && !o.highlights.length;
+        return !(empty && (price.amount ?? null) === null && blank(price.note) && o.photo === undefined);
+      });
+  }
+  if (kind === "itinerary" && Array.isArray(d.days)) {
+    d.days = d.days
+      .map((day) => {
+        if (!isObject(day) || !Array.isArray(day.items)) return day;
+        return { ...day, items: day.items.filter((it) => !(isObject(it) && blank(it.text) && blank(it.time))) };
+      })
+      .filter((day) => !(isObject(day) && blank(day.title) && Array.isArray(day.items) && !day.items.length && day.photo === undefined));
+  }
+  if (kind === "estimate" && Array.isArray(d.lineItems)) {
+    d.lineItems = d.lineItems.filter((l) => !(isObject(l) && blank(l.label) && (l.unitPrice ?? null) === null && blank(l.note)));
+  }
+  return d;
 }
 
 // ---------- totals and price safety ----------
@@ -224,6 +331,7 @@ function photoSrc(photos: Photos | undefined, id: string | undefined): string | 
 }
 
 function proposalBody(p: Proposal, photos?: Photos): string {
+  const single = p.options.length === 1;
   const cards = p.options
     .map((o) => {
       const src = photoSrc(photos, o.photo);
@@ -236,8 +344,8 @@ function proposalBody(p: Proposal, photos?: Photos): string {
 </article>`;
     })
     .join("\n");
-  return `<section class="options">${cards}</section>
-${p.recommendation.trim() ? `<section><h2>My recommendation</h2>${para(p.recommendation)}</section>` : ""}
+  return `<section class="options${single ? " single" : ""}">${cards}</section>
+${p.recommendation.trim() ? `<section><h2>${single ? "Why it's a great fit" : "My recommendation"}</h2>${para(p.recommendation)}</section>` : ""}
 ${p.nextSteps.length ? `<section><h2>Next steps</h2>${list(p.nextSteps)}</section>` : ""}`;
 }
 
@@ -276,7 +384,7 @@ h1{font-size:32px;margin:6px 0 10px}h2{font-size:21px;margin:22px 0 8px}
 header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px}
 .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
 .option{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;break-inside:avoid}
-.option h2{margin-top:0}.option-photo{display:block;width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
+.option h2{margin-top:0}.option-photo{display:block;width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px}.single .option-photo{height:260px}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
 .missing{background:#fff1c9;color:#7a5a00;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:600}
 .day{break-inside:avoid}.items{padding-left:18px}
 .cover{margin:18px 0 6px}.cover img,.day-photo{display:block;width:100%;object-fit:cover;border-radius:12px}

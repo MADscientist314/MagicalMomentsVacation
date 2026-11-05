@@ -99,6 +99,23 @@ describe("Plan it", () => {
     expect(saved[1].content).toBe("### Day 1 — Arrival\nRest");
   });
 
+  it("sends a pasted supplier itinerary along with the trip details, on its own lines", async () => {
+    const material = "Day 1: Arrive MCO, check in at Portofino Bay\nDay 2: Universal Studios, Express included";
+    const id = await newTrip({ ...TRIP, material });
+    const { fake, d } = deps({ events: textEvents("### Day 1 — Arrival\n", "Rest") });
+    await events(await api("POST", `/${id}/plan`, {}, d));
+    expect(JSON.stringify(fake.calls[0].messages)).toContain(
+      "**Supplier itinerary, client email or notes:**\\nDay 1: Arrive MCO, check in at Portofino Bay\\nDay 2",
+    );
+  });
+
+  it("holds up to 50,000 characters of pasted itinerary, and still blocks card numbers in it", async () => {
+    expect((await api("POST", "", { kind: "trip", details: { ...TRIP, material: "x".repeat(50_000) } })).status).toBe(201);
+    expect((await api("POST", "", { kind: "trip", details: { ...TRIP, material: "x".repeat(50_001) } })).status).toBe(400);
+    const card = await api("POST", "", { kind: "trip", details: { ...TRIP, material: "Deposit on 4111 1111 1111 1111" } });
+    expect(card.status).toBe(400);
+  });
+
   it("won't plan the same trip twice", async () => {
     const id = await newTrip();
     await events(await api("POST", `/${id}/plan`, {}, deps({ events: textEvents("Plan") }).d));
@@ -174,10 +191,14 @@ describe("sending messages", () => {
     expect((await getMessages(env.DB, id))[2].content).toBe("Send it to [email]");
   });
 
-  it("rejects an over-long message and a very long conversation", async () => {
+  it("takes a pasted email up to 50,000 characters, and refuses longer ones and very long conversations", async () => {
     const id = await plannedTrip();
-    expect((await api("POST", `/${id}/messages`, { content: "x".repeat(4001) })).status).toBe(400);
-    await appendMessages(env.DB, id, [{ role: "user", content: "y".repeat(100_000) }, { role: "assistant", content: "z".repeat(100_000) }], 2);
+    const tooLong = await api("POST", `/${id}/messages`, { content: "x".repeat(50_001) });
+    expect(tooLong.status).toBe(400);
+    expect(await tooLong.json()).toEqual({ error: "That message is too long — keep it under 50,000 characters." });
+    const evs = await events(await api("POST", `/${id}/messages`, { content: "x".repeat(50_000) }, deps({ events: textEvents("ok") }).d));
+    expect(evs.at(-1)?.event).toBe("done");
+    await appendMessages(env.DB, id, [{ role: "user", content: "y".repeat(200_000) }, { role: "assistant", content: "z".repeat(150_000) }], 2);
     expect((await api("POST", `/${id}/messages`, { content: "more" })).status).toBe(413);
   });
 

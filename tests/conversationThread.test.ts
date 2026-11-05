@@ -32,3 +32,21 @@ describe("ConversationThread (trip)", () => {
     expect(html.match(/Copy day/g)).toHaveLength(2);
   });
 });
+
+describe("her messages", () => {
+  it("shows an attached file by name, with its text folded away", () => {
+    const content = "Make a proposal from this\n\n[Attached: Draft itinerary.pdf (2 pages)]\nDay 1 secret text\n[End of Draft itinerary.pdf]";
+    const html = render([{ role: "user", content }]);
+    expect(html).toContain("Make a proposal from this");
+    expect(html).toContain("📎 Draft itinerary.pdf (2 pages)");
+    expect(html).toContain("Show what was attached");
+    expect(html).not.toContain("Day 1 secret text");
+  });
+
+  it("folds a long paste after its start", () => {
+    const html = render([{ role: "user", content: `Start ${"x".repeat(2_000)} END` }]);
+    expect(html).toContain("Start");
+    expect(html).toContain("Show all");
+    expect(html).not.toContain("END");
+  });
+});
