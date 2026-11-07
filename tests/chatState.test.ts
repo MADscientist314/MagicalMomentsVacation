@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatReducer, initialChatState, messagesForApi, type ChatState } from "../src/lib/chatState";
+import { chatReducer, initialChatState, messagesForApi, STOPPED, STOPPED_RESTORED, type ChatState } from "../src/lib/chatState";
 
 const sent = (text = "What's new at EPCOT?") => chatReducer(initialChatState, { type: "send", text, notice: null });
 
@@ -56,6 +56,33 @@ describe("chatReducer", () => {
     expect(s.turns).toEqual([]);
     expect(s.restore).toBe("Hmm");
     expect(s.error).toBe("I can't help with that one — try rewording.");
+  });
+
+  it("takes the turn back calmly when she presses Stop, with her words back in the box", () => {
+    const saved: ChatState = { ...initialChatState, turns: [{ role: "user", content: "Plan it" }, { role: "assistant", content: "Day 1…" }] };
+    let s = chatReducer(saved, { type: "send", text: "Add a pool day", notice: null });
+    s = chatReducer(s, { type: "status", phase: "searching" });
+    s = chatReducer(s, { type: "text", text: "Sure, here" });
+    s = chatReducer(s, { type: "stopped" });
+    expect(s.turns).toEqual(saved.turns);
+    expect(s).toMatchObject({ phase: "idle", error: null, restore: "Add a pool day", notice: STOPPED_RESTORED, pending: null });
+  });
+
+  it("stops Plan it without handing anything back", () => {
+    let s = chatReducer(initialChatState, { type: "send", text: "Plan this trip, please.", notice: null, restorable: false });
+    s = chatReducer(s, { type: "stopped" });
+    expect(s).toMatchObject({ turns: [], phase: "idle", restore: null, notice: STOPPED });
+  });
+
+  it("ignores Stop when nothing is running", () => {
+    const idle: ChatState = { ...initialChatState, turns: [{ role: "user", content: "Hi" }, { role: "assistant", content: "Hello" }] };
+    expect(chatReducer(idle, { type: "stopped" })).toBe(idle);
+  });
+
+  it("keeps a note on screen across a reload when asked", () => {
+    const s = chatReducer(initialChatState, { type: "load", turns: [], notice: STOPPED });
+    expect(s.notice).toBe(STOPPED);
+    expect(chatReducer(s, { type: "load", turns: [] }).notice).toBeNull();
   });
 
   it("starts fresh on reset", () => {

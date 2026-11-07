@@ -44,6 +44,12 @@ async function sign(expiry: number, password: string): Promise<string> {
 const cookie = (value: string, maxAge: number) =>
   `${SESSION_COOKIE}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
 
+/** A fresh session cookie, good for 30 days from `now`. Opening the app renews it, so she stays signed in while she uses it. */
+export async function sessionCookie(env: Env, now = Date.now()): Promise<string> {
+  const expiry = Math.floor(now / 1000) + SESSION_SECONDS;
+  return cookie(`${expiry}.${await sign(expiry, env.APP_PASSWORD)}`, SESSION_SECONDS);
+}
+
 export async function hasValidSession(request: Request, env: Env, now = Date.now()): Promise<boolean> {
   if (!normalizePassword(env.APP_PASSWORD ?? "")) return false;
   const match = (request.headers.get("cookie") ?? "").match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=(\\d+)\\.([\\w-]+)`));
@@ -69,11 +75,7 @@ export async function handleLogin(request: Request, env: Env, now = Date.now()):
     return Response.json({ error: "That's not quite the magic word — try again." }, { status: 401 });
   }
   await forgetLoginAttempt(env.DB, attempt.id);
-  const expiry = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
-  return Response.json(
-    { ok: true },
-    { headers: { "set-cookie": cookie(`${expiry}.${await sign(expiry, env.APP_PASSWORD)}`, SESSION_SECONDS) } },
-  );
+  return Response.json({ ok: true }, { headers: { "set-cookie": await sessionCookie(env, now) } });
 }
 
 export function handleLogout(): Response {

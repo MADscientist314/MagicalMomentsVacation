@@ -16,7 +16,7 @@ import {
 import { DETAILS_CHANGED } from "../shared/conversations";
 import { findSensitive, SENSITIVE_MESSAGES } from "../shared/guard";
 import { BRAINS } from "./brains";
-import { baseParams, defaultClient, streamClaude, UserFacingError } from "./claude";
+import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, UserFacingError } from "./claude";
 import type { ConversationDeps } from "./conversations";
 import { buildDeliverableSystem, extractFooter, extractSignature } from "./prompt";
 import * as store from "./store";
@@ -69,7 +69,7 @@ export async function handleGenerateDeliverable(
   const typed = history.filter((m, i) => m.role === "user" && i > 0 && !m.content.startsWith(DETAILS_CHANGED));
   const allowed = new Set([...typed.flatMap((m) => numbersIn(m.content)), ...numbersIn(convo.details.material ?? "")]);
 
-  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${kind} deliverable`, {
+  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? KEEPALIVE_MS, `${kind} deliverable`, {
     forwardText: false,
     async beforeDone({ text, stopReason }) {
       if (stopReason === "refusal") throw new UserFacingError("I can't make that one — try rewording what's in the trip.");

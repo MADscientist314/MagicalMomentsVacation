@@ -4,6 +4,7 @@ import { appendMessages, createConversation, getConversation, getMessages, relea
 import { EventParser, type ServerEvent } from "../shared/sse";
 import { fakeD1 } from "./helpers/fakeD1";
 import { fakeClaude, textEvents, type Script } from "./helpers/fakeClaude";
+import type { ClaudeClient } from "../worker/claude";
 
 let env: Env;
 let pending: Promise<unknown>[];
@@ -221,6 +222,36 @@ describe("sending messages", () => {
     const id = await plannedTrip();
     const evs = await events(await api("POST", `/${id}/messages`, { content: "Hmm" }, deps({ events: textEvents("Half"), error: new Error("boom") }).d));
     expect(evs.at(-1)?.event).toBe("error");
+    expect(await getMessages(env.DB, id)).toHaveLength(2);
+    expect(await tryLock(env.DB, id, 1_000_001, 300_000)).toBe(true);
+  });
+
+  it("saves nothing when she presses Stop (the browser goes away), and frees the conversation", async () => {
+    const id = await plannedTrip();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const [first, ...rest] = textEvents("Half an answer", " and more");
+    const client: ClaudeClient = {
+      beta: {
+        messages: {
+          stream: () => ({
+            async *[Symbol.asyncIterator]() {
+              yield first;
+              yield rest[0];
+              await gate;
+              yield rest[1];
+            },
+            finalMessage: async () => ({ content: [], stop_reason: "end_turn" }) as never,
+          }),
+        },
+      },
+    };
+    const res = await api("POST", `/${id}/messages`, { content: "Add a pool day" }, { ...deps().d, makeClient: () => client });
+    const reader = res.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain("Half an answer");
+    await reader.cancel();
+    release();
+    await Promise.all(pending);
     expect(await getMessages(env.DB, id)).toHaveLength(2);
     expect(await tryLock(env.DB, id, 1_000_001, 300_000)).toBe(true);
   });

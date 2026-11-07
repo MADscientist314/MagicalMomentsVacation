@@ -40,7 +40,7 @@ Write the reply that matches the recommendation:
    - **Verdict:** … with reasons
    - **Budget reality check:** …
    - **Worth your time:** estimated commission, estimated planning time, and the recommendation (Let's plan it / Quick ideas)
-   - **What they told us:** destination, dates, party and ages, budget, occasion, and anything unusual
+   - **What they told us:** destination, dates, party and ages with the head count (count one person at a time, and never add someone they didn't mention: "Pat + 3 kids, Sam + 2 kids" is 7), budget, occasion, and anything unusual
    - **Questions for the Blueprint Call:** 5–8 specific questions that fill the gaps in what they shared
    - **Trip hand-off**: always include this block last, exactly in this shape, so Jillian can start a trip in the Adventure Planner with one click. Write "unknown" for anything the inquiry doesn't say.
      ```

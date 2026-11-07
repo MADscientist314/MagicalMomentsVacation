@@ -1548,3 +1548,87 @@ a.btn-primary {
 .proposal-panel .choices {
   margin-bottom: 10px;
 }
+
+/* ---------- Stop (a reply or draft in progress) ---------- */
+.btn-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  color: var(--purple-dark);
+  border: 1px solid var(--purple);
+  border-radius: 999px;
+  padding: 11px 22px;
+  font-weight: 500;
+}
+
+.btn-stop:hover {
+  background: var(--lavender);
+}
+
+.btn-stop.small {
+  padding: 6px 14px;
+  font-size: 14px;
+}
+
+.field-head .btn-mic {
+  width: 36px;
+  height: 36px;
+}
+
+/* The home button, top right of every page's banner (Nov 7 review). */
+.home-button {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--purple-dark);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(44, 51, 51, 0.18);
+}
+.home-button:hover {
+  background: #fff;
+}
+
+/* Above the banner's words, which can run under it on narrow screens. */
+.home-button {
+  z-index: 1;
+}
+
+/* Phones: the banner grows with its words instead of cutting them off, the Home button keeps its own row,
+   and the chat box gets the full width with its buttons below it. */
+@media (max-width: 640px) {
+  .hero > svg {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+  .banner-text,
+  .hero-text {
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    transform: none;
+    padding: 56px 20px 18px;
+  }
+  /* The night banner's castle sits behind the greeting on a phone. */
+  .hero-text .greeting,
+  .hero-sub {
+    text-shadow: 0 1px 3px #1b1440, 0 0 12px #1b1440;
+  }
+  .composer {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .composer .textbox {
+    flex: 1 1 100%;
+  }
+}

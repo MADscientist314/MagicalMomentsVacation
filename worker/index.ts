@@ -1,4 +1,4 @@
-import { handleLogin, handleLogout, hasValidSession } from "./auth";
+import { handleLogin, handleLogout, hasValidSession, sessionCookie } from "./auth";
 import { handleConversations } from "./conversations";
 import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
@@ -17,7 +17,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   if (area === "logout" && post) return handleLogout();
   if (!(await hasValidSession(request, env))) return SIGNED_OUT();
 
-  if (area === "session") return Response.json({ ok: true });
+  // The app checks this each time it opens, which renews the 30 days.
+  if (area === "session") return Response.json({ ok: true }, { headers: { "set-cookie": await sessionCookie(env) } });
   if (area === "draft") return post ? handleDraft(request, env) : Response.json({ error: "Use POST." }, { status: 405 });
   if (area === "conversations") {
     return handleConversations(request, env, rest, { waitUntil: (work) => ctx.waitUntil(work) });

@@ -90,6 +90,12 @@ export interface StreamHooks {
 type Source = { title: string; url: string };
 
 /** Calls Claude and streams the reply to the browser; `label` only tags error logs. */
+/**
+ * How often a quiet stream (e.g. while searching) writes a keepalive. Each write also checks the
+ * browser is still there, so a Stop releases the trip's lock within about this long.
+ */
+export const KEEPALIVE_MS = 5_000;
+
 export function streamClaude(
   params: BetaMessageStreamParams,
   env: Env,

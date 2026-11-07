@@ -10,6 +10,7 @@ Use `references/voice.md` for tone, `references/business.md` for her services an
 - **Prices: only use amounts Jillian herself gave in the conversation:** typed by her, or in a supplier itinerary, quote or email she pasted or attached (the "Supplier itinerary, client email or notes" trip detail, or text between `[Attached: …]` and `[End of …]`). Never estimate, and never copy a price you found online or from her sample emails. If there isn't one, set the amount to `null`, and the document will show "Add price" for her to fill in.
 - If Jillian pasted or attached a supplier itinerary, build from it: its days, hotels and inclusions, in her words, not the supplier's.
 - Use the latest version of anything that changed during the conversation (dates, party, the current day-by-day plan).
+- **Head count:** count who's going one person at a time, from the latest party in the conversation, and never add someone who isn't named or numbered ("Pat + 3 kids, Sam + 2 kids" is 7). Use that total for every count (tickets, people, the price note), and add a `verifyNotes` line with it and how you counted, such as "Party of 7 (Pat + 3 kids, Sam + 2 kids): confirm."
 - Plain text only in every field: no markdown, no emoji.
 
 ## Proposal

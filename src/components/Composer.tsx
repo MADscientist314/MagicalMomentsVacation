@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconSend } from "@tabler/icons-react";
+import { IconPlayerStopFilled, IconSend } from "@tabler/icons-react";
 import { MAX_MESSAGE } from "../../shared/conversations";
 import { joinTranscript } from "../lib/speech";
 import { AttachButton, AttachStatus, useAttach } from "./AttachButton";
@@ -15,11 +15,13 @@ interface Props {
   restore?: string | null;
   error?: string | null;
   notice?: string | null;
+  /** Cancels the reply in progress; while busy, Send becomes Stop. */
+  onStop?(): void;
 }
 
 const TOO_LONG = `That's too long for one message — keep it under ${MAX_MESSAGE.toLocaleString("en-US")} characters.`;
 
-export function Composer({ onSend, busy, placeholder, restore, error, notice }: Props) {
+export function Composer({ onSend, busy, placeholder, restore, error, notice, onStop }: Props) {
   const [input, setInput] = useState("");
   const [blocked, setBlocked] = useState<string | null>(null);
   const edit = (value: string) => {
@@ -81,10 +83,17 @@ export function Composer({ onSend, busy, placeholder, restore, error, notice }: 
         />
         <AttachButton attacher={attacher} disabled={busy} />
         <MicButton onSpeech={(heard) => setInput((v) => joinTranscript(v, heard))} disabled={busy} />
-        <button type="submit" className="btn-primary" disabled={busy || !input.trim() || tooLong || attacher.reading !== null}>
-          <IconSend size={18} aria-hidden />
-          Send
-        </button>
+        {busy && onStop ? (
+          <button type="button" className="btn-stop" onClick={onStop} title="Stop this reply. Nothing is saved.">
+            <IconPlayerStopFilled size={16} aria-hidden />
+            Stop
+          </button>
+        ) : (
+          <button type="submit" className="btn-primary" disabled={busy || !input.trim() || tooLong || attacher.reading !== null}>
+            <IconSend size={18} aria-hidden />
+            Send
+          </button>
+        )}
       </form>
     </>
   );

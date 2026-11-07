@@ -15,6 +15,8 @@ interface Thread {
 }
 
 const threads = new Map<string, Thread>();
+/** The reply running in each thread, so Stop can cancel it. */
+const running = new Map<string, AbortController>();
 
 function thread(id: string): Thread {
   let t = threads.get(id);
@@ -52,11 +54,12 @@ export function loadThread(id: string, messages: StoredMessage[]) {
 
 export const threadBusy = (id: string) => thread(id).state.phase !== "idle";
 
-async function reload(id: string, after?: () => void) {
+async function reload(id: string, after?: () => void, keepNotice = false) {
   try {
     const convo = await getConversation(id);
     // If she has already sent another message, don't wipe it with this older snapshot.
-    loadThread(id, convo.messages);
+    const t = thread(id);
+    if (t.state.phase === "idle") dispatch(id, { type: "load", turns: toTurns(convo.messages), notice: keepNotice ? t.state.notice : null });
   } catch {
     // Keep what's on screen; the next visit reloads it.
   }
@@ -81,19 +84,42 @@ export function sendToThread(id: string, text: string, after?: () => void): stri
   return null;
 }
 
+/**
+ * Stops the reply in progress. The server notices the browser has gone, stops Claude and saves
+ * nothing (her message included), so the turn is taken back and her words go back in the box.
+ */
+export function stopThread(id: string, after?: () => void) {
+  const controller = running.get(id);
+  if (!controller || !threadBusy(id)) return;
+  controller.abort();
+  running.delete(id);
+  dispatch(id, { type: "stopped" });
+  // In case the reply had just finished and was saved anyway, show what the server has.
+  setTimeout(() => void reload(id, after, true), 3_000);
+}
+
 function run(id: string, url: string, body: unknown, after?: () => void) {
+  const controller = new AbortController();
+  running.set(id, controller);
+  // After Stop, ignore anything still on its way from the cancelled reply.
+  const live = (fn: () => void) => () => {
+    if (!controller.signal.aborted) fn();
+  };
   void streamPost(
     url,
     body,
     {
-      text: (t) => dispatch(id, { type: "text", text: t }),
-      status: (phase) => dispatch(id, { type: "status", phase }),
-      done: (d) => {
-        dispatch(id, { type: "done", ...d });
-        void reload(id, after);
-      },
-      error: (message) => dispatch(id, { type: "error", message }),
+      text: (t) => live(() => dispatch(id, { type: "text", text: t }))(),
+      status: (phase) => live(() => dispatch(id, { type: "status", phase }))(),
+      done: (d) =>
+        live(() => {
+          dispatch(id, { type: "done", ...d });
+          void reload(id, after);
+        })(),
+      error: (message) => live(() => dispatch(id, { type: "error", message }))(),
     },
-    new AbortController().signal,
-  );
+    controller.signal,
+  ).finally(() => {
+    if (running.get(id) === controller) running.delete(id);
+  });
 }

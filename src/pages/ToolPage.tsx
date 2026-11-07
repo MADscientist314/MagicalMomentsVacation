@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { IconArrowLeft } from "@tabler/icons-react";
 import { SAVES_DRAFTS, type SavedDraftMeta } from "../../shared/drafts";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../../shared/guard";
 import { defaultShape } from "../../shared/images";
 import type { DraftRequest, ToolDef } from "../../shared/tools";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { DraftPanel } from "../components/DraftPanel";
+import { HomeButton } from "../components/HomeButton";
 import { ImageStudio } from "../components/ImageStudio";
 import { SavedDrafts } from "../components/SavedDrafts";
 import { ToolForm } from "../components/ToolForm";
@@ -37,6 +37,8 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
   // Save each finished draft by name, and update the same saved draft after every refine.
   useEffect(() => {
     if (!saves || state.phase !== "done" || !state.receiving || state.error || !state.draft || !state.committed) return;
+    // A stopped draft is unfinished: don't save it over the list.
+    if (state.stopReason === "stopped") return;
     if (lastSaved.current === state.draft) return;
     lastSaved.current = state.draft;
     const body = {
@@ -118,6 +120,11 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
     run({ ...base, refinements });
   };
 
+  const stop = () => {
+    controller.current?.abort();
+    dispatch({ type: "stopped" });
+  };
+
   const startOver = () => {
     controller.current?.abort();
     forgetSaved();
@@ -130,11 +137,8 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
-          <a className="back" href="#/">
-            <IconArrowLeft size={16} aria-hidden />
-            All tools
-          </a>
           <h1>{tool.name}</h1>
         </div>
       </header>
@@ -173,6 +177,7 @@ export function ToolPage({ tool }: { tool: ToolDef }) {
             receiving={state.receiving}
             onRefine={refine}
             onStartOver={startOver}
+            onStop={stop}
           />
           {tool.id === "spread-the-magic" && savedId && state.phase === "done" && (
             <ImageStudio

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { IconArrowLeft, IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { Conversation } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
+import { HomeButton } from "../components/HomeButton";
 import { deleteConversation, listConversations, updateConversation } from "../lib/api";
 import { ago } from "../lib/ago";
 import { clearHandoff } from "../lib/handoff";
@@ -69,11 +70,8 @@ export function TripsPage() {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
-          <a className="back" href="#/">
-            <IconArrowLeft size={16} aria-hidden />
-            All tools
-          </a>
           <h1>Adventure Planner</h1>
         </div>
       </header>

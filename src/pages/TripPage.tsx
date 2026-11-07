@@ -5,11 +5,12 @@ import { CastleAtDusk } from "../art/CastleAtDusk";
 import { Composer } from "../components/Composer";
 import { ConversationThread } from "../components/ConversationThread";
 import { DeliverablesPanel } from "../components/DeliverablesPanel";
+import { HomeButton } from "../components/HomeButton";
 import { ImageStudio } from "../components/ImageStudio";
 import { TripDetailsForm } from "../components/TripDetailsForm";
 import { getConversation, updateConversation } from "../lib/api";
 import { fileStem } from "../lib/deliverableFiles";
-import { loadThread, planTrip, sendToThread, useThread } from "../lib/threadStore";
+import { loadThread, planTrip, sendToThread, stopThread, useThread } from "../lib/threadStore";
 
 const UPDATE_PLAN = "The trip details just changed (see the note above). Please send the full updated day-by-day plan using the new details.";
 
@@ -68,6 +69,7 @@ export function TripPage({ id }: { id: string }) {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
           <a className="back" href="#/trips">
             <IconArrowLeft size={16} aria-hidden />
@@ -137,6 +139,7 @@ export function TripPage({ id }: { id: string }) {
                   <IconSparkles size={18} aria-hidden /> Plan it
                 </button>
                 {thread.error && <p className="message message-error">{thread.error}</p>}
+                {thread.notice && <p className="message message-info">{thread.notice}</p>}
               </div>
             ) : (
               <>
@@ -148,6 +151,7 @@ export function TripPage({ id }: { id: string }) {
                   error={thread.error}
                   notice={thread.notice}
                   onSend={(text) => sendToThread(id, text, refresh)}
+                  onStop={() => stopThread(id, refresh)}
                 />
               </>
             )}

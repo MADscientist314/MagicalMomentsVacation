@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IconSparkles } from "@tabler/icons-react";
 import { FireworksNight } from "../art/FireworksNight";
-import { signIn } from "../lib/session";
+import { rememberPassword, SAVED_AS, signIn } from "../lib/session";
 
 export function LoginPage({ onSignedIn }: { onSignedIn(): void }) {
   const [password, setPassword] = useState("");
@@ -26,14 +26,19 @@ export function LoginPage({ onSignedIn }: { onSignedIn(): void }) {
             setBusy(true);
             const message = await signIn(password);
             setBusy(false);
-            if (message) setError(message);
-            else onSignedIn();
+            if (message) return setError(message);
+            // Not awaited: Chrome may hold the promise until she answers its "Save password?" bubble.
+            void rememberPassword(password);
+            onSignedIn();
           }}
         >
+          {/* Password managers save a password under a username, so give them one (Chrome, Safari). */}
+          <input type="text" name="username" autoComplete="username" value={SAVED_AS} readOnly hidden />
           <label className="field" htmlFor="password">
             <span className="field-label">Magic words</span>
             <input
               id="password"
+              name="password"
               type="password"
               autoComplete="current-password"
               autoFocus

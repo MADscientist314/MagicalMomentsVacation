@@ -83,8 +83,8 @@ interface OwnerContext {
   isTrip: boolean;
   /** A standalone image has nothing to go on but her words and photos. */
   standalone: boolean;
-  /** `plan` is the trip's plan in words, for trip pictures. */
-  subject(card?: CardKind, plan?: string | null): string;
+  /** `plan` is the trip's plan in words, for trip pictures; `family` is set when the family's photos are attached. */
+  subject(card?: CardKind, plan?: string | null, family?: boolean): string;
   /** Set for trips, which can also make pictures for their itineraries. */
   trip?: store.Conversation;
 }
@@ -120,15 +120,16 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
     isTrip: true,
     standalone: false,
     trip,
-    subject: (card = "picture", plan) =>
+    subject: (card = "picture", plan, family = false) =>
       [
         card === "picture"
-          ? `Make a picture of the ${trip.title} enjoying their trip, for Jillian to share with them (in a proposal, an email or a message). ${LOOK}`
+          ? `Make a picture of the ${trip.title}${family ? " enjoying their trip" : "'s trip"}, for Jillian to share with them (in a proposal, an email or a message). ${LOOK}`
           : `Make a "${CARD_KINDS[card]}" card for the ${trip.title}'s trip, for Jillian to send them. ${LOOK}`,
-        plan && TRIP_SCENES[card],
+        plan && (family ? TRIP_SCENES : PLACE_SCENES)[card],
         d.destination && `Where: ${d.destination}${d.resort ? ` (${d.resort})` : ""}.`,
         d.dates && `When: ${d.dates}.`,
-        d.party && `Who's going: ${d.party}.`,
+        // Only with their photos: a head count without faces is what led to a made-up family.
+        family && d.party && `Who's going: ${d.party}.`,
         plan && `Their plan:\n"""\n${plan}\n"""`,
         card === "picture" && "No words on the image unless her direction asks for them.",
       ]
@@ -138,18 +139,32 @@ async function loadOwner(env: Env, owner: ImageOwner): Promise<OwnerContext | Re
 }
 
 const LOOK = "It should look like a bright, natural travel photo, like a travel magazine.";
-/** Trips: their own photos (or pictures made for the trip earlier) are the family; without them, a stock-style family. */
+/** Trips: their own photos (or pictures made for the trip earlier) are the family. */
 const FAMILY =
-  "The attached pictures show this family (their own photos, or pictures made for this trip earlier). Put these same people in the picture, looking like themselves.";
-const STOCK = "Show a family that matches who's going.";
+  "The attached pictures show this family (their own photos, or pictures made for this trip earlier). Put these same people in the picture, looking like themselves. If the attached pictures show no people, don't add any.";
+/**
+ * Without their photos, never guess what the family looks like: show the place. (Nov 7 review: a made-up
+ * family looked nothing like the real one.) Her direction can still describe who to show.
+ */
+const NO_FAMILY_PHOTOS =
+  "No photos of this family are attached, so don't guess what they look like (their skin, hair, ages or bodies). Unless Jillian's direction below says what they look like, show the place and the moment without them: no people, or people only far away or from behind, so you can't tell what they look like.";
 
-/** What each kind of trip picture shows from the family's plan. */
+/** What each kind of trip picture shows from the family's plan, with their photos. */
 const TRIP_SCENES: Record<CardKind, string> = {
   picture: "Show them living a moment from their plan below, as if they were there.",
   countdown: "Show them looking forward to a moment from their plan below.",
   birthday: "Show a birthday celebration during their trip, in one of the places from their plan below.",
   "welcome-home": "Show a few highlights from their plan below, like happy memories.",
   "bon-voyage": "Show them setting off on the first day of their plan below.",
+};
+
+/** The same without their photos: the places and moments, not the people. */
+const PLACE_SCENES: Record<CardKind, string> = {
+  picture: "Show a moment from their plan below, as if you were there.",
+  countdown: "Show a moment from their plan below to look forward to.",
+  birthday: "Show a birthday touch (balloons, a cake) in one of the places from their plan below.",
+  "welcome-home": "Show a few highlights from their plan below, like happy memories.",
+  "bon-voyage": "Show the start of the first day of their plan below, ready to set off.",
 };
 
 const MAX_PLAN = 6_000;
@@ -240,23 +255,24 @@ type DocumentSlot =
   | { kind: "itinerary"; data: Itinerary; slot: "cover" | number }
   | { kind: "proposal"; data: Proposal; slot: "cover" | number };
 
-/** A picture for a client document: the cover, or one itinerary day or proposal option. */
-function documentSubject(trip: store.Conversation, doc: DocumentSlot): string {
+/** A picture for a client document: the cover, or one itinerary day or proposal option. `family`: their photos are attached. */
+function documentSubject(trip: store.Conversation, doc: DocumentSlot, family: boolean): string {
   const d = trip.details;
   const where = [d.destination, d.resort].filter(Boolean).join(", ");
+  const showing = (people: string, place: string) => (family ? people : place);
   let scene: string;
   if (doc.kind === "itinerary") {
     const day = doc.slot === "cover" ? null : doc.data.days[doc.slot];
     scene = day
-      ? `Make a picture for one day of the ${trip.title}'s itinerary: the family enjoying this day. ${LOOK}\nThe day: ${day.title}\nPlans: ${day.items.map((i) => i.text).join("; ")}`
-      : `Make the cover picture for the ${trip.title}'s itinerary, "${doc.data.title}": the family enjoying this trip. ${LOOK}\nThe plan: ${doc.data.days.map((x) => x.title).join("; ")}.`;
+      ? `Make a picture for one day of the ${trip.title}'s itinerary: ${showing("the family enjoying this day", "the places and moments of this day")}. ${LOOK}\nThe day: ${day.title}\nPlans: ${day.items.map((i) => i.text).join("; ")}`
+      : `Make the cover picture for the ${trip.title}'s itinerary, "${doc.data.title}": ${showing("the family enjoying this trip", "the best of this trip")}. ${LOOK}\nThe plan: ${doc.data.days.map((x) => x.title).join("; ")}.`;
   } else {
     const option = doc.slot === "cover" ? null : doc.data.options[doc.slot];
     scene = option
-      ? `Make a picture for one option in the ${trip.title}'s trip proposal: the family enjoying this option. ${LOOK}\nThe option: ${option.name}\nWhat it is: ${option.summary}${option.highlights.length ? `\nHighlights: ${option.highlights.join("; ")}` : ""}`
-      : `Make the cover picture for the ${trip.title}'s trip proposal, "${doc.data.title}": the family enjoying this trip. ${LOOK}\nThe options: ${doc.data.options.map((o) => o.name).join("; ")}.`;
+      ? `Make a picture for one option in the ${trip.title}'s trip proposal: ${showing("the family enjoying this option", "what this option looks like")}. ${LOOK}\nThe option: ${option.name}\nWhat it is: ${option.summary}${option.highlights.length ? `\nHighlights: ${option.highlights.join("; ")}` : ""}`
+      : `Make the cover picture for the ${trip.title}'s trip proposal, "${doc.data.title}": ${showing("the family enjoying this trip", "the best of these options")}. ${LOOK}\nThe options: ${doc.data.options.map((o) => o.name).join("; ")}.`;
   }
-  return [scene, where && `Where: ${where}.`, d.party && `Who's going: ${d.party}.`, "No words on the image."].filter(Boolean).join("\n");
+  return [scene, where && `Where: ${where}.`, family && d.party && `Who's going: ${d.party}.`, "No words on the image."].filter(Boolean).join("\n");
 }
 
 function buildPrompt(subject: string, direction: string, editing: boolean, photos: number): string {
@@ -328,13 +344,14 @@ async function generate(request: Request, env: Env, now: number, makeClient: (en
 
   const card = isCardKind(body.card) ? body.card : undefined;
   const editing = body.baseImageId !== undefined;
+  const withPhotos = photoIds.length > 0;
   const subject = ctx.trip
     ? document
-      ? documentSubject(ctx.trip, document)
-      : ctx.subject(card, await tripPlan(env, ctx.trip.id))
+      ? documentSubject(ctx.trip, document, withPhotos)
+      : ctx.subject(card, await tripPlan(env, ctx.trip.id), withPhotos)
     : ctx.subject(card);
-  // A trip's pictures show its family: their own photos when chosen, otherwise a family that fits who's going.
-  const family = ctx.trip && !editing ? (photoIds.length ? FAMILY : STOCK) : null;
+  // A trip's pictures show its family only from their own photos; without them, the place (unless her direction describes them).
+  const family = ctx.trip && !editing ? (withPhotos ? FAMILY : NO_FAMILY_PHOTOS) : null;
   const prompt = buildPrompt(family ? `${subject}\n${family}` : subject, direction, editing, family ? 0 : photoIds.length);
   let made: InlineImage;
   try {

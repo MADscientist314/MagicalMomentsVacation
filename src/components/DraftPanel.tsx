@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { IconMap2, IconPhoto, IconRefresh } from "@tabler/icons-react";
+import { IconMap2, IconPhoto, IconPlayerStopFilled, IconRefresh } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
 import type { Phase } from "../lib/draftState";
 import { parseTripHandoff, splitDraft, splitSubject } from "../../shared/sections";
@@ -21,6 +21,8 @@ interface Props {
   receiving: boolean;
   onRefine(request: string): void;
   onStartOver(): void;
+  /** Cancels the draft in progress. */
+  onStop?(): void;
 }
 
 function Markdown({ md }: { md: string }) {
@@ -44,9 +46,10 @@ const QUICK_REFINES: Partial<Record<ToolDef["id"], { label: string; request: str
 const STOP_NOTES: Record<string, string> = {
   refusal: "I can't help with that one — try rewording.",
   max_tokens: "That got long — try asking for less.",
+  stopped: "Stopped before it finished, so it isn't saved. Refine it or start over.",
 };
 
-export function DraftPanel({ tool, draft, phase, sources, stopReason, error, receiving, onRefine, onStartOver }: Props) {
+export function DraftPanel({ tool, draft, phase, sources, stopReason, error, receiving, onRefine, onStartOver, onStop }: Props) {
   const [request, setRequest] = useState("");
   const busy = phase === "waiting" || phase === "searching" || phase === "writing";
   const split = splitDraft(draft);
@@ -188,6 +191,12 @@ export function DraftPanel({ tool, draft, phase, sources, stopReason, error, rec
       )}
       {(draft || error || busy) && (
         <div className="actions">
+          {busy && onStop && (
+            <button type="button" className="btn-stop small" onClick={onStop}>
+              <IconPlayerStopFilled size={14} aria-hidden />
+              Stop
+            </button>
+          )}
           <button type="button" className="btn-quiet" onClick={onStartOver}>
             <IconRefresh size={16} aria-hidden />
             Start over

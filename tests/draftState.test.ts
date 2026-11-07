@@ -24,6 +24,32 @@ describe("draftReducer load", () => {
   });
 });
 
+describe("draftReducer stopped", () => {
+  it("keeps the words that arrived, marked unfinished", () => {
+    let s = draftReducer(initialDraftState, { type: "start", body: FIRST });
+    s = draftReducer(s, { type: "text", text: "Hi Sm" });
+    s = draftReducer(s, { type: "stopped" });
+    expect(s).toMatchObject({ phase: "done", draft: "Hi Sm", stopReason: "stopped", pending: null, error: null });
+  });
+
+  it("goes back to the last draft when a refine is stopped before any words", () => {
+    let s = draftReducer(finishedDraft(), { type: "start", body: REFINE });
+    s = draftReducer(s, { type: "stopped" });
+    expect(s).toMatchObject({ phase: "done", draft: "Hi Smiths", stopReason: null, committed: FIRST, pending: null });
+  });
+
+  it("goes back to the empty form when the first draft is stopped before any words", () => {
+    let s = draftReducer(initialDraftState, { type: "start", body: FIRST });
+    s = draftReducer(s, { type: "stopped" });
+    expect(s).toMatchObject({ phase: "idle", draft: "", pending: null });
+  });
+
+  it("ignores Stop once the draft is finished", () => {
+    const done = finishedDraft();
+    expect(draftReducer(done, { type: "stopped" })).toBe(done);
+  });
+});
+
 describe("draftReducer", () => {
   it("keeps the last good draft when a refine fails before any text arrives", () => {
     let s = draftReducer(finishedDraft(), { type: "start", body: REFINE });

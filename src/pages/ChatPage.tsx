@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { IconArrowLeft, IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { Conversation } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { MagicLamp } from "../art/MagicLamp";
 import { Composer } from "../components/Composer";
 import { ConversationThread } from "../components/ConversationThread";
+import { HomeButton } from "../components/HomeButton";
 import { deleteConversation, getConversation, listConversations, updateConversation } from "../lib/api";
 import { initialChatState } from "../lib/chatState";
 import { startChat } from "../lib/startChat";
-import { loadThread, sendToThread, useThread } from "../lib/threadStore";
+import { loadThread, sendToThread, stopThread, useThread } from "../lib/threadStore";
 
 const STARTERS = [
   "What's new at Walt Disney World this year?",
@@ -126,11 +127,8 @@ export function ChatPage({ id }: { id?: string }) {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
-          <a className="back" href="#/">
-            <IconArrowLeft size={16} aria-hidden />
-            All tools
-          </a>
           <h1 className="genie-title">Make a wish… or ask me anything</h1>
         </div>
       </header>
@@ -162,6 +160,7 @@ export function ChatPage({ id }: { id?: string }) {
             error={state.error}
             notice={state.notice}
             onSend={send}
+            onStop={id ? () => stopThread(id, refreshList) : undefined}
           />
         </section>
       </main>

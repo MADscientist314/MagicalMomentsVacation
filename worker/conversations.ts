@@ -4,7 +4,7 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { DETAILS_CHANGED, MAX_MESSAGE, TRIP_FIELD_LIMITS } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
 import { deleteImagesOf } from "./images";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
@@ -253,7 +253,7 @@ async function reply(
     await store.releaseLock(env.DB, convo.id);
     throw err;
   }
-  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${convo.kind} reply`, {
+  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? KEEPALIVE_MS, `${convo.kind} reply`, {
     async beforeDone({ text, sources, stopReason }) {
       // Nothing is saved, so the browser must take the turn back: send error, not done.
       if (stopReason === "refusal") throw new UserFacingError("I can't help with that one — try rewording.");

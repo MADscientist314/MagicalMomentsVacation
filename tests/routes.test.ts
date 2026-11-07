@@ -51,7 +51,9 @@ describe("worker routes", () => {
 
   it("reports whether the visitor is signed in", async () => {
     expect((await call("/api/session")).status).toBe(401);
-    expect((await call("/api/session", { headers: { cookie: await loginCookie() } })).status).toBe(200);
+    const session = await call("/api/session", { headers: { cookie: await loginCookie() } });
+    expect(session.status).toBe(200);
+    expect(session.headers.get("set-cookie")).toContain("mmv_session=");
   });
 
   it("lets a signed-in visitor through to the draft checks", async () => {

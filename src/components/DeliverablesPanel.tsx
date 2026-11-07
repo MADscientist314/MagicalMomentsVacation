@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { IconFileText, IconSparkles } from "@tabler/icons-react";
+import { useRef, useState } from "react";
+import { IconFileText, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
 import { MAX_MESSAGE, type DeliverableMeta } from "../../shared/conversations";
 import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind } from "../../shared/deliverables";
+import { joinTranscript } from "../lib/speech";
 import { streamPost } from "../lib/streamDraft";
 import { sendToThread } from "../lib/threadStore";
 import { DeliverableModal } from "./DeliverableModal";
+import { MicButton } from "./MicButton";
 import { Sparkles } from "./Sparkles";
 import { TextBox } from "./TextBox";
 
@@ -35,6 +37,8 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
   const [proposalOpen, setProposalOpen] = useState(false);
   const [shape, setShape] = useState<Shape>(hasMaterial ? "one" : "compare");
   const [myOptions, setMyOptions] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const controller = useRef<AbortController | null>(null);
 
   const busy = making !== null || threadBusy;
   const optionsLimit = MAX_MESSAGE - OPTIONS_PREFIX.length;
@@ -43,6 +47,9 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
     if (busy) return;
     setMaking(kind);
     setError(null);
+    setNote(null);
+    const abort = new AbortController();
+    controller.current = abort;
     void streamPost(
       `/api/conversations/${tripId}/deliverables`,
       options ? { kind, options } : { kind },
@@ -60,8 +67,16 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
           setError(message);
         },
       },
-      new AbortController().signal,
+      abort.signal,
     );
+  };
+
+  // The server stops writing when the browser goes, and saves nothing.
+  const stop = () => {
+    controller.current?.abort();
+    controller.current = null;
+    setMaking(null);
+    setNote("Stopped. Nothing was saved.");
   };
 
   const addToConversation = (text: string) => {
@@ -123,8 +138,13 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
                   <button type="button" className="btn-quiet" disabled={busy} onClick={() => addToConversation(SUGGEST)}>
                     <IconSparkles size={14} aria-hidden /> Suggest options for me
                   </button>
-                  <label className="field" htmlFor="my-options">
-                    <span className="field-label">My options (and prices, if you have them)</span>
+                  <div className="field field-options">
+                    <div className="field-head">
+                      <label className="field-label" htmlFor="my-options">
+                        My options (and prices, if you have them)
+                      </label>
+                      <MicButton onSpeech={(heard) => setMyOptions((v) => joinTranscript(v, heard))} disabled={busy} />
+                    </div>
                     <TextBox
                       id="my-options"
                       rows={3}
@@ -133,7 +153,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
                       placeholder={"Pop Century, 7 nights $4,200\nPolynesian, 7 nights $9,800"}
                       onChange={setMyOptions}
                     />
-                  </label>
+                  </div>
                 </>
               )}
               <div className="proposal-actions">
@@ -158,8 +178,13 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
             <div className="waiting-bubble making">
               <Sparkles />
               <span>Writing your {DELIVERABLE_LABELS[making].toLowerCase()}…</span>
+              <button type="button" className="btn-stop small" onClick={stop}>
+                <IconPlayerStopFilled size={14} aria-hidden />
+                Stop
+              </button>
             </div>
           )}
+          {note && !making && <p className="message message-info">{note}</p>}
           {error && (
             <p className="message message-error" role="alert">
               {error}
