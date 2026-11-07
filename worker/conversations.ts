@@ -1,4 +1,4 @@
-// Saved trips and chats: /api/conversations[/:id[/plan|/messages|/deliverables]].
+// Saved trips and chats: /api/conversations[/:id[/plan|/messages|/deliverables|/booking|/key-dates|/files]].
 // The server keeps the history; the browser only ever sends the new message.
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { DETAILS_CHANGED, MAX_MESSAGE, TRIP_FIELD_LIMITS } from "../shared/conversations";
@@ -7,6 +7,7 @@ import { TOOLS } from "../shared/tools";
 import { handleBooking } from "./bookings";
 import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
+import { deleteFilesOf, handleTripFiles } from "./files";
 import { deleteImagesOf } from "./images";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
 import * as store from "./store";
@@ -102,13 +103,14 @@ export async function handleConversations(
     }
     if (method === "PATCH") return update(request, env, convo, now());
     if (method === "DELETE") {
-      await deleteImagesOf(env, { type: "trip", id }, () => store.deleteConversation(env.DB, id));
+      await deleteFilesOf(env, id, () => deleteImagesOf(env, { type: "trip", id }, () => store.deleteConversation(env.DB, id)));
       return Response.json({ ok: true });
     }
     return error("Not allowed.", 405);
   }
 
   if (action === "booking" || action === "key-dates") return handleBooking(request, env, convo, action, subId, now());
+  if (action === "files") return handleTripFiles(request, env, convo, subId, now());
   if (method !== "POST") return error("Not allowed.", 405);
   if (action === "plan") return plan(env, convo, deps);
   if (action === "messages") return sendMessage(request, env, convo, deps);

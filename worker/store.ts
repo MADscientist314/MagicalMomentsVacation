@@ -1,6 +1,7 @@
 // All D1 queries for saved trips, chats, messages, deliverables, drafts and images.
 import type { ActiveTrip, Booking, KeyDate } from "../shared/bookings";
 import type { DeliverableKind } from "../shared/deliverables";
+import type { TripFile } from "../shared/files";
 import type { ImageMeta, ImageOwner, Shape } from "../shared/images";
 import type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage } from "../shared/conversations";
 import type { SavedDraft, SavedDraftMeta } from "../shared/drafts";
@@ -150,6 +151,51 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
     .bind(conversationId)
     .all<DeliverableMeta>();
   return results;
+}
+
+// ---------- trip files (the bytes are in R2) ----------
+
+const FILE_COLUMNS = "id, name, mime, bytes, created_at FROM trip_files";
+
+export async function addTripFile(
+  db: D1Database,
+  conversationId: string,
+  f: { name: string; mime: string; bytes: number },
+  now: number,
+  id: string = crypto.randomUUID(),
+): Promise<TripFile> {
+  await db
+    .prepare("INSERT INTO trip_files (id, conversation_id, name, mime, bytes, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, conversationId, f.name, f.mime, f.bytes, now)
+    .run();
+  return { id, name: f.name, mime: f.mime, bytes: f.bytes, created_at: now };
+}
+
+/** Newest first. */
+export async function listTripFiles(db: D1Database, conversationId: string): Promise<TripFile[]> {
+  const { results } = await db
+    .prepare(`SELECT ${FILE_COLUMNS} WHERE conversation_id = ? ORDER BY created_at DESC, rowid DESC`)
+    .bind(conversationId)
+    .all<TripFile>();
+  return results;
+}
+
+export async function getTripFile(db: D1Database, conversationId: string, id: string): Promise<TripFile | null> {
+  return db.prepare(`SELECT ${FILE_COLUMNS} WHERE id = ? AND conversation_id = ?`).bind(id, conversationId).first<TripFile>();
+}
+
+export async function countTripFiles(db: D1Database, conversationId: string): Promise<number> {
+  const row = await db.prepare("SELECT COUNT(*) AS n FROM trip_files WHERE conversation_id = ?").bind(conversationId).first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+export async function deleteTripFile(db: D1Database, conversationId: string, id: string): Promise<void> {
+  await db.prepare("DELETE FROM trip_files WHERE id = ? AND conversation_id = ?").bind(id, conversationId).run();
+}
+
+export async function tripFileIds(db: D1Database, conversationId: string): Promise<string[]> {
+  const { results } = await db.prepare("SELECT id FROM trip_files WHERE conversation_id = ?").bind(conversationId).all<{ id: string }>();
+  return results.map((r) => r.id);
 }
 
 // ---------- booked trips (Active trips) ----------

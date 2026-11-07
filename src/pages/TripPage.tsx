@@ -9,6 +9,7 @@ import { HomeButton } from "../components/HomeButton";
 import { ImageStudio } from "../components/ImageStudio";
 import { BookingForm, KeyDatesCard } from "../components/KeyDates";
 import { TripDetailsForm } from "../components/TripDetailsForm";
+import { TripFiles } from "../components/TripFiles";
 import { getConversation, updateConversation } from "../lib/api";
 import { fileStem } from "../lib/deliverableFiles";
 import { loadThread, planTrip, sendToThread, stopThread, useThread } from "../lib/threadStore";
@@ -191,6 +192,7 @@ export function TripPage({ id }: { id: string }) {
               hasMaterial={Boolean(d.material) || trip.messages.some((m) => m.role === "user" && m.content.includes("[Attached: "))}
               onChanged={refresh}
             />
+            <TripFiles tripId={id} tripTitle={trip.title} destination={d.destination} deliverables={trip.deliverables} />
             <ImageStudio key={id} owner={{ type: "trip", id }} purpose="card" defaultShape="portrait" fileStem={fileStem(trip.title, "trip")} />
           </div>
         </div>

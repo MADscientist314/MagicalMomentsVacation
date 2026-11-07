@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { IconDownload, IconPencil, IconPhotoPlus, IconSparkles, IconTrash, IconX } from "@tabler/icons-react";
+import { IconDownload, IconPencil, IconPhotoPlus, IconSparkles, IconX } from "@tabler/icons-react";
 import { CARD_KINDS, MAX_REFERENCE_PHOTOS, ownerKey, SHAPES, type CardKind, type ImageMeta, type ImageOwner, type Shape } from "../../shared/images";
 import { deleteImage, fetchImage, generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
 import { saveBlob } from "../lib/download";
 import { shrinkPhoto } from "../lib/photos";
 import { joinTranscript } from "../lib/speech";
+import { ConfirmDelete } from "./ConfirmDelete";
 import { MicButton } from "./MicButton";
 import { Sparkles } from "./Sparkles";
 
@@ -29,25 +30,6 @@ function Choices<T extends string>({ label, options, value, onChange }: { label:
         ))}
       </div>
     </fieldset>
-  );
-}
-
-function ConfirmDelete({ label, onDelete }: { label: string; onDelete(): void }) {
-  const [confirming, setConfirming] = useState(false);
-  return confirming ? (
-    <span className="confirm">
-      Delete?
-      <button type="button" className="btn-quiet danger" onClick={onDelete}>
-        Delete
-      </button>
-      <button type="button" className="btn-quiet" onClick={() => setConfirming(false)}>
-        Keep
-      </button>
-    </span>
-  ) : (
-    <button type="button" className="btn-icon" aria-label={label} onClick={() => setConfirming(true)}>
-      <IconTrash size={15} aria-hidden />
-    </button>
   );
 }
 
