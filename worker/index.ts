@@ -4,6 +4,7 @@ import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
 import { handleDrafts } from "./drafts";
 import { handleImages } from "./images";
+import { handleSharePage } from "./shares";
 
 const SIGNED_OUT = () => Response.json({ error: "Sign in again to keep going." }, { status: 401 });
 
@@ -11,6 +12,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const { pathname } = new URL(request.url);
   const post = request.method === "POST";
   const [, api, area, ...rest] = pathname.split("/");
+  // A share link: the family's page needs no sign-in, and shows only what Jillian shared.
+  if (api === "p") return handleSharePage(request, env, [area, ...rest].filter(Boolean));
   if (api !== "api") return new Response(null, { status: 404 });
 
   if (area === "login" && post) return handleLogin(request, env);

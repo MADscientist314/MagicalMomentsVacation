@@ -382,13 +382,17 @@ const list = (items: string[]) => {
 };
 const para = (text: string) => (text.trim() ? `<p>${esc(text)}</p>` : "");
 
-/** Picture id → its data: URL, loaded by the browser so the page works offline and in a PDF. */
+/**
+ * Picture id → where the page gets it: a data: URL (the browser loads them, so the file works offline and
+ * in a PDF), or on a share link the link's own picture address.
+ */
 type Photos = Record<string, string>;
 
-/** Only an inline JPEG, PNG or WebP: a document never loads anything from elsewhere. */
+/** Only an inline JPEG, PNG or WebP, or a share link's picture: a document never loads anything from elsewhere. */
 function photoSrc(photos: Photos | undefined, id: string | undefined): string | null {
   const src = id ? photos?.[id] : undefined;
-  return src && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : null;
+  if (!src) return null;
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) || /^\/p\/[A-Za-z0-9_-]{32}\/[0-9a-f-]{36}$/i.test(src) ? src : null;
 }
 
 function proposalBody(p: Proposal, photos?: Photos): string {
@@ -469,6 +473,8 @@ table.estimate{width:100%;border-collapse:collapse;margin-top:18px;background:#f
 .review{background:var(--lavender);border:1px dashed var(--purple);border-radius:12px;padding:12px 18px;margin-top:24px}
 .review h2{margin-top:4px;font-size:17px}
 footer{margin-top:32px;border-top:2px solid var(--line);padding-top:14px}
+.share-bar{display:flex;justify-content:flex-end;margin-bottom:8px}.print-btn{font:600 14px "Wix Madefor Text",system-ui,sans-serif;color:var(--purple);background:#fff;border:1.5px solid var(--purple);border-radius:999px;padding:8px 18px;cursor:pointer}
+@media print{.share-bar{display:none}}
 .sig{white-space:pre-line;font-weight:600}.legal{font-size:11px;color:#6b6f6f;margin-top:10px}
 @page{margin:16mm}@media print{body{background:#fff}.doc{padding:0}}
 `;
@@ -476,7 +482,14 @@ footer{margin-top:32px;border-top:2px solid var(--line);padding-top:14px}
 export function renderDeliverableHtml(
   kind: DeliverableKind,
   data: DeliverableData,
-  brand: { footer: string; signature: string; mode: "client" | "review"; photos?: Photos },
+  brand: {
+    footer: string;
+    signature: string;
+    mode: "client" | "review";
+    photos?: Photos;
+    /** A share link's page: kept out of search engines, with a Print button (its one script carries this nonce). */
+    share?: { nonce: string };
+  },
 ): string {
   const body =
     kind === "proposal"
@@ -493,15 +506,17 @@ export function renderDeliverableHtml(
     brand.mode === "review" && data.verifyNotes.length
       ? `<aside class="review"><h2>For Jillian only — check before sending</h2>${list(data.verifyNotes)}</aside>`
       : "";
+  const share = brand.share;
+  const nonce = share ? esc(share.nonce) : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(data.title)}</title>
+${share ? `<meta name="robots" content="noindex, nofollow">\n` : ""}<title>${esc(data.title)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,500&family=Wix+Madefor+Text:wght@400;600&display=swap">
 <style>${STYLE}</style></head>
 <body><main class="doc">
-<header><div class="brand">Magical Vacations by Jillian</div><h1>${esc(data.title)}</h1>${intro}</header>
+${share ? `<div class="share-bar"><button type="button" class="print-btn">Print or save as PDF</button></div>\n` : ""}<header><div class="brand">Magical Vacations by Jillian</div><h1>${esc(data.title)}</h1>${intro}</header>
 ${cover}${body}
 ${notes}
 <footer><div class="sig">${esc(brand.signature)}</div><p class="legal">${esc(brand.footer)}</p></footer>
-</main></body></html>`;
+</main>${share ? `<script nonce="${nonce}">document.querySelector(".print-btn").addEventListener("click", () => print());</script>` : ""}</body></html>`;
 }

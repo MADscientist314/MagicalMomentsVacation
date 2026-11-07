@@ -1,5 +1,6 @@
 // Saved trips and chats, as the API returns them.
 import type { DeliverableKind } from "./deliverables";
+import type { ShareInfo } from "./shares";
 
 export type ConversationKind = "trip" | "chat";
 export type Source = { title: string; url: string };
@@ -58,4 +59,6 @@ export interface DeliverableRecord extends DeliverableMeta {
   data: unknown;
   footer: string;
   signature: string;
+  /** The family's link for this kind of document, if one is live (it may show another version). */
+  share: ShareInfo | null;
 }

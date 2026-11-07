@@ -151,6 +151,52 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
   return results;
 }
 
+// ---------- share links ----------
+
+export interface StoredShare {
+  token: string;
+  conversation_id: string;
+  kind: DeliverableKind;
+  deliverable_id: string;
+  version: number;
+  created_at: number;
+  expires_at: number;
+}
+
+const SHARE_COLUMNS =
+  "s.token, s.conversation_id, s.kind, s.deliverable_id, d.version, s.created_at, s.expires_at FROM shares s JOIN deliverables d ON d.id = s.deliverable_id";
+
+export async function getShare(db: D1Database, token: string): Promise<StoredShare | null> {
+  return db.prepare(`SELECT ${SHARE_COLUMNS} WHERE s.token = ?`).bind(token).first<StoredShare>();
+}
+
+/** The trip's link for this kind of document, if there is one (expired or not). */
+export async function getShareFor(db: D1Database, conversationId: string, kind: DeliverableKind): Promise<StoredShare | null> {
+  return db.prepare(`SELECT ${SHARE_COLUMNS} WHERE s.conversation_id = ? AND s.kind = ?`).bind(conversationId, kind).first<StoredShare>();
+}
+
+/** Points the trip's link for this kind at one version, for `ms` from now; a new link gets `token`. */
+export async function upsertShare(
+  db: D1Database,
+  doc: { conversation_id: string; kind: DeliverableKind; id: string },
+  token: string,
+  now: number,
+  ms: number,
+): Promise<StoredShare> {
+  await db
+    .prepare(
+      `INSERT INTO shares (token, conversation_id, kind, deliverable_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (conversation_id, kind) DO UPDATE SET deliverable_id = excluded.deliverable_id, expires_at = excluded.expires_at`,
+    )
+    .bind(token, doc.conversation_id, doc.kind, doc.id, now, now + ms)
+    .run();
+  return (await getShareFor(db, doc.conversation_id, doc.kind))!;
+}
+
+export async function deleteShareFor(db: D1Database, conversationId: string, kind: DeliverableKind): Promise<void> {
+  await db.prepare("DELETE FROM shares WHERE conversation_id = ? AND kind = ?").bind(conversationId, kind).run();
+}
+
 // ---------- saved drafts from the one-off tools ----------
 
 type DraftRow = Omit<SavedDraft, "request" | "sources" | "handled"> & { request: string; sources: string; handled: number };

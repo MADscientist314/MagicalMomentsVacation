@@ -1632,3 +1632,25 @@ a.btn-primary {
     flex: 1 1 100%;
   }
 }
+
+/* Share link strip in a document's window. */
+.share-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.share-strip > span:first-of-type {
+  flex: 1 1 280px;
+}
+.share-url {
+  flex: 1 1 260px;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}

@@ -21,6 +21,7 @@ import { BRAINS } from "./brains";
 import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, UserFacingError } from "./claude";
 import type { ConversationDeps } from "./conversations";
 import { buildDeliverableSystem, extractFooter, extractSignature } from "./prompt";
+import { handleShare, shareFor } from "./shares";
 import * as store from "./store";
 
 const LOCK_MS = 10 * 60_000;
@@ -121,7 +122,7 @@ export async function handleGenerateDeliverable(
   });
 }
 
-/** /api/deliverables/:id (GET) and /api/deliverables/:id/edit (POST). */
+/** /api/deliverables/:id (GET), /api/deliverables/:id/edit (POST) and /api/deliverables/:id/share (POST, DELETE). */
 export async function handleDeliverable(
   request: Request,
   env: Env,
@@ -137,8 +138,11 @@ export async function handleDeliverable(
       ...existing,
       footer: extractFooter(BRAINS["reference/compliance"]),
       signature: extractSignature(BRAINS["reference/voice"]),
+      share: await shareFor(env, existing, now()),
     });
   }
+
+  if (action === "share") return handleShare(request, env, existing, now());
 
   if (action === "edit" && request.method === "POST") {
     const body = (await request.json().catch(() => null)) as { data?: unknown } | null;
