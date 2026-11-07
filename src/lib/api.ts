@@ -1,4 +1,5 @@
 // Small fetch helpers for saved trips, chats, deliverables, drafts and images.
+import type { ActiveTrip, Booking } from "../../shared/bookings";
 import type { Conversation, ConversationKind, ConversationWithHistory, DeliverableRecord } from "../../shared/conversations";
 import type { DeliverableData, DeliverableKind } from "../../shared/deliverables";
 import type { ShareInfo } from "../../shared/shares";
@@ -52,6 +53,17 @@ export const saveDeliverableEdit = (id: string, data: DeliverableData) =>
 /** Puts this version on the trip's link for its kind (a new link, or the same one moved here), for 30 more days. */
 export const shareDeliverable = (id: string) => call<ShareInfo>(`/api/deliverables/${id}/share`, send("POST"));
 export const stopSharing = (id: string) => call<{ ok: true }>(`/api/deliverables/${id}/share`, send("DELETE"));
+
+// Active trips: booking a trip, and its key dates. Each change answers with the trip's booking.
+export const listActiveTrips = () => call<ActiveTrip[]>("/api/bookings");
+export const saveBooking = (tripId: string, days: { arrival: string; departure: string | null; today: string }) =>
+  call<Booking>(`/api/conversations/${tripId}/booking`, send("PUT", days));
+export const unbook = (tripId: string) => call<{ ok: true }>(`/api/conversations/${tripId}/booking`, send("DELETE"));
+export const addKeyDate = (tripId: string, date: { label: string; due: string }) =>
+  call<Booking>(`/api/conversations/${tripId}/key-dates`, send("POST", date));
+export const updateKeyDate = (tripId: string, id: string, changes: { label?: string; due?: string; done?: boolean }) =>
+  call<Booking>(`/api/conversations/${tripId}/key-dates/${id}`, send("PATCH", changes));
+export const deleteKeyDate = (tripId: string, id: string) => call<Booking>(`/api/conversations/${tripId}/key-dates/${id}`, send("DELETE"));
 
 type DraftBody = Pick<SavedDraft, "request" | "content" | "sources">;
 export const listDrafts = (tool: ToolId) => call<SavedDraftMeta[]>(`/api/drafts?tool=${tool}`);

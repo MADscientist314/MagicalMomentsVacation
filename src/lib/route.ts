@@ -2,7 +2,7 @@ import { isToolId, type ToolId } from "../../shared/tools";
 
 export type Route =
   | { page: "home" }
-  | { page: "trips" }
+  | { page: "trips"; tab?: "active" }
   | { page: "new-trip" }
   | { page: "trip"; id: string }
   | { page: "chat"; id?: string }
@@ -15,6 +15,7 @@ export function parseRoute(hash: string): Route {
   // The Adventure Planner now lives in its trips list.
   if (first === "trips" || first === "adventure-planner") {
     if (first === "trips" && second === "new") return { page: "new-trip" };
+    if (first === "trips" && second === "active") return { page: "trips", tab: "active" };
     if (first === "trips" && second) return { page: "trip", id: second };
     return { page: "trips" };
   }

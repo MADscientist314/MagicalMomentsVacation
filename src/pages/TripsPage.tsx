@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { Conversation } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
+import { ActiveTrips } from "../components/ActiveTrips";
 import { HomeButton } from "../components/HomeButton";
 import { deleteConversation, listConversations, updateConversation } from "../lib/api";
 import { ago } from "../lib/ago";
@@ -48,7 +49,8 @@ function TripCard({ trip, onChanged, onError }: { trip: Conversation; onChanged(
   );
 }
 
-export function TripsPage() {
+/** "All trips" lists every trip; "Active trips" (#/trips/active) shows the booked ones and what's due. */
+export function TripsPage({ tab }: { tab: "all" | "active" }) {
   const [trips, setTrips] = useState<Conversation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -76,33 +78,61 @@ export function TripsPage() {
         </div>
       </header>
       <main className="page trips">
-        <div className="trips-bar">
-          <label htmlFor="trip-search" className="sr-only">
-            Find a trip by last name
-          </label>
-          <input id="trip-search" type="search" placeholder="Find a trip by last name…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <a className="btn-primary" href="#/trips/new" onClick={clearHandoff}>
-            <IconPlus size={18} aria-hidden /> New trip
+        <div className="tabs trips-tabs" role="tablist" aria-label="Trips">
+          <a role="tab" aria-selected={tab === "all"} className={tab === "all" ? "active" : ""} href="#/trips">
+            All trips
+          </a>
+          <a role="tab" aria-selected={tab === "active"} className={tab === "active" ? "active" : ""} href="#/trips/active">
+            Active trips
           </a>
         </div>
-        {error && <p className="message message-error">{error}</p>}
-        {trips && trips.length === 0 && (
-          <section className="card empty">
-            Your trips will live here, one per family. Start with <strong>New trip</strong>, or use <strong>Start a trip</strong> after
-            reviewing an inquiry in the Welcome Center.
-          </section>
-        )}
-        {pinned.length > 0 && (
-          <section>
-            <h2 className="list-heading">📌 Pinned</h2>
-            <ul className="trip-list">{pinned.map((t) => <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />)}</ul>
-          </section>
-        )}
-        {recent.length > 0 && (
-          <section>
-            <h2 className="list-heading">Recent trips</h2>
-            <ul className="trip-list">{recent.map((t) => <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />)}</ul>
-          </section>
+        {tab === "active" ? (
+          <ActiveTrips />
+        ) : (
+          <>
+            <div className="trips-bar">
+              <label htmlFor="trip-search" className="sr-only">
+                Find a trip by last name
+              </label>
+              <input
+                id="trip-search"
+                type="search"
+                placeholder="Find a trip by last name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <a className="btn-primary" href="#/trips/new" onClick={clearHandoff}>
+                <IconPlus size={18} aria-hidden /> New trip
+              </a>
+            </div>
+            {error && <p className="message message-error">{error}</p>}
+            {trips && trips.length === 0 && (
+              <section className="card empty">
+                Your trips will live here, one per family. Start with <strong>New trip</strong>, or use <strong>Start a trip</strong> after
+                reviewing an inquiry in the Welcome Center.
+              </section>
+            )}
+            {pinned.length > 0 && (
+              <section>
+                <h2 className="list-heading">📌 Pinned</h2>
+                <ul className="trip-list">
+                  {pinned.map((t) => (
+                    <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {recent.length > 0 && (
+              <section>
+                <h2 className="list-heading">Recent trips</h2>
+                <ul className="trip-list">
+                  {recent.map((t) => (
+                    <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </main>
     </>

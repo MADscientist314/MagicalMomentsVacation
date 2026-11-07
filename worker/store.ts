@@ -1,4 +1,5 @@
 // All D1 queries for saved trips, chats, messages, deliverables, drafts and images.
+import type { ActiveTrip, Booking, KeyDate } from "../shared/bookings";
 import type { DeliverableKind } from "../shared/deliverables";
 import type { ImageMeta, ImageOwner, Shape } from "../shared/images";
 import type { Conversation, ConversationKind, DeliverableMeta, Source, StoredMessage } from "../shared/conversations";
@@ -149,6 +150,118 @@ export async function listDeliverables(db: D1Database, conversationId: string): 
     .bind(conversationId)
     .all<DeliverableMeta>();
   return results;
+}
+
+// ---------- booked trips (Active trips) ----------
+
+type KeyDateRow = { id: string; conversation_id: string; label: string; due: string; days_before: number | null; done: number };
+const toKeyDate = (r: KeyDateRow): KeyDate => ({ id: r.id, label: r.label, due: r.due, daysBefore: r.days_before, done: r.done === 1 });
+const KEY_DATE_COLUMNS = "id, conversation_id, label, due, days_before, done FROM key_dates";
+
+export async function getBooking(db: D1Database, conversationId: string): Promise<Booking | null> {
+  const row = await db.prepare("SELECT arrival, departure FROM bookings WHERE conversation_id = ?").bind(conversationId).first<{ arrival: string; departure: string | null }>();
+  if (!row) return null;
+  const { results } = await db.prepare(`SELECT ${KEY_DATE_COLUMNS} WHERE conversation_id = ? ORDER BY due, created_at`).bind(conversationId).all<KeyDateRow>();
+  return { arrival: row.arrival, departure: row.departure, keyDates: results.map(toKeyDate) };
+}
+
+/** Every booked trip, soonest arrival first, each with its key dates. */
+export async function listActiveTrips(db: D1Database): Promise<ActiveTrip[]> {
+  const [trips, dates] = await Promise.all([
+    db
+      .prepare(
+        "SELECT c.id, c.title, c.details, b.arrival, b.departure FROM bookings b JOIN conversations c ON c.id = b.conversation_id ORDER BY b.arrival, c.title",
+      )
+      .all<{ id: string; title: string; details: string; arrival: string; departure: string | null }>(),
+    db.prepare(`SELECT ${KEY_DATE_COLUMNS} ORDER BY due, created_at`).all<KeyDateRow>(),
+  ]);
+  return trips.results.map((t) => {
+    const details = JSON.parse(t.details) as Record<string, string>;
+    return {
+      id: t.id,
+      title: t.title,
+      destination: details.destination ?? "",
+      resort: details.resort ?? "",
+      booking: { arrival: t.arrival, departure: t.departure, keyDates: dates.results.filter((d) => d.conversation_id === t.id).map(toKeyDate) },
+    };
+  });
+}
+
+/**
+ * Books the trip, or changes its days. The first time, it adds `reminders` counted back from arrival; after
+ * that, a changed arrival moves those reminders (her own dates stay where she put them), never to before `today`.
+ */
+export async function saveBooking(
+  db: D1Database,
+  conversationId: string,
+  days: { arrival: string; departure: string | null },
+  reminders: { daysBefore: number; label: string; due: string }[],
+  today: string,
+  now: number,
+): Promise<void> {
+  const existing = await db.prepare("SELECT 1 AS found FROM bookings WHERE conversation_id = ?").bind(conversationId).first();
+  if (existing) {
+    await db.batch([
+      db.prepare("UPDATE bookings SET arrival = ?, departure = ?, updated_at = ? WHERE conversation_id = ?").bind(days.arrival, days.departure, now, conversationId),
+      db
+        .prepare("UPDATE key_dates SET due = max(date(?, '-' || days_before || ' days'), ?) WHERE conversation_id = ? AND days_before IS NOT NULL")
+        .bind(days.arrival, today, conversationId),
+    ]);
+    return;
+  }
+  await db.batch([
+    db.prepare("INSERT INTO bookings (conversation_id, arrival, departure, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").bind(conversationId, days.arrival, days.departure, now, now),
+    ...reminders.map((r, i) =>
+      db
+        .prepare("INSERT INTO key_dates (id, conversation_id, label, due, days_before, done, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)")
+        .bind(crypto.randomUUID(), conversationId, r.label, r.due, r.daysBefore, now + i),
+    ),
+  ]);
+}
+
+export async function deleteBooking(db: D1Database, conversationId: string): Promise<void> {
+  await db.prepare("DELETE FROM bookings WHERE conversation_id = ?").bind(conversationId).run();
+}
+
+export async function addKeyDate(db: D1Database, conversationId: string, label: string, due: string, now: number): Promise<void> {
+  await db
+    .prepare("INSERT INTO key_dates (id, conversation_id, label, due, days_before, done, created_at) VALUES (?, ?, ?, ?, NULL, 0, ?)")
+    .bind(crypto.randomUUID(), conversationId, label, due, now)
+    .run();
+}
+
+/** Changes one of the trip's key dates; a new day makes it hers (it no longer moves with arrival). False if it isn't there. */
+export async function updateKeyDate(
+  db: D1Database,
+  conversationId: string,
+  id: string,
+  changes: { label?: string; due?: string; done?: boolean },
+): Promise<boolean> {
+  const sets: string[] = [];
+  const values: (string | number)[] = [];
+  if (changes.label !== undefined) {
+    sets.push("label = ?");
+    values.push(changes.label);
+  }
+  if (changes.due !== undefined) {
+    sets.push("due = ?", "days_before = NULL");
+    values.push(changes.due);
+  }
+  if (changes.done !== undefined) {
+    sets.push("done = ?");
+    values.push(changes.done ? 1 : 0);
+  }
+  if (!sets.length) return !!(await db.prepare("SELECT 1 AS found FROM key_dates WHERE id = ? AND conversation_id = ?").bind(id, conversationId).first());
+  const r = await db
+    .prepare(`UPDATE key_dates SET ${sets.join(", ")} WHERE id = ? AND conversation_id = ?`)
+    .bind(...values, id, conversationId)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
+}
+
+export async function deleteKeyDate(db: D1Database, conversationId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM key_dates WHERE id = ? AND conversation_id = ?").bind(id, conversationId).run();
+  return (r.meta.changes ?? 0) > 0;
 }
 
 // ---------- share links ----------

@@ -1,4 +1,5 @@
 import { handleLogin, handleLogout, hasValidSession, sessionCookie } from "./auth";
+import { handleActiveTrips } from "./bookings";
 import { handleConversations } from "./conversations";
 import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
@@ -27,6 +28,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     return handleConversations(request, env, rest, { waitUntil: (work) => ctx.waitUntil(work) });
   }
   if (area === "deliverables") return handleDeliverable(request, env, rest);
+  if (area === "bookings") return handleActiveTrips(request, env);
   if (area === "drafts") return handleDrafts(request, env, rest);
   if (area === "images") return handleImages(request, env, rest);
   return Response.json({ error: "not found" }, { status: 404 });

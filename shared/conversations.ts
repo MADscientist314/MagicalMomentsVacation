@@ -1,4 +1,5 @@
 // Saved trips and chats, as the API returns them.
+import type { Booking } from "./bookings";
 import type { DeliverableKind } from "./deliverables";
 import type { ShareInfo } from "./shares";
 
@@ -52,6 +53,8 @@ export interface DeliverableMeta {
 export interface ConversationWithHistory extends Conversation {
   messages: StoredMessage[];
   deliverables: DeliverableMeta[];
+  /** Set once she marks the trip booked. */
+  booking: Booking | null;
 }
 
 export interface DeliverableRecord extends DeliverableMeta {

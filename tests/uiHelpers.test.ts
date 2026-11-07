@@ -11,6 +11,7 @@ describe("parseRoute", () => {
     expect(parseRoute("#/")).toEqual({ page: "home" });
     expect(parseRoute("#/trips")).toEqual({ page: "trips" });
     expect(parseRoute("#/trips/new")).toEqual({ page: "new-trip" });
+    expect(parseRoute("#/trips/active")).toEqual({ page: "trips", tab: "active" });
     expect(parseRoute("#/trips/abc-123")).toEqual({ page: "trip", id: "abc-123" });
     expect(parseRoute("#/chat")).toEqual({ page: "chat" });
     expect(parseRoute("#/chat/xyz")).toEqual({ page: "chat", id: "xyz" });
