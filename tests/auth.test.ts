@@ -6,6 +6,7 @@ import {
   normalizePassword,
   passwordMatches,
   SESSION_COOKIE,
+  sessionCookie,
 } from "../worker/auth";
 import { fakeD1 } from "./helpers/fakeD1";
 
@@ -93,6 +94,13 @@ describe("hasValidSession", () => {
   it("rejects a cookie older than 30 days", async () => {
     const cookie = (await login("test-magic-words")).headers.get("set-cookie")!;
     expect(await hasValidSession(withCookie(cookie), ENV, Date.now() + 31 * DAY)).toBe(false);
+  });
+
+  it("keeps her signed in while she keeps opening the app (each visit renews the 30 days)", async () => {
+    const renewed = await sessionCookie(ENV, Date.now() + 25 * DAY);
+    expect(renewed).toContain(`Max-Age=${30 * 24 * 60 * 60}`);
+    expect(await hasValidSession(withCookie(renewed), ENV, Date.now() + 50 * DAY)).toBe(true);
+    expect(await hasValidSession(withCookie(renewed), ENV, Date.now() + 56 * DAY)).toBe(false);
   });
 
   it("signs everyone out when the password changes", async () => {

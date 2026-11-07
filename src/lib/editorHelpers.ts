@@ -25,6 +25,9 @@ const LABELS: Record<string, string> = {
   notes: "Notes (one per line)",
   name: "Name",
   summary: "Summary",
+  sections: "Sections",
+  heading: "Heading",
+  checklist: "List (one per line)",
 };
 
 export function humanize(key: string): string {
@@ -43,6 +46,7 @@ export const ROW_TEMPLATES: Record<string, unknown> = {
   days: { title: "", items: [] },
   options: { name: "", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } },
   lineItems: { label: "", qty: 1, unit: "", unitPrice: null, note: "" },
+  sections: { heading: "", checklist: [] },
 };
 
 /** A blank row shaped like an existing one, for "Add another". */

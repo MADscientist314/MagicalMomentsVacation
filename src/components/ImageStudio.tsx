@@ -62,7 +62,7 @@ const TEXT: Record<Props["purpose"], { heading: string; about: string; placehold
   card: {
     heading: "Pictures for this trip",
     about:
-      "The family living their trip, made from its plan: a picture for a proposal or an email, or a countdown, birthday, bon voyage or welcome-home card. Add their photos to put them in it; otherwise it shows a family like theirs.",
+      "Their trip, made from its plan: a picture for a proposal or an email, or a countdown, birthday, bon voyage or welcome-home card. Add the family's photos to put them in it. Without photos it shows the places, not people, unless you say below who to show and what they look like.",
     placeholder: "Day 2 at Magic Kingdom, or: 30 days to go! with confetti",
   },
   free: {

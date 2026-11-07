@@ -28,3 +28,7 @@ Parks, castles, ships, rides and characters are all fine in the picture. The rul
 ## Her photos
 - When she includes her own photos, the people in them must still look like themselves: the same faces, ages, skin and bodies. Don't add or remove people unless she asks.
 - Use her photos as she describes: as the scene, the style, or the people to include.
+
+## A family's own pictures (trips)
+- Never guess what a client family looks like (their skin, hair, ages or bodies) from their names or who's going.
+- Without their photos, or her words saying what they look like, show the place and the moment instead: no people, or people only far away or from behind.

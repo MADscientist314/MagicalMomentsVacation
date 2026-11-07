@@ -289,8 +289,19 @@ describe("pictures for a trip, from its plan", () => {
     for (const text of ["Day 1 — Arrival and pool", "Check in, then the lazy river", "Day 2 — Magic Kingdom", "Rope drop and the teacups", "No words on the image"]) {
       expect(calls[0].prompt).toContain(text);
     }
-    expect(calls[0].prompt).toContain("Show a family that matches who's going");
     expect(calls[0].prompt).not.toMatch(/Make a ".*" card/);
+  });
+
+  it("shows the place, not a made-up family, without their photos (and leaves out the head count)", async () => {
+    const trip = await makeTrip();
+    await store.addDeliverable(env.DB, trip.id, "itinerary", ITINERARY, clock);
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture" });
+    expect(calls[0].prompt).toContain("Make a picture of the Testfam family's trip");
+    expect(calls[0].prompt).toContain("Show a moment from their plan below");
+    expect(calls[0].prompt).toContain("don't guess what they look like");
+    expect(calls[0].prompt).not.toContain("enjoying their trip");
+    expect(calls[0].prompt).not.toContain("2 adults, kids 6 and 9");
+    expect(calls[0].prompt).not.toContain("Show a family that matches");
   });
 
   it("uses the latest day-by-day plan from the conversation when there's no itinerary, without her notes", async () => {
@@ -319,6 +330,9 @@ describe("pictures for a trip, from its plan", () => {
     const earlier = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture" });
     await api("POST", "/generate", { owner: `trip:${trip.id}`, card: "picture", photoIds: [family.json.id, earlier.json.id] });
     expect(calls[1].prompt).toContain("looking like themselves");
+    expect(calls[1].prompt).toContain("enjoying their trip");
+    expect(calls[1].prompt).toContain("2 adults, kids 6 and 9");
+    expect(calls[1].prompt).not.toContain("don't guess what they look like");
     expect(calls[1].images).toHaveLength(2);
   });
 });
@@ -341,16 +355,24 @@ describe("pictures for an itinerary", () => {
     return { trip, doc };
   }
 
-  it("makes a wide picture of a family doing that day, kept out of the cards gallery", async () => {
+  it("makes a wide picture of that day's places (no guessed family), kept out of the cards gallery", async () => {
     const { trip, doc } = await tripWithItinerary();
     const made = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 1 });
     expect(made.status).toBe(201);
     expect(made.json.shape).toBe("wide");
     expect(calls[0].aspect).toBe("16:9");
-    for (const text of ["Day 2 — Magic Kingdom", "Rope drop and the teacups", "Walt Disney World", "2 adults, kids 6 and 9", "No words"]) {
+    for (const text of ["Day 2 — Magic Kingdom", "Rope drop and the teacups", "Walt Disney World", "the places and moments of this day", "don't guess what they look like", "No words"]) {
       expect(calls[0].prompt).toContain(text);
     }
+    expect(calls[0].prompt).not.toContain("2 adults, kids 6 and 9");
     expect((await api<ImageMeta[]>("GET", `?owner=trip:${trip.id}`)).json).toEqual([]);
+  });
+
+  it("shows the people she describes when there are no photos", async () => {
+    const { trip, doc } = await tripWithItinerary();
+    await api("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 0, direction: "A dad and his two daughters, all with curly red hair" });
+    expect(calls[0].prompt).toContain("A dad and his two daughters, all with curly red hair");
+    expect(calls[0].prompt).toContain("Unless Jillian's direction below says what they look like");
   });
 
   it("makes a cover from the whole plan, with the family's own photos when chosen", async () => {
@@ -360,6 +382,8 @@ describe("pictures for an itinerary", () => {
     expect(calls[0].prompt).toContain("The Testfam family's Disney week");
     expect(calls[0].prompt).toContain("Day 1 — Arrival and pool");
     expect(calls[0].prompt).toContain("looking like themselves");
+    expect(calls[0].prompt).toContain("the family enjoying this trip");
+    expect(calls[0].prompt).toContain("2 adults, kids 6 and 9");
     expect(calls[0].images.map((i) => i.data)).toEqual([JPEG(8)]);
   });
 
@@ -390,7 +414,7 @@ describe("pictures for a proposal", () => {
     verifyNotes: [],
   };
 
-  it("makes a picture of the family enjoying each option, and a cover", async () => {
+  it("makes a picture of each option, and a cover", async () => {
     const trip = await makeTrip();
     const doc = await store.addDeliverable(env.DB, trip.id, "proposal", PROPOSAL, clock);
     const made = await api<ImageMeta>("POST", "/generate", { owner: `trip:${trip.id}`, deliverableId: doc.id, slot: 1 });

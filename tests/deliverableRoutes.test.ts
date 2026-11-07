@@ -138,6 +138,47 @@ describe("generating a deliverable", () => {
     expect(saved.options.map((o) => o.name)).toEqual(["Portofino Bay"]);
   });
 
+  it("makes extras from the topics she picked and her own words, as their own document", async () => {
+    const c = await plannedTrip();
+    const extras = {
+      title: "Packing list for the Rivera family",
+      intro: "A few things to bring.",
+      sections: [{ heading: "Packing list", checklist: ["Sunscreen", " ", "Ponchos"] }, { heading: "", checklist: [] }],
+      verifyNotes: [],
+    };
+    const { fake, d } = deps({ events: json(extras) });
+    const req = new Request(`https://app.test/api/conversations/${c.id}/deliverables`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind: "extras", topics: ["packing", "apps"], ask: "Snacks for the plane" }),
+    });
+    const events = new EventParser().push(await (await handleConversations(req, env, [c.id, "deliverables"], d)).text());
+    await Promise.all(pending);
+    expect(events[0]).toMatchObject({ event: "deliverable", data: { kind: "extras", version: 1 } });
+    const sent = JSON.stringify(fake.calls[0].messages);
+    expect(sent).toContain("following the rules for extras");
+    expect(sent).toContain("Packing list; Apps to download");
+    expect(sent).toContain("Snacks for the plane");
+    const saved = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data;
+    expect(saved).toEqual({ ...extras, sections: [{ heading: "Packing list", checklist: ["Sunscreen", "Ponchos"] }] });
+  });
+
+  it("turns away extras with nothing to cover, a topic it doesn't know, or a card number", async () => {
+    const c = await plannedTrip();
+    const post = (body: unknown) =>
+      handleConversations(
+        new Request(`https://app.test/api/conversations/${c.id}/deliverables`, { method: "POST", body: JSON.stringify(body) }),
+        env,
+        [c.id, "deliverables"],
+        deps().d,
+      );
+    expect((await post({ kind: "extras", topics: [], ask: "  " })).status).toBe(400);
+    expect((await post({ kind: "extras", topics: ["brochure"] })).status).toBe(400);
+    const card = await post({ kind: "extras", topics: [], ask: "Her card is 4111 1111 1111 1111" });
+    expect(card.status).toBe(400);
+    expect(await listDeliverables(env.DB, c.id)).toEqual([]);
+  });
+
   it("reports a friendly error and saves nothing when the JSON doesn't fit", async () => {
     const c = await plannedTrip();
     const { events } = await generate(c.id, "itinerary", deps({ events: textEvents('{"title": "oops"}') }).d);

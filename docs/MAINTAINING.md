@@ -58,7 +58,7 @@ In a chat, Jillian types `/` and picks a tool, or just asks: "Draft a welcome em
 
 ## Signing in to the website
 
-The website asks for the **magic words**, a single shared password. Capitals and spaces don't matter. Once Jillian signs in, her browser remembers her for 30 days, and **Sign out** is at the bottom of the home screen.
+The website asks for the **magic words**, a single shared password. Capitals and spaces don't matter. Once Jillian signs in, her browser remembers her for 30 days from her last visit, and **Sign out** is at the bottom of the home screen. Chrome and Safari offer to save the magic words (under "Magical Moments"), so she doesn't have to type them again.
 
 The magic words are never written in this repository, which is public. Michael shares them privately. To change them, someone with the code runs `npx wrangler secret put APP_PASSWORD` and types the new words. Everyone is signed out, and the new words work straight away.
 
@@ -66,7 +66,7 @@ Don't post the magic words anywhere public: anyone who has them can use the assi
 
 ## Talking instead of typing
 
-On the home screen ("Or just ask me anything") and on the chat page there's a **microphone** button. Tap it, talk, and tap again (or pause) to stop. Her words appear in the box so she can fix anything misheard before sending. The first time, the browser asks permission to use the microphone; she should choose **Allow**. It works in Safari and Chrome on a Mac. The speech-to-text is done by Apple (Safari) or Google (Chrome).
+On the home screen ("Or just ask me anything") and on the chat page there's a **microphone** button. Tap it, talk, and tap again (or pause) to stop. While a reply is being written, **Stop** ends it. Her words appear in the box so she can fix anything misheard before sending. The first time, the browser asks permission to use the microphone; she should choose **Allow**. It works in Safari and Chrome on a Mac. The speech-to-text is done by Apple (Safari) or Google (Chrome).
 
 ## Saved trips and chats
 
@@ -84,8 +84,8 @@ Images are made by Google's **Nano Banana**, about 3¢ each.
 
 - **Any image:** the **Picture Perfect** tile on the home screen makes an image on its own: a social graphic, a flyer, a promo, a holiday greeting. She describes it (and can add photos); everything she makes there stays in that page's gallery.
 - **For a post:** in Spread the Magic, once a post is finished, **Images for this post** appears under it (the **Make an image** button at the top of the post jumps there). Pick a shape (Portrait suits Facebook and Instagram, Wide suits newsletters and the website), optionally add photos, say what it should show ("our family by the pool at sunset, with the words 'Book by Dec 1'"), and click **Make an image**.
-- **In an itinerary or proposal:** open it, and the **Review & edit** tab starts with **Pictures**. **Make all pictures** adds a cover and a picture for each day (itinerary) or each option (proposal), made from the plan (a stock-style family that matches who's going). Add the family's own photos and tap them first to put the real family in the pictures, or use **Use my photo** to place a photo as it is. **Remake** and **Remove** work per picture. The pictures go into the client copy, the HTML file and the PDF once she saves (PDF and HTML save for her).
-- **For a family:** each trip page has **Pictures for this trip**: a **Trip picture** of the family living a moment from their plan (for a proposal, an email or a message), or a countdown, birthday, welcome-home or bon voyage card. It reads the trip's plan (the itinerary if there is one), so the pictures show what this family will actually do. With their photos added, it's them; otherwise a family like theirs.
+- **In an itinerary or proposal:** open it, and the **Review & edit** tab starts with **Pictures**. **Make all pictures** adds a cover and a picture for each day (itinerary) or each option (proposal), made from the plan. Without the family's photos, pictures show the place and the moment, not people who might look nothing like the family. Add the family's own photos and tap them first to put the real family in the pictures, or use **Use my photo** to place a photo as it is. **Remake** and **Remove** work per picture. The pictures go into the client copy, the HTML file and the PDF once she saves (PDF and HTML save for her).
+- **For a family:** each trip page has **Pictures for this trip**: a **Trip picture** of the family living a moment from their plan (for a proposal, an email or a message), or a countdown, birthday, welcome-home or bon voyage card. It reads the trip's plan (the itinerary if there is one), so the pictures show what this family will actually do. With their photos added, it's them; otherwise the place and the moment without guessing what they look like (she can say who to show in the box under the photos).
 - **Her photos:** **Add photos** takes up to 3 at a time into an image (tap a photo to use it or not). They're shrunk before uploading and kept with that post or trip. Don't upload photos of passports, IDs or cards.
 - **Not quite right?** **Change this one** and say what to change. Every version is kept until she deletes it.
 - **Saving:** **Download** saves the image to post or use anywhere.
@@ -101,6 +101,12 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 - **Review & edit** lets her change any text or price, add or remove options, days and lines, and **Save as new version**; older versions are kept. Empty lines are dropped when she saves. If something is still missing, the message says exactly which field to fill in. **Client copy** is what the family sees: no internal notes.
 - **PDF** opens the print dialog; choose **Save as PDF**. **HTML** saves a single web page she can attach or upload. If a price still says "Add price", both warn first.
 - Her signature and the legal footer are added automatically from `voice.md` and `compliance.md`, so changing those files changes new documents too.
+- **Extras** has its own button: a packing list, apps to download, before you go, good to know, or anything she asks for. Packing lists go here rather than into a day of the itinerary.
+- **Share link** makes a private page the family can open without the magic words, for 30 days. She copies the link and sends it herself (the app never emails clients). Sharing a newer version keeps the same link; **Stop sharing** turns it off straight away. PDF is still the usual way to send a document.
+
+## Active trips
+
+**Mark as booked** on a trip's page moves it to the **Active trips** tab in Adventure Planner, with reminders 60, 30 and 7 days before they arrive (dining, final payment and check-in, Lightning Lane or Express passes and the app). They're her typical timing, not the booking's rules, so she should check each against the booking and change or remove any. She can add her own dates too (final payment, insurance). If the travel dates change, the reminders move with arrival; dates she added or changed stay put. The tab shows what's due this week and has a box to ask the assistant about the booked trips ("What deadlines are this week?").
 
 ## Pasting emails and attaching files
 

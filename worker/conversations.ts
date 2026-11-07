@@ -4,7 +4,8 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { DETAILS_CHANGED, MAX_MESSAGE, TRIP_FIELD_LIMITS } from "../shared/conversations";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { TOOLS } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { handleBooking } from "./bookings";
+import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, UserFacingError, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { handleGenerateDeliverable } from "./deliverables";
 import { deleteImagesOf } from "./images";
 import { buildChatSystem, buildSystem, buildUserMessage } from "./prompt";
@@ -74,7 +75,7 @@ export async function handleConversations(
   deps: ConversationDeps = {},
 ): Promise<Response> {
   const now = deps.now ?? Date.now;
-  const [id, action] = segments;
+  const [id, action, subId] = segments;
   const method = request.method;
 
   if (!id) {
@@ -92,11 +93,12 @@ export async function handleConversations(
 
   if (!action) {
     if (method === "GET") {
-      const [messages, deliverables] = await Promise.all([
+      const [messages, deliverables, booking] = await Promise.all([
         store.getMessages(env.DB, id),
         store.listDeliverables(env.DB, id),
+        store.getBooking(env.DB, id),
       ]);
-      return Response.json({ ...convo, messages, deliverables });
+      return Response.json({ ...convo, messages, deliverables, booking });
     }
     if (method === "PATCH") return update(request, env, convo, now());
     if (method === "DELETE") {
@@ -106,6 +108,7 @@ export async function handleConversations(
     return error("Not allowed.", 405);
   }
 
+  if (action === "booking" || action === "key-dates") return handleBooking(request, env, convo, action, subId, now());
   if (method !== "POST") return error("Not allowed.", 405);
   if (action === "plan") return plan(env, convo, deps);
   if (action === "messages") return sendMessage(request, env, convo, deps);
@@ -253,7 +256,7 @@ async function reply(
     await store.releaseLock(env.DB, convo.id);
     throw err;
   }
-  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? 15_000, `${convo.kind} reply`, {
+  return streamClaude(params, env, deps.makeClient ?? defaultClient, deps.keepaliveMs ?? KEEPALIVE_MS, `${convo.kind} reply`, {
     async beforeDone({ text, sources, stopReason }) {
       // Nothing is saved, so the browser must take the turn back: send error, not done.
       if (stopReason === "refusal") throw new UserFacingError("I can't help with that one — try rewording.");

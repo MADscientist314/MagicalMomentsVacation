@@ -14,6 +14,11 @@ export async function copyRich(html: string, text: string): Promise<void> {
   } catch {
     // fall through to plain text
   }
+  await copyText(text);
+}
+
+/** Copies plain text, such as a link. */
+export async function copyText(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
   } catch {

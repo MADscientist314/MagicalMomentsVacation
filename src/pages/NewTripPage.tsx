@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { CastleAtDusk } from "../art/CastleAtDusk";
+import { HomeButton } from "../components/HomeButton";
 import { TripDetailsForm } from "../components/TripDetailsForm";
 import { createTrip } from "../lib/api";
 import { clearHandoff, peekHandoff } from "../lib/handoff";
@@ -30,6 +31,7 @@ export function NewTripPage() {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
           <a className="back" href="#/trips">
             <IconArrowLeft size={16} aria-hidden />

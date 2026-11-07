@@ -4,13 +4,21 @@ import { getSpeechRecognition, type SpeechRecognitionLike } from "../lib/speech"
 
 const SpeechRecognition = typeof window === "undefined" ? null : getSpeechRecognition(window);
 
-/** Tap to talk, tap again (or pause) to stop; what she says is handed to onSpeech. */
+/**
+ * Tap to talk, tap again (or pause) to stop; what she says is handed to onSpeech.
+ * `disabled` (e.g. while a reply is being written) stops listening and blocks starting again,
+ * but never leaves her unable to stop.
+ */
 export function MicButton({ onSpeech, disabled }: { onSpeech(text: string): void; disabled?: boolean }) {
   const [listening, setListening] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => () => recognition.current?.abort(), []);
+  // Sending (or anything else that disables the mic) ends listening, so words don't keep arriving.
+  useEffect(() => {
+    if (disabled) recognition.current?.stop();
+  }, [disabled]);
 
   if (!SpeechRecognition) return null;
 
@@ -48,7 +56,7 @@ export function MicButton({ onSpeech, disabled }: { onSpeech(text: string): void
         aria-pressed={listening}
         aria-label={listening ? "Stop listening" : "Talk instead of typing"}
         title={listening ? "Stop listening" : "Talk instead of typing"}
-        disabled={disabled}
+        disabled={disabled && !listening}
         onClick={() => (listening ? recognition.current?.stop() : start())}
       >
         {listening ? <IconPlayerStopFilled size={18} aria-hidden /> : <IconMicrophone size={20} aria-hidden />}

@@ -1,7 +1,7 @@
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { findSensitive, maskContacts, SENSITIVE_MESSAGES } from "../shared/guard";
 import { isToolId, TOOLS, type DraftRequest } from "../shared/tools";
-import { baseParams, defaultClient, streamClaude, WEB_SEARCH, type ClaudeClient } from "./claude";
+import { baseParams, defaultClient, KEEPALIVE_MS, streamClaude, WEB_SEARCH, type ClaudeClient } from "./claude";
 import { buildSystem, buildUserMessage } from "./prompt";
 
 export type { ClaudeClient as DraftClient } from "./claude";
@@ -70,7 +70,7 @@ export async function handleDraft(
   request: Request,
   env: Env,
   makeClient: (env: Env) => ClaudeClient = defaultClient,
-  keepaliveMs = 15_000,
+  keepaliveMs = KEEPALIVE_MS,
 ): Promise<Response> {
   let body: unknown;
   try {

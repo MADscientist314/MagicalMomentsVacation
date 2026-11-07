@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { IconArrowLeft, IconEdit, IconPin, IconPinnedOff, IconSparkles } from "@tabler/icons-react";
+import { IconArrowLeft, IconCalendarCheck, IconEdit, IconPin, IconPinnedOff, IconSparkles } from "@tabler/icons-react";
 import type { ConversationWithHistory } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { Composer } from "../components/Composer";
 import { ConversationThread } from "../components/ConversationThread";
 import { DeliverablesPanel } from "../components/DeliverablesPanel";
+import { HomeButton } from "../components/HomeButton";
 import { ImageStudio } from "../components/ImageStudio";
+import { BookingForm, KeyDatesCard } from "../components/KeyDates";
 import { TripDetailsForm } from "../components/TripDetailsForm";
 import { getConversation, updateConversation } from "../lib/api";
 import { fileStem } from "../lib/deliverableFiles";
-import { loadThread, planTrip, sendToThread, useThread } from "../lib/threadStore";
+import { loadThread, planTrip, sendToThread, stopThread, useThread } from "../lib/threadStore";
 
 const UPDATE_PLAN = "The trip details just changed (see the note above). Please send the full updated day-by-day plan using the new details.";
 
@@ -18,6 +20,7 @@ export function TripPage({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [booking, setBooking] = useState(false);
   // Changed details are noted in the conversation, but the plan itself only changes when she asks.
   const [detailsChanged, setDetailsChanged] = useState(false);
   const thread = useThread(id);
@@ -68,6 +71,7 @@ export function TripPage({ id }: { id: string }) {
     <>
       <header className="hero">
         <CastleAtDusk />
+        <HomeButton />
         <div className="banner-text">
           <a className="back" href="#/trips">
             <IconArrowLeft size={16} aria-hidden />
@@ -94,7 +98,22 @@ export function TripPage({ id }: { id: string }) {
           <button type="button" className="btn-quiet" onClick={() => setEditing((e) => !e)}>
             <IconEdit size={16} aria-hidden /> Edit trip details
           </button>
+          <button type="button" className={`btn-quiet${trip.booking ? " active" : ""}`} aria-expanded={booking} onClick={() => setBooking((b) => !b)}>
+            <IconCalendarCheck size={16} aria-hidden /> {trip.booking ? "Booked · change dates" : "Mark as booked"}
+          </button>
         </div>
+        {booking && (
+          <BookingForm
+            tripId={id}
+            datesText={d.dates ?? ""}
+            booking={trip.booking}
+            onSaved={(b) => {
+              setTrip({ ...trip, booking: b });
+              setBooking(false);
+            }}
+            onCancel={() => setBooking(false)}
+          />
+        )}
 
         {error && !editing && <p className="message message-error">{error}</p>}
         {detailsChanged && planned && (
@@ -137,6 +156,7 @@ export function TripPage({ id }: { id: string }) {
                   <IconSparkles size={18} aria-hidden /> Plan it
                 </button>
                 {thread.error && <p className="message message-error">{thread.error}</p>}
+                {thread.notice && <p className="message message-info">{thread.notice}</p>}
               </div>
             ) : (
               <>
@@ -148,11 +168,20 @@ export function TripPage({ id }: { id: string }) {
                   error={thread.error}
                   notice={thread.notice}
                   onSend={(text) => sendToThread(id, text, refresh)}
+                  onStop={() => stopThread(id, refresh)}
                 />
               </>
             )}
           </section>
           <div className="trip-side">
+            {trip.booking && (
+              <KeyDatesCard
+                tripId={id}
+                booking={trip.booking}
+                onChanged={(b) => setTrip((t) => (t ? { ...t, booking: b } : t))}
+                onUnbooked={() => setTrip((t) => (t ? { ...t, booking: null } : t))}
+              />
+            )}
             <DeliverablesPanel
               tripId={id}
               tripTitle={trip.title}

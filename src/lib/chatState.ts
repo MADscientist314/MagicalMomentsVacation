@@ -23,12 +23,17 @@ export type ChatAction =
   | { type: "status"; phase: "searching" | "writing" }
   | { type: "done"; stopReason: string; sources: { title: string; url: string }[] }
   | { type: "error"; message: string }
-  | { type: "load"; turns: ChatTurn[] }
+  /** Jillian pressed Stop: nothing was saved, so take the turn back like a failed reply, but calmly. */
+  | { type: "stopped" }
+  /** `notice` keeps a note on screen across the reload (e.g. "Stopped"). */
+  | { type: "load"; turns: ChatTurn[]; notice?: string | null }
   | { type: "reset" };
 
 export const initialChatState: ChatState = { turns: [], phase: "idle", error: null, notice: null, restore: null, pending: null };
 
 const REFUSED = "I can't help with that one — try rewording.";
+export const STOPPED = "Stopped. Nothing was saved.";
+export const STOPPED_RESTORED = "Stopped. Nothing was saved, and your message is back in the box.";
 
 const awaitingReply = (s: ChatState) => s.turns.at(-1)?.role === "user";
 
@@ -66,8 +71,13 @@ export function chatReducer(s: ChatState, a: ChatAction): ChatState {
     }
     case "error":
       return giveBack(s, a.message);
+    case "stopped": {
+      if (s.phase === "idle") return s;
+      const back = giveBack(s, "");
+      return { ...back, error: null, notice: back.restore ? STOPPED_RESTORED : STOPPED };
+    }
     case "load":
-      return { ...initialChatState, turns: a.turns };
+      return { ...initialChatState, turns: a.turns, notice: a.notice ?? null };
     case "reset":
       return initialChatState;
   }

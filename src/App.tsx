@@ -36,7 +36,7 @@ export default function App() {
   if (!signedIn) return <LoginPage onSignedIn={() => setSignedIn(true)} />;
   switch (route.page) {
     case "trips":
-      return <TripsPage />;
+      return <TripsPage tab={route.tab ?? "all"} />;
     case "new-trip":
       return <NewTripPage />;
     case "trip":

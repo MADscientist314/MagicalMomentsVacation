@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconPhotoPlus, IconSparkles, IconTrash, IconUser } from "@tabler/icons-react";
-import { MAX_REFERENCE_PHOTOS, type ImageMeta } from "../../shared/images";
+import { MAX_DIRECTION, MAX_REFERENCE_PHOTOS, type ImageMeta } from "../../shared/images";
 import type { Itinerary, Proposal } from "../../shared/deliverables";
 import { generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
 import { shrinkPhoto } from "../lib/photos";
@@ -46,6 +46,8 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
   const owner = { type: "trip" as const, id: tripId };
   const [family, setFamily] = useState<ImageMeta[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
+  /** Who to show without photos; empty shows the places only. */
+  const [who, setWho] = useState("");
   const [adding, setAdding] = useState(false);
   const [working, setWorking] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,7 +71,8 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
     setWorking((w) => ({ ...w, [key]: true }));
     setErrors(({ [key]: _old, ...rest }) => rest);
     try {
-      const meta = await generateImage({ owner, direction: "", shape: "wide", photoIds: chosen, deliverableId, slot });
+      const direction = chosen.length ? "" : who.trim();
+      const meta = await generateImage({ owner, direction, shape: "wide", photoIds: chosen, deliverableId, slot });
       onChange((d) => withPhoto(kind, d, slot, meta.id));
     } catch (e) {
       setErrors((all) => ({ ...all, [key]: (e as Error).message }));
@@ -115,10 +118,8 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
     <section className="document-pictures" aria-label="Pictures">
       <h3>Pictures</h3>
       <p className="muted-note">
-        {kind === "itinerary"
-          ? "Pictures of the family enjoying each day, made from the plan (about 3¢ each)."
-          : "Pictures of the family enjoying each option (about 3¢ each)."}{" "}
-        Pick the family's photos to put them in the pictures (otherwise it shows a family like theirs), or place one as it is.
+        {kind === "itinerary" ? "A picture for each day, made from the plan (about 3¢ each)." : "A picture for each option (about 3¢ each)."} They
+        show the places, not people. To put the family in, pick their photos, or say below who to show. You can also place a photo as it is.
       </p>
 
       <div className="field">
@@ -139,6 +140,22 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
         </div>
         {errors.family && <p className="message message-error">{errors.family}</p>}
       </div>
+
+      {chosen.length === 0 && (
+        <div className="field">
+          <label className="field-label" htmlFor={`who-${deliverableId}`}>
+            Or say who to show (optional)
+          </label>
+          <input
+            id={`who-${deliverableId}`}
+            type="text"
+            value={who}
+            maxLength={MAX_DIRECTION}
+            placeholder="Leave empty for just the places, or describe the people and what they look like"
+            onChange={(e) => setWho(e.target.value)}
+          />
+        </div>
+      )}
 
       {empty && (
         <button type="button" className="btn-primary" disabled={busy} onClick={() => void makeAll()}>

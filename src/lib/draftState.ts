@@ -22,6 +22,8 @@ export type DraftAction =
   | { type: "status"; phase: "searching" | "writing" }
   | { type: "done"; stopReason: string; sources: { title: string; url: string }[] }
   | { type: "error"; message: string }
+  /** Jillian pressed Stop. */
+  | { type: "stopped" }
   /** Shows a saved draft, ready to refine. */
   | { type: "load"; draft: string; sources: { title: string; url: string }[]; committed: DraftRequest }
   | { type: "reset" };
@@ -55,6 +57,12 @@ export function draftReducer(s: DraftState, a: DraftAction): DraftState {
         : { ...s, phase: "done", stopReason: a.stopReason, pending: null };
     case "error":
       return { ...s, phase: "done", error: a.message, pending: null };
+    case "stopped":
+      if (s.phase === "idle" || s.phase === "done") return s;
+      // Words had arrived: keep them on screen, marked unfinished (and never saved).
+      if (s.receiving) return { ...s, phase: "done", stopReason: "stopped", pending: null };
+      // Nothing new yet: the last draft (if any) is still the one on screen.
+      return { ...s, phase: s.draft ? "done" : "idle", stopReason: null, pending: null };
     case "load":
       return { ...initialDraftState, phase: "done", draft: a.draft, sources: a.sources, receiving: true, committed: a.committed };
     case "reset":
