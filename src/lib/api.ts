@@ -1,7 +1,8 @@
-// Small fetch helpers for saved trips, chats, deliverables, drafts and images.
+// Small fetch helpers for saved trips, chats, deliverables, drafts, images and trip files.
 import type { ActiveTrip, Booking } from "../../shared/bookings";
 import type { Conversation, ConversationKind, ConversationWithHistory, DeliverableRecord } from "../../shared/conversations";
 import type { DeliverableData, DeliverableKind } from "../../shared/deliverables";
+import type { TripFile } from "../../shared/files";
 import type { ShareInfo } from "../../shared/shares";
 import type { SavedDraft, SavedDraftMeta } from "../../shared/drafts";
 import { ownerKey, type CardKind, type ImageMeta, type ImageOwner, type Shape } from "../../shared/images";
@@ -88,25 +89,45 @@ export const generateImage = (body: {
 }) => call<ImageMeta>("/api/images/generate", send("POST", { ...body, owner: ownerKey(body.owner) }));
 export const deleteImage = (id: string) => call<{ ok: true }>(`/api/images/${id}`, send("DELETE"));
 
+/** Sends a file as a form; `fallback` is the message when the answer has none. */
+async function postForm<T>(url: string, form: FormData, fallback: string): Promise<T> {
+  // No JSON content-type here: the browser sets the multipart boundary itself.
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", body: form });
+  } catch {
+    throw new ApiError("Couldn't reach the assistant — check the internet connection.", 0);
+  }
+  const body = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+  if (!res.ok || body === null) throw new ApiError(body?.error ?? fallback, res.status);
+  return body;
+}
+
+async function fetchBlob(url: string, fallback: string): Promise<Blob> {
+  const res = await fetch(url).catch(() => null);
+  if (!res?.ok) throw new ApiError(fallback, res?.status ?? 0);
+  return res.blob();
+}
+
 export async function uploadImage(owner: ImageOwner, photo: Blob): Promise<ImageMeta> {
   const form = new FormData();
   form.set("owner", ownerKey(owner));
   form.set("file", photo, "photo.jpg");
-  // No JSON content-type here: the browser sets the multipart boundary itself.
-  let res: Response;
-  try {
-    res = await fetch("/api/images", { method: "POST", body: form });
-  } catch {
-    throw new ApiError("Couldn't reach the assistant — check the internet connection.", 0);
-  }
-  const body = (await res.json().catch(() => null)) as (ImageMeta & { error?: string }) | null;
-  if (!res.ok || body === null) throw new ApiError(body?.error ?? "Couldn't add that photo — try again.", res.status);
-  return body;
+  return postForm<ImageMeta>("/api/images", form, "Couldn't add that photo — try again.");
 }
 
 /** The image's bytes, for downloading. */
-export async function fetchImage(id: string): Promise<Blob> {
-  const res = await fetch(imageUrl(id)).catch(() => null);
-  if (!res?.ok) throw new ApiError("Couldn't download that image — try again.", res?.status ?? 0);
-  return res.blob();
+export const fetchImage = (id: string) => fetchBlob(imageUrl(id), "Couldn't download that image — try again.");
+
+// Trip files: her own records for a trip, kept in the cloud (the assistant never reads them).
+/** Opens in a tab (PDFs and photos), or downloads with `download`. */
+export const tripFileUrl = (tripId: string, id: string, download = false) =>
+  `/api/conversations/${tripId}/files/${id}${download ? "?download" : ""}`;
+export const listTripFiles = (tripId: string) => call<TripFile[]>(`/api/conversations/${tripId}/files`);
+export const deleteTripFile = (tripId: string, id: string) => call<{ ok: true }>(`/api/conversations/${tripId}/files/${id}`, send("DELETE"));
+export function uploadTripFile(tripId: string, file: File): Promise<TripFile> {
+  const form = new FormData();
+  form.set("file", file, file.name);
+  return postForm<TripFile>(`/api/conversations/${tripId}/files`, form, "Couldn't add that file — try again.");
 }
+export const fetchTripFile = (tripId: string, id: string) => fetchBlob(tripFileUrl(tripId, id, true), "Couldn't download that file — try again.");

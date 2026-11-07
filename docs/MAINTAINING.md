@@ -108,6 +108,10 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 
 **Mark as booked** on a trip's page moves it to the **Active trips** tab in Adventure Planner, with reminders 60, 30 and 7 days before they arrive (dining, final payment and check-in, Lightning Lane or Express passes and the app). They're her typical timing, not the booking's rules, so she should check each against the booking and change or remove any. She can add her own dates too (final payment, insurance). If the travel dates change, the reminders move with arrival; dates she added or changed stay put. The tab shows what's due this week and has a box to ask the assistant about the booked trips ("What deadlines are this week?").
 
+## Trip files
+
+**Trip files** on a trip's page is that trip's folder in the cloud. Add supplier itineraries, confirmations, invoices or the family's emails with **Add files**, or drag them onto the box (up to 25 MB each). Click a PDF or photo to open it; anything else downloads. Only people signed in can open them, and the assistant never reads them. **Download all** saves the whole trip as one folder (a .zip): Proposals, Itineraries, Estimates and Extras with every version (as web pages that open in any browser and print to PDF), the trip's Pictures, and its Files. Use it as a backup, or to put a copy in Google Drive. Deleting a trip deletes its files too.
+
 ## Pasting emails and attaching files
 
 - The trip chat, the new trip's **Supplier itinerary, client email or notes** box and Inbox Helper's email box take up to 50,000 characters each (about 20 pages). Welcome Center's inquiry box takes 12,000. Every box grows as she types, and a counter appears when she's close to the limit.
@@ -118,11 +122,12 @@ On a trip's page, the **Client deliverables** panel makes a proposal, an itinera
 ## What never to paste in
 
 - **Card numbers, Social Security numbers or passport numbers.** The assistant blocks these when typed and takes them out of pasted text and attached files (it says when it did), but don't paste them anyway.
+- Trip files are kept exactly as they are (nothing is taken out of them), so keep card details and passport copies out of them.
 - Client email addresses and phone numbers are fine to leave in a pasted inquiry. They're hidden automatically before anything is sent, because no draft needs them.
 
 ## Costs and keys
 
 - Claude usage is billed to the Anthropic account that owns the API key, at a few cents per email, inquiry review or post, and about $0.25–0.50 per trip plan. A monthly spending limit is set in the Anthropic Console (in the workspace's limits settings).
-- Images are billed by Google to the account that owns the Gemini key, about 3¢ each. A monthly spend cap is set on AI Studio's **Spend** page. Image files are stored in Cloudflare R2, free at her volume.
+- Images are billed by Google to the account that owns the Gemini key, about 3¢ each. A monthly spend cap is set on AI Studio's **Spend** page. Image files and trip files are stored in Cloudflare R2, free at her volume (the first 10 GB, then about 1.5¢ per GB a month).
 - Cloudflare is $5/month (Workers Paid).
 - If the API key ever needs replacing, someone with the code runs `npx wrangler secret put ANTHROPIC_API_KEY` and pastes the new key (`GEMINI_API_KEY` for the Google image key).

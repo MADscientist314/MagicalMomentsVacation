@@ -1067,6 +1067,124 @@ a.btn-primary {
   border-color: var(--purple);
 }
 
+/* ---------- trip files ---------- */
+.trip-files h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.trip-files > .muted-note {
+  margin: 0;
+}
+
+.trip-files.dragging {
+  border-color: var(--purple);
+  background: var(--lavender);
+  outline: 2px dashed var(--purple);
+  outline-offset: 2px;
+}
+
+.files-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 4px;
+  display: grid;
+  gap: 6px;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name actions"
+    "meta actions";
+  align-items: center;
+  column-gap: 6px;
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 8px;
+  padding: 6px 6px 6px 10px;
+}
+
+.file-link {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.file-link svg {
+  flex: none;
+  color: var(--purple-dark);
+}
+
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-link:hover .file-name {
+  text-decoration: underline;
+}
+
+.file-meta {
+  grid-area: meta;
+  padding-left: 26px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.file-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Asking "Delete?" takes its own line, so the name keeps its room on a phone. */
+.file-row:has(.confirm) {
+  grid-template-areas:
+    "name name"
+    "meta meta"
+    "actions actions";
+}
+
+.file-row:has(.confirm) .file-actions {
+  justify-content: flex-start;
+  padding: 4px 0 2px 26px;
+}
+
+/* Phones and tablets can't drag files in. */
+@media (pointer: coarse) {
+  .drop-hint {
+    display: none;
+  }
+}
+
+.files-foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--lavender-line);
+}
+
+.files-foot .muted-note {
+  margin: 6px 0 0;
+}
+
 /* ---------- deliverable window ---------- */
 .modal-backdrop {
   position: fixed;
