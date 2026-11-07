@@ -1,3 +1,4 @@
+import type { DeliverableKind } from "../../shared/deliverables";
 import { EventParser } from "../../shared/sse";
 import type { DraftRequest } from "../../shared/tools";
 
@@ -6,7 +7,7 @@ export interface DraftHandlers {
   status(phase: "searching" | "writing"): void;
   done(d: { stopReason: string; sources: { title: string; url: string }[] }): void;
   error(message: string): void;
-  deliverable?(d: { id: string; kind: "proposal" | "itinerary" | "estimate"; version: number }): void;
+  deliverable?(d: { id: string; kind: DeliverableKind; version: number }): void;
 }
 
 const OFFLINE = "Couldn't reach the assistant — check the internet connection.";

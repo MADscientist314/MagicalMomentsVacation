@@ -1,11 +1,12 @@
 // The small server-sent-events protocol between the Worker and the browser.
+import type { DeliverableKind } from "./deliverables";
 
 export type ServerEvent =
   | { event: "text"; data: string }
   | { event: "status"; data: { phase: "searching" | "writing" } }
   | { event: "done"; data: { stopReason: string; sources: { title: string; url: string }[] } }
   | { event: "error"; data: { message: string } }
-  | { event: "deliverable"; data: { id: string; kind: "proposal" | "itinerary" | "estimate"; version: number } };
+  | { event: "deliverable"; data: { id: string; kind: DeliverableKind; version: number } };
 
 export const KEEPALIVE = ": keepalive\n\n";
 

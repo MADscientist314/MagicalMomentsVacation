@@ -3,7 +3,7 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { LIST_LIMITS } from "../../shared/deliverables";
 import { emptyLike, humanize, PICTURE_KEYS, ROW_TEMPLATES, toPrice } from "../lib/editorHelpers";
 
-const STRING_LISTS = new Set(["highlights", "nextSteps", "verifyNotes", "tips", "notes"]);
+const STRING_LISTS = new Set(["highlights", "nextSteps", "verifyNotes", "tips", "notes", "checklist"]);
 const LONG_TEXT = new Set(["intro", "summary", "recommendation", "text"]);
 const PRICES = new Set(["amount", "unitPrice"]);
 

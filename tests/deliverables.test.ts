@@ -5,10 +5,12 @@ import {
   numbersIn,
   DELIVERABLE_SCHEMAS,
   documentPhotoIds,
+  HAS_PICTURES,
   renderDeliverableHtml,
   tidyDeliverable,
   validateDeliverable,
   type Estimate,
+  type Extras,
   type Itinerary,
   type Proposal,
 } from "../shared/deliverables";
@@ -268,5 +270,42 @@ describe("pictures in a proposal", () => {
 
   it("never asks Claude for picture ids", () => {
     expect(JSON.stringify(DELIVERABLE_SCHEMAS.proposal)).not.toContain("photo");
+  });
+});
+
+describe("extras (packing list and the like)", () => {
+  const EXTRAS: Extras = {
+    title: "Packing list for the Rivera family",
+    intro: "Everything that isn't a day of the trip.",
+    sections: [
+      { heading: "Packing list", checklist: ["Sunscreen", "Ponchos <for rain>"] },
+      { heading: "Apps to download", checklist: ["The park's official app"] },
+    ],
+    verifyNotes: ["Check the bag size rule"],
+  };
+  const brand = { ...BRAND, mode: "client" as const };
+
+  it("validates, and says which section to fix", () => {
+    expect(validateDeliverable("extras", EXTRAS)).toEqual({ ok: true, data: EXTRAS });
+    expect(validateDeliverable("extras", { ...EXTRAS, sections: [] })).toEqual({ ok: false, error: "Extras need at least one section." });
+    const unnamed = { ...EXTRAS, sections: [EXTRAS.sections[0], { heading: " ", checklist: ["Hats"] }] };
+    expect(validateDeliverable("extras", unnamed)).toEqual({ ok: false, error: "Section 2 needs a heading — fill it in or remove the section." });
+  });
+
+  it("drops blank lines and empty sections before checking", () => {
+    const messy = { ...EXTRAS, sections: [{ heading: "Packing list", checklist: ["Hats", "", "  "] }, { heading: "", checklist: [""] }] };
+    expect(tidyDeliverable("extras", messy)).toEqual({ ...EXTRAS, sections: [{ heading: "Packing list", checklist: ["Hats"] }] });
+  });
+
+  it("renders each section as a checklist, escaped, with no pictures and no notes in the client copy", () => {
+    const html = renderDeliverableHtml("extras", EXTRAS, brand);
+    expect(html).toContain('<ul class="checklist">');
+    expect(html).toContain("Ponchos &lt;for rain&gt;");
+    expect(html).toContain("<h2>Apps to download</h2>");
+    expect(html).not.toContain("Check the bag size rule");
+    expect(renderDeliverableHtml("extras", EXTRAS, { ...brand, mode: "review" })).toContain("Check the bag size rule");
+    expect(HAS_PICTURES("extras")).toBe(false);
+    expect(documentPhotoIds("extras", EXTRAS)).toEqual([]);
+    expect(JSON.stringify(DELIVERABLE_SCHEMAS.extras)).toContain("checklist");
   });
 });

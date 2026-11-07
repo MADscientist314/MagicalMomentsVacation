@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { IconFileText, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
 import { MAX_MESSAGE, type DeliverableMeta } from "../../shared/conversations";
-import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind } from "../../shared/deliverables";
+import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, EXTRAS_TOPICS, type DeliverableKind, type ExtrasTopic } from "../../shared/deliverables";
 import { joinTranscript } from "../lib/speech";
 import { streamPost } from "../lib/streamDraft";
 import { sendToThread } from "../lib/threadStore";
@@ -26,6 +26,10 @@ interface Props {
 
 type Shape = "one" | "compare";
 const OPTIONS_PREFIX = "Here are the options I'd like to compare:\n";
+/** Kept in step with MAX_EXTRAS_ASK on the server. */
+const EXTRAS_ASK_LIMIT = 2_000;
+/** Proposal and Extras open a small chooser first; the others are made straight away. */
+type Chooser = "proposal" | "extras";
 
 const when = (ms: number) =>
   new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -34,16 +38,18 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
   const [making, setMaking] = useState<DeliverableKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [proposalOpen, setProposalOpen] = useState(false);
+  const [chooser, setChooser] = useState<Chooser | null>(null);
   const [shape, setShape] = useState<Shape>(hasMaterial ? "one" : "compare");
   const [myOptions, setMyOptions] = useState("");
+  const [topics, setTopics] = useState<ExtrasTopic[]>(["packing"]);
+  const [extrasAsk, setExtrasAsk] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
 
   const busy = making !== null || threadBusy;
   const optionsLimit = MAX_MESSAGE - OPTIONS_PREFIX.length;
 
-  const make = (kind: DeliverableKind, options?: Shape) => {
+  const make = (kind: DeliverableKind, extra: Record<string, unknown> = {}) => {
     if (busy) return;
     setMaking(kind);
     setError(null);
@@ -52,14 +58,15 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
     controller.current = abort;
     void streamPost(
       `/api/conversations/${tripId}/deliverables`,
-      options ? { kind, options } : { kind },
+      { kind, ...extra },
       {
         text: () => {},
         status: () => {},
         deliverable: (d) => setOpenId(d.id),
         done: () => {
           setMaking(null);
-          setProposalOpen(false);
+          setChooser(null);
+          if (kind === "extras") setExtrasAsk("");
           onChanged();
         },
         error: (message) => {
@@ -91,7 +98,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
     <aside className="card deliverables">
       <h2>Client deliverables</h2>
       {!planned ? (
-        <p className="muted-note">Plan the trip first. Then you can turn it into a proposal, an itinerary or an estimate.</p>
+        <p className="muted-note">Plan the trip first. Then you can turn it into a proposal, an itinerary, an estimate or extras.</p>
       ) : (
         <>
           <div className="make-buttons">
@@ -99,16 +106,65 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
               <button
                 key={kind}
                 type="button"
-                className={`btn-quiet${kind === "proposal" && proposalOpen ? " active" : ""}`}
+                className={`btn-quiet${chooser === kind ? " active" : ""}`}
+                aria-expanded={kind === "proposal" || kind === "extras" ? chooser === kind : undefined}
+                title={kind === "extras" ? "Packing list, apps to download, before-you-go checklist" : undefined}
                 disabled={busy}
-                onClick={() => (kind === "proposal" ? setProposalOpen((o) => !o) : make(kind))}
+                onClick={() => (kind === "proposal" || kind === "extras" ? setChooser((c) => (c === kind ? null : kind)) : make(kind))}
               >
                 <IconSparkles size={14} aria-hidden /> {DELIVERABLE_LABELS[kind]}
               </button>
             ))}
           </div>
 
-          {proposalOpen && (
+          {chooser === "extras" && (
+            <div className="proposal-panel">
+              <p className="muted-note">
+                A checklist for the family, kept apart from the day-by-day plan. Pick what it should cover, or say what you'd like.
+              </p>
+              <div className="choices" role="group" aria-label="What should the extras cover?">
+                {(Object.keys(EXTRAS_TOPICS) as ExtrasTopic[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={topics.includes(t)}
+                    className={topics.includes(t) ? "choice chosen" : "choice"}
+                    onClick={() => setTopics((all) => (all.includes(t) ? all.filter((x) => x !== t) : [...all, t]))}
+                  >
+                    {EXTRAS_TOPICS[t]}
+                  </button>
+                ))}
+              </div>
+              <div className="field field-options">
+                <div className="field-head">
+                  <label className="field-label" htmlFor="extras-ask">
+                    Anything else? (optional)
+                  </label>
+                  <MicButton onSpeech={(heard) => setExtrasAsk((v) => joinTranscript(v, heard))} disabled={busy} />
+                </div>
+                <TextBox
+                  id="extras-ask"
+                  rows={2}
+                  limit={EXTRAS_ASK_LIMIT}
+                  value={extrasAsk}
+                  placeholder="Snacks for the plane, what to bring for a toddler, a list for the water park day…"
+                  onChange={setExtrasAsk}
+                />
+              </div>
+              <div className="proposal-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || (!topics.length && !extrasAsk.trim()) || extrasAsk.length > EXTRAS_ASK_LIMIT}
+                  onClick={() => make("extras", { topics, ask: extrasAsk.trim() })}
+                >
+                  Make the extras
+                </button>
+              </div>
+            </div>
+          )}
+
+          {chooser === "proposal" && (
             <div className="proposal-panel">
               <div className="choices" role="radiogroup" aria-label="What kind of proposal?">
                 {(["one", "compare"] as const).map((s) => (
@@ -167,7 +223,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
                     Add to the trip chat
                   </button>
                 )}
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => make("proposal", shape)}>
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => make("proposal", { options: shape })}>
                   Make the proposal
                 </button>
               </div>

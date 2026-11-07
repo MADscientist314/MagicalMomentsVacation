@@ -1,13 +1,24 @@
-// Client deliverables (proposal, itinerary, estimate): types, JSON schemas for
+// Client deliverables (proposal, itinerary, estimate, extras): types, JSON schemas for
 // Claude's structured output, validation, totals, price safety and the branded page.
 
-export type DeliverableKind = "proposal" | "itinerary" | "estimate";
-export const DELIVERABLE_KINDS: DeliverableKind[] = ["proposal", "itinerary", "estimate"];
+export type DeliverableKind = "proposal" | "itinerary" | "estimate" | "extras";
+export const DELIVERABLE_KINDS: DeliverableKind[] = ["proposal", "itinerary", "estimate", "extras"];
 export const DELIVERABLE_LABELS: Record<DeliverableKind, string> = {
   proposal: "Proposal",
   itinerary: "Itinerary",
   estimate: "Estimate",
+  extras: "Extras",
 };
+
+/** What an Extras document can cover; she picks any of these and can ask for more in her own words. */
+export const EXTRAS_TOPICS = {
+  packing: "Packing list",
+  apps: "Apps to download",
+  before: "Before you go",
+  tips: "Good to know",
+} as const;
+export type ExtrasTopic = keyof typeof EXTRAS_TOPICS;
+export const isExtrasTopic = (x: unknown): x is ExtrasTopic => typeof x === "string" && Object.hasOwn(EXTRAS_TOPICS, x);
 
 export interface Proposal {
   title: string;
@@ -37,6 +48,17 @@ export interface Itinerary {
   verifyNotes: string[];
 }
 
+/**
+ * Everything that isn't a day of the trip: a packing list, apps to download, a before-you-go checklist.
+ * Its own document, so none of it gets crammed into a day of the itinerary (Nov 7 review).
+ */
+export interface Extras {
+  title: string;
+  intro: string;
+  sections: { heading: string; checklist: string[] }[];
+  verifyNotes: string[];
+}
+
 /** Every picture a document uses: the cover, then each day's (itinerary) or option's (proposal). */
 export function documentPhotoIds(kind: DeliverableKind, data: DeliverableData): string[] {
   const ids =
@@ -48,8 +70,8 @@ export function documentPhotoIds(kind: DeliverableKind, data: DeliverableData): 
   return ids.filter((id): id is string => typeof id === "string");
 }
 
-/** Proposals and itineraries can carry pictures; estimates can't. */
-export const HAS_PICTURES = (kind: DeliverableKind) => kind !== "estimate";
+/** Proposals and itineraries can carry pictures; estimates and extras can't. */
+export const HAS_PICTURES = (kind: DeliverableKind) => kind === "proposal" || kind === "itinerary";
 
 export interface Estimate {
   title: string;
@@ -59,7 +81,7 @@ export interface Estimate {
   verifyNotes: string[];
 }
 
-export type DeliverableData = Proposal | Itinerary | Estimate;
+export type DeliverableData = Proposal | Itinerary | Estimate | Extras;
 
 // ---------- JSON schemas (no minItems/maxItems: counts are checked in validateDeliverable) ----------
 
@@ -110,6 +132,12 @@ export const DELIVERABLE_SCHEMAS: Record<DeliverableKind, Record<string, unknown
     notes: strList,
     verifyNotes: strList,
   }),
+  extras: object({
+    title: str,
+    intro: str,
+    sections: { type: "array", items: object({ heading: str, checklist: strList }) },
+    verifyNotes: strList,
+  }),
 };
 
 // ---------- validation ----------
@@ -124,6 +152,7 @@ export const LIST_LIMITS: Record<string, { min: number; max: number }> = {
   days: { min: 1, max: 60 },
   lineItems: { min: 1, max: 100 },
   items: { min: 0, max: 100 },
+  sections: { min: 1, max: 12 },
 };
 
 const isPrice = (x: unknown): x is number | null => x === null || (typeof x === "number" && Number.isFinite(x) && x >= 0);
@@ -237,10 +266,37 @@ function checkEstimate(d: Record<string, unknown>): string | null {
   return null;
 }
 
+function checkExtras(d: Record<string, unknown>): string | null {
+  const top = first(
+    text(d.title, "The title", "Give the extras a title."),
+    text(d.intro, "The opening note"),
+    lines(d.verifyNotes, "Your notes"),
+    rows(d.sections, "sections", "Extras need at least one section.", `Extras can have up to ${LIST_LIMITS.sections.max} sections.`),
+  );
+  if (top) return top;
+  for (const [i, section] of (d.sections as unknown[]).entries()) {
+    const n = `Section ${i + 1}`;
+    if (!isObject(section)) return `${n} is missing.`;
+    const problem = first(
+      text(section.heading, `${n}'s heading`, `${n} needs a heading — fill it in or remove the section.`),
+      lines(section.checklist, `${n}'s list`),
+    );
+    if (problem) return problem;
+  }
+  return null;
+}
+
+const CHECKS: Record<DeliverableKind, (d: Record<string, unknown>) => string | null> = {
+  proposal: checkProposal,
+  itinerary: checkItinerary,
+  estimate: checkEstimate,
+  extras: checkExtras,
+};
+
 /** Checks a deliverable's shape; a failure says what to fix ("Option 2 needs a name…"). */
 export function validateDeliverable(kind: DeliverableKind, data: unknown): Result {
   if (!isObject(data)) return { ok: false, error: "That document is empty." };
-  const problem = kind === "proposal" ? checkProposal(data) : kind === "itinerary" ? checkItinerary(data) : checkEstimate(data);
+  const problem = CHECKS[kind](data);
   return problem ? { ok: false, error: problem } : { ok: true, data: data as unknown as DeliverableData };
 }
 
@@ -276,6 +332,11 @@ export function tidyDeliverable(kind: DeliverableKind, data: unknown): unknown {
   }
   if (kind === "estimate" && Array.isArray(d.lineItems)) {
     d.lineItems = d.lineItems.filter((l) => !(isObject(l) && blank(l.label) && (l.unitPrice ?? null) === null && blank(l.note)));
+  }
+  if (kind === "extras" && Array.isArray(d.sections)) {
+    d.sections = d.sections
+      .map((section) => (isObject(section) ? { ...section, checklist: dropBlankLines(section.checklist) } : section))
+      .filter((section) => !(isObject(section) && blank(section.heading) && Array.isArray(section.checklist) && !section.checklist.length));
   }
   return d;
 }
@@ -374,6 +435,17 @@ function estimateBody(e: Estimate): string {
 ${e.notes.length ? `<section><h2>Notes</h2>${list(e.notes)}</section>` : ""}`;
 }
 
+function extrasBody(x: Extras): string {
+  return x.sections
+    .map((section) => {
+      const items = section.checklist.filter((i) => i.trim());
+      return `<section class="extras-section"><h2>${esc(section.heading)}</h2>${
+        items.length ? `<ul class="checklist">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""
+      }</section>`;
+    })
+    .join("\n");
+}
+
 const STYLE = `
 :root{--purple:#7b3f99;--lavender:#f2dffc;--line:#d9bdeb;--cream:#fffbf5;--ink:#2c3333}
 *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.55 "Wix Madefor Text",system-ui,sans-serif}
@@ -392,6 +464,8 @@ header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px
 table.estimate{width:100%;border-collapse:collapse;margin-top:18px;background:#fff}
 .estimate th,.estimate td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
 .estimate .num{text-align:right;white-space:nowrap}.estimate tfoot td{font-weight:700;border-bottom:none}
+.extras-section{break-inside:avoid}.checklist{list-style:none;padding-left:0}.checklist li{position:relative;padding-left:30px;margin:6px 0}
+.checklist li::before{content:"";position:absolute;left:2px;top:.3em;width:15px;height:15px;border:1.5px solid var(--purple);border-radius:4px;background:#fff}
 .review{background:var(--lavender);border:1px dashed var(--purple);border-radius:12px;padding:12px 18px;margin-top:24px}
 .review h2{margin-top:4px;font-size:17px}
 footer{margin-top:32px;border-top:2px solid var(--line);padding-top:14px}
@@ -409,7 +483,9 @@ export function renderDeliverableHtml(
       ? proposalBody(data as Proposal, brand.photos)
       : kind === "itinerary"
         ? itineraryBody(data as Itinerary, brand.photos)
-        : estimateBody(data as Estimate);
+        : kind === "extras"
+          ? extrasBody(data as Extras)
+          : estimateBody(data as Estimate);
   const coverSrc = HAS_PICTURES(kind) ? photoSrc(brand.photos, (data as Itinerary | Proposal).coverPhoto) : null;
   const cover = coverSrc ? `<figure class="cover"><img src="${coverSrc}" alt=""></figure>` : "";
   const intro = "intro" in data ? para(data.intro) : "";

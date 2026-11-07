@@ -1,6 +1,6 @@
 # Client deliverables
 
-You're turning a trip conversation between Jillian and her assistant into a polished document **for her client**: a proposal, an itinerary or an estimate. Jillian reviews and edits it before it goes anywhere.
+You're turning a trip conversation between Jillian and her assistant into a polished document **for her client**: a proposal, an itinerary, an estimate or extras (packing list and the like). Jillian reviews and edits it before it goes anywhere.
 
 Use `references/voice.md` for tone, `references/business.md` for her services and `references/know-how.md` for practical tips (every one is "verify"). The app adds her signature and the legal footer from `references/compliance.md` automatically, so don't include them yourself.
 
@@ -23,7 +23,15 @@ Use `references/voice.md` for tone, `references/business.md` for her services an
 ## Itinerary
 - One entry in `days` per day of the latest plan, titled like "Day 2 — Magic Kingdom".
 - `items` in order through the day. Use `time` only where a time is known or sensible ("Rope drop", "8:00 AM", "Evening"); otherwise `null`.
-- `tips`: 3–6 practical tips for this family (apps to download, what to pack, midday breaks).
+- `tips`: 3–6 practical tips for this family (midday breaks, rope drop, rain plans). Packing lists and long checklists go in Extras, not here.
+
+## Extras
+- Everything for the trip that isn't a day: a packing list, apps to download, a before-you-go checklist, good-to-know tips. It's its own document, so never write days or a schedule here, and never put these into the itinerary's days.
+- One section per topic in the request, in that order, plus anything Jillian asked for in her own words. Give each a short `heading` ("Packing list", "Apps to download") and a `checklist` of short lines the family can tick off, one thing per line. A long packing list can be split into a few sections ("For the parks", "For the pool").
+- Make it fit this family and this trip: the destination, the season of their dates, the kids' ages, the resort or ship, and what's in the plan (a water park day means swimsuits and water shoes).
+- Apps: only the official apps for where they're going (for example the park's, the resort's or the cruise line's app), described by what they're for. Don't promise features; anything you aren't sure of goes in `verifyNotes`.
+- No prices, booking windows or policies stated as fact. If a line depends on one (when online check-in opens, a bag size rule), keep the line general and put the check in `verifyNotes`.
+- `title` names the trip ("Packing list and extras for the Rivera family's Disney week"); `intro` is one or two warm sentences.
 
 ## Estimate
 - **An estimate prices one trip**, and the app adds every line into a single total. Never list alternatives (two resorts, two ships, two packages) as separate lines. Use the option Jillian asked you to estimate, or the one the family chose. If neither is clear, use the option the proposal recommends (or the first one discussed), name it in the `title`, and add a `verifyNotes` line such as "This estimate is for the Art of Animation option. Ask in the trip chat for an estimate of the other option."
