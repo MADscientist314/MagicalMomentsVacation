@@ -1,10 +1,13 @@
 import { useRef, useState } from "react";
-import { IconFileText, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
+import { IconFileText, IconMail, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
 import { MAX_MESSAGE, type DeliverableMeta } from "../../shared/conversations";
-import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, EXTRAS_TOPICS, type DeliverableKind, type ExtrasTopic } from "../../shared/deliverables";
+import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, EXTRAS_TOPICS, type DeliverableKind, type ExtrasTopic, type Proposal } from "../../shared/deliverables";
+import { getDeliverable, shareDeliverable } from "../lib/api";
+import { defaultEmailKinds, EMAIL_KINDS, emailRequest, latestByKind, type EmailLink } from "../lib/emailDraft";
 import { joinTranscript } from "../lib/speech";
 import { streamPost } from "../lib/streamDraft";
 import { sendToThread } from "../lib/threadStore";
+import { AttachButton, AttachStatus, useAttach } from "./AttachButton";
 import { DeliverableModal } from "./DeliverableModal";
 import { MicButton } from "./MicButton";
 import { Sparkles } from "./Sparkles";
@@ -25,11 +28,14 @@ interface Props {
 }
 
 type Shape = "one" | "compare";
-const OPTIONS_PREFIX = "Here are the options I'd like to compare:\n";
 /** Kept in step with MAX_EXTRAS_ASK on the server. */
 const EXTRAS_ASK_LIMIT = 2_000;
-/** Proposal and Extras open a small chooser first; the others are made straight away. */
-type Chooser = "proposal" | "extras";
+/** Her own words for the email ("mention the dining plan"). */
+const EMAIL_ASK_LIMIT = 2_000;
+/** Proposal, Extras and the email open a small chooser first; the others are made straight away. */
+type Chooser = "proposal" | "extras" | "email";
+
+const longDay = (ms: number) => new Date(ms).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
 const when = (ms: number) =>
   new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -40,14 +46,19 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
   const [openId, setOpenId] = useState<string | null>(null);
   const [chooser, setChooser] = useState<Chooser | null>(null);
   const [shape, setShape] = useState<Shape>(hasMaterial ? "one" : "compare");
-  const [myOptions, setMyOptions] = useState("");
+  const [quotes, setQuotes] = useState("");
+  const quoteAttacher = useAttach(quotes, setQuotes, MAX_MESSAGE);
+  const latest = latestByKind(deliverables);
+  const [emailKinds, setEmailKinds] = useState<DeliverableKind[] | null>(null);
+  const chosenKinds = (emailKinds ?? defaultEmailKinds(latest)).filter((k) => latest[k]);
+  const [emailAsk, setEmailAsk] = useState("");
+  const [drafting, setDrafting] = useState(false);
   const [topics, setTopics] = useState<ExtrasTopic[]>(["packing"]);
   const [extrasAsk, setExtrasAsk] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
 
-  const busy = making !== null || threadBusy;
-  const optionsLimit = MAX_MESSAGE - OPTIONS_PREFIX.length;
+  const busy = making !== null || threadBusy || drafting;
 
   const make = (kind: DeliverableKind, extra: Record<string, unknown> = {}) => {
     if (busy) return;
@@ -67,6 +78,10 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
           setMaking(null);
           setChooser(null);
           if (kind === "extras") setExtrasAsk("");
+          if (kind === "proposal") {
+            setQuotes("");
+            quoteAttacher.dismiss();
+          }
           onChanged();
         },
         error: (message) => {
@@ -94,6 +109,39 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
     return !problem;
   };
 
+  /**
+   * Puts the newest version of each chosen document on the family's link (making the link if there
+   * isn't one), then asks the trip chat for the email, with the links and the quote's totals in it.
+   */
+  const draftEmail = async () => {
+    if (busy || !chosenKinds.length) return;
+    setDrafting(true);
+    setError(null);
+    setNote(null);
+    try {
+      const links: EmailLink[] = [];
+      let expiresAt = Infinity;
+      let quote: { version: number; proposal: Proposal } | undefined;
+      for (const kind of EMAIL_KINDS.filter((k) => chosenKinds.includes(k))) {
+        const doc = latest[kind]!;
+        const share = await shareDeliverable(doc.id);
+        links.push({ kind, version: doc.version, url: `${window.location.origin}${share.path}` });
+        expiresAt = Math.min(expiresAt, share.expiresAt);
+        if (kind === "proposal") quote = { version: doc.version, proposal: (await getDeliverable(doc.id)).data as Proposal };
+      }
+      const text = emailRequest({ links, expiresOn: longDay(expiresAt), quote, ask: emailAsk });
+      if (addToConversation(text)) {
+        setChooser(null);
+        setEmailAsk("");
+        setNote("Writing the email in the trip chat. Copy it from there, or open it in your email.");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDrafting(false);
+    }
+  };
+
   return (
     <aside className="card deliverables">
       <h2>Client deliverables</h2>
@@ -116,6 +164,18 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
               </button>
             ))}
           </div>
+          {(latest.proposal || latest.itinerary || latest.estimate || latest.extras) && (
+            <button
+              type="button"
+              className={`btn-quiet email-button${chooser === "email" ? " active" : ""}`}
+              aria-expanded={chooser === "email"}
+              disabled={busy}
+              title="An email to the family with links to the proposal and itinerary"
+              onClick={() => setChooser((c) => (c === "email" ? null : "email"))}
+            >
+              <IconMail size={14} aria-hidden /> Draft the email to the family
+            </button>
+          )}
 
           {chooser === "extras" && (
             <div className="proposal-panel">
@@ -189,42 +249,98 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
                 <>
                   <p className="muted-note">
                     Compare 2–4 options. I can research ideas online, you can list your own, or both. Real availability and prices
-                    come from your supplier and Travefy tools; I'll leave “Add price” for you to fill in.
+                    come from your supplier and Travefy tools.
                   </p>
                   <button type="button" className="btn-quiet" disabled={busy} onClick={() => addToConversation(SUGGEST)}>
                     <IconSparkles size={14} aria-hidden /> Suggest options for me
                   </button>
-                  <div className="field field-options">
-                    <div className="field-head">
-                      <label className="field-label" htmlFor="my-options">
-                        My options (and prices, if you have them)
-                      </label>
-                      <MicButton onSpeech={(heard) => setMyOptions((v) => joinTranscript(v, heard))} disabled={busy} />
-                    </div>
-                    <TextBox
-                      id="my-options"
-                      rows={3}
-                      limit={optionsLimit}
-                      value={myOptions}
-                      placeholder={"Pop Century, 7 nights $4,200\nPolynesian, 7 nights $9,800"}
-                      onChange={setMyOptions}
-                    />
-                  </div>
                 </>
               )}
+              <div className="field field-options">
+                <div className="field-head">
+                  <label className="field-label" htmlFor="proposal-quotes">
+                    {shape === "one" ? "The quote (optional)" : "My options and their quotes (optional)"}
+                  </label>
+                  <span className="field-tools">
+                    <AttachButton attacher={quoteAttacher} disabled={busy} />
+                    <MicButton onSpeech={(heard) => setQuotes((v) => joinTranscript(v, heard))} disabled={busy} />
+                  </span>
+                </div>
+                <TextBox
+                  id="proposal-quotes"
+                  rows={3}
+                  limit={MAX_MESSAGE}
+                  value={quotes}
+                  placeholder={
+                    shape === "one"
+                      ? "Paste screenshots of the supplier's quote (⌘V), drop them here, or type the prices"
+                      : "Paste a screenshot of each option's quote (⌘V), or type them:\nPop Century, 7 nights $4,200\nPolynesian, 7 nights $9,800"
+                  }
+                  onChange={setQuotes}
+                  onFiles={(files) => void quoteAttacher.attach(files)}
+                />
+                <AttachStatus attacher={quoteAttacher} />
+                <p className="muted-note small">
+                  I'll read each quote, list what's in the price (room, tickets, fees, discounts) and add it up for you. Anything I
+                  can't find stays “Add price”.
+                </p>
+              </div>
               <div className="proposal-actions">
-                {shape === "compare" && (
-                  <button
-                    type="button"
-                    className="btn-quiet"
-                    disabled={busy || !myOptions.trim() || myOptions.length > optionsLimit}
-                    onClick={() => addToConversation(`${OPTIONS_PREFIX}${myOptions.trim()}`) && setMyOptions("")}
-                  >
-                    Add to the trip chat
-                  </button>
-                )}
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => make("proposal", { options: shape })}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || quoteAttacher.reading !== null || quotes.length > MAX_MESSAGE}
+                  onClick={() => make("proposal", { options: shape, ...(quotes.trim() ? { quotes: quotes.trim() } : {}) })}
+                >
                   Make the proposal
+                </button>
+              </div>
+            </div>
+          )}
+
+          {chooser === "email" && (
+            <div className="proposal-panel">
+              <p className="muted-note">
+                I'll write the email in the trip chat, in your voice, with a private link to each document and the quote's totals.
+                Sharing puts the newest version on each link for 30 days.
+              </p>
+              <div className="choices" role="group" aria-label="Which documents should the email link to?">
+                {EMAIL_KINDS.filter((k) => latest[k]).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={chosenKinds.includes(k)}
+                    className={chosenKinds.includes(k) ? "choice chosen" : "choice"}
+                    onClick={() => setEmailKinds(chosenKinds.includes(k) ? chosenKinds.filter((x) => x !== k) : [...chosenKinds, k])}
+                  >
+                    {DELIVERABLE_LABELS[k]} v{latest[k]!.version}
+                  </button>
+                ))}
+              </div>
+              <div className="field field-options">
+                <div className="field-head">
+                  <label className="field-label" htmlFor="email-ask">
+                    Anything to mention? (optional)
+                  </label>
+                  <MicButton onSpeech={(heard) => setEmailAsk((v) => joinTranscript(v, heard))} disabled={busy} />
+                </div>
+                <TextBox
+                  id="email-ask"
+                  rows={2}
+                  limit={EMAIL_ASK_LIMIT}
+                  value={emailAsk}
+                  placeholder="The deposit is due Friday, I'm free for a call this weekend…"
+                  onChange={setEmailAsk}
+                />
+              </div>
+              <div className="proposal-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || !chosenKinds.length || emailAsk.length > EMAIL_ASK_LIMIT}
+                  onClick={() => void draftEmail()}
+                >
+                  <IconMail size={16} aria-hidden /> {drafting ? "Making the links…" : "Draft the email"}
                 </button>
               </div>
             </div>

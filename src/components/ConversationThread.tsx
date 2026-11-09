@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { splitDraft } from "../../shared/sections";
+import { splitDraft, splitSubject } from "../../shared/sections";
 import type { ChatState, ChatTurn } from "../lib/chatState";
 import { renderMarkdown } from "../lib/markdown";
-import { CopyButton } from "./CopyButton";
+import { IconMail } from "@tabler/icons-react";
+import { CopyButton, plainText } from "./CopyButton";
 import { Sources } from "./Sources";
 import { Sparkles } from "./Sparkles";
 
@@ -40,12 +41,46 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
+/** The email to the family ("Draft the email"): its subject and body to copy, or to open in her email app. */
+function EmailReply({ turn, subject, body, internal, busy }: { turn: ChatTurn; subject: string; body: string; internal: string; busy: boolean }) {
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainText(body))}`;
+  return (
+    <div className="bubble bubble-assistant trip-reply email-reply">
+      <div className="card-head">
+        <span className="plan-label">✉️ Email to the family</span>
+        {!busy && <CopyButton markdown={subject} label="Copy subject" />}
+      </div>
+      <p className="email-subject">
+        <strong>Subject:</strong> {subject}
+      </p>
+      <Markdown md={body} />
+      {internal && (
+        <details className="notes-fold">
+          <summary>For Jillian only</summary>
+          <Markdown md={internal} />
+        </details>
+      )}
+      {turn.sources && <Sources sources={turn.sources} />}
+      {!busy && (
+        <div className="bubble-actions">
+          <CopyButton markdown={body} label="Copy email" />
+          <a className="btn-quiet" href={mailto} title="Opens a new email in your email app, with this subject and text">
+            <IconMail size={16} aria-hidden /> Open in my email
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A trip reply: day blocks with Copy day, Jillian-only notes folded away, sources. */
 function TripReply({ turn, current, busy }: { turn: ChatTurn; current: boolean; busy: boolean }) {
   const split = splitDraft(turn.content);
   const { client, internal } = split;
   // Only a day-by-day plan gets the plan label and Copy day; other ### replies (options, say) read as text.
   const blocks = DAY_PLAN.test(client) ? split.blocks : [];
+  const email = blocks.length ? null : splitSubject(client);
+  if (email?.subject) return <EmailReply turn={turn} subject={email.subject} body={email.body} internal={internal} busy={busy} />;
   return (
     <div className={`bubble bubble-assistant trip-reply${current ? " current" : ""}`}>
       {blocks.length > 0 && (

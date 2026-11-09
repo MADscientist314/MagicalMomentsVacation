@@ -20,6 +20,24 @@ export const EXTRAS_TOPICS = {
 export type ExtrasTopic = keyof typeof EXTRAS_TOPICS;
 export const isExtrasTopic = (x: unknown): x is ExtrasTopic => typeof x === "string" && Object.hasOwn(EXTRAS_TOPICS, x);
 
+/**
+ * One cost in an option's price breakdown ("Portofino Bay, 3 nights", "2-day park-to-park tickets").
+ * A discount is a line with a negative price. The app adds the lines up; Claude never does the math.
+ */
+export interface PriceLine {
+  label: string;
+  qty: number;
+  unitPrice: number | null;
+}
+
+/** An option's price: one amount, or (since Nov 9) a breakdown whose lines the app adds into `amount`. */
+export interface OptionPrice {
+  amount: number | null;
+  note: string;
+  /** Proposals saved before Nov 9 have none; an empty list means a single price. */
+  lines?: PriceLine[];
+}
+
 export interface Proposal {
   title: string;
   intro: string;
@@ -30,7 +48,7 @@ export interface Proposal {
     summary: string;
     highlights: string[];
     bestFor: string;
-    price: { amount: number | null; note: string };
+    price: OptionPrice;
     photo?: string;
   }[];
   recommendation: string;
@@ -106,7 +124,11 @@ export const DELIVERABLE_SCHEMAS: Record<DeliverableKind, Record<string, unknown
         summary: str,
         highlights: strList,
         bestFor: str,
-        price: object({ amount: nullableNumber, note: str }),
+        price: object({
+          lines: { type: "array", items: object({ label: str, qty: { type: "number" }, unitPrice: nullableNumber }) },
+          amount: nullableNumber,
+          note: str,
+        }),
       }),
     },
     recommendation: str,
@@ -153,9 +175,12 @@ export const LIST_LIMITS: Record<string, { min: number; max: number }> = {
   lineItems: { min: 1, max: 100 },
   items: { min: 0, max: 100 },
   sections: { min: 1, max: 12 },
+  lines: { min: 0, max: 30 },
 };
 
 const isPrice = (x: unknown): x is number | null => x === null || (typeof x === "number" && Number.isFinite(x) && x >= 0);
+/** A breakdown line may be a discount, so below zero is fine. */
+const isLinePrice = (x: unknown): x is number | null => x === null || (typeof x === "number" && Number.isFinite(x) && Math.abs(x) < 10_000_000);
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
 const isPhotoId = (x: unknown) => x === undefined || (typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x));
 const TOO_LONG = `keep it under ${MAX_TEXT.toLocaleString("en-US")} characters`;
@@ -207,6 +232,20 @@ function checkProposal(d: Record<string, unknown>): string | null {
       isPhotoId(o.photo) ? null : BAD_PICTURE,
     );
     if (problem) return problem;
+    const priceLines = (o.price as Record<string, unknown>).lines;
+    if (priceLines === undefined) continue;
+    const many = rows(priceLines, "lines", `${n}'s price breakdown is missing.`, `${n}'s price breakdown can have up to ${LIST_LIMITS.lines.max} lines.`);
+    if (many) return many;
+    for (const [j, l] of (priceLines as unknown[]).entries()) {
+      const c = `${n}, price line ${j + 1}`;
+      if (!isObject(l)) return `${c} is missing.`;
+      const lineProblem = first(
+        text(l.label, c, `${c} needs a name (what it's for) — fill it in or remove the line.`),
+        isLinePrice(l.unitPrice) ? null : `${c}'s price should be a number of dollars.`,
+        typeof l.qty === "number" && Number.isFinite(l.qty) && l.qty > 0 ? null : `${c}'s “how many” should be more than 0.`,
+      );
+      if (lineProblem) return lineProblem;
+    }
   }
   return null;
 }
@@ -314,12 +353,21 @@ export function tidyDeliverable(kind: DeliverableKind, data: unknown): unknown {
   for (const key of ["nextSteps", "verifyNotes", "tips", "notes"]) if (key in d) d[key] = dropBlankLines(d[key]);
   if (kind === "proposal" && Array.isArray(d.options)) {
     d.options = d.options
-      .map((o) => (isObject(o) ? { ...o, highlights: dropBlankLines(o.highlights) } : o))
+      .map((o) => {
+        if (!isObject(o)) return o;
+        const tidied: Record<string, unknown> = { ...o, highlights: dropBlankLines(o.highlights) };
+        if (isObject(o.price) && Array.isArray(o.price.lines)) {
+          const lines = o.price.lines.filter((l) => !(isObject(l) && blank(l.label) && (l.unitPrice ?? null) === null));
+          tidied.price = { ...o.price, lines };
+        }
+        return tidied;
+      })
       .filter((o) => {
         if (!isObject(o)) return true;
         const price: Record<string, unknown> = isObject(o.price) ? o.price : {};
         const empty = blank(o.name) && blank(o.summary) && blank(o.bestFor) && Array.isArray(o.highlights) && !o.highlights.length;
-        return !(empty && (price.amount ?? null) === null && blank(price.note) && o.photo === undefined);
+        const noLines = !Array.isArray(price.lines) || !price.lines.length;
+        return !(empty && noLines && (price.amount ?? null) === null && blank(price.note) && o.photo === undefined);
       });
   }
   if (kind === "itinerary" && Array.isArray(d.days)) {
@@ -353,6 +401,28 @@ export function estimateTotals(e: Estimate): { total: number; missing: string[] 
   return { total: Math.round(total * 100) / 100, missing };
 }
 
+const cents = (n: number) => Math.round(n * 100) / 100;
+
+/** What an option costs: its lines added up (null while any line still needs a price), or its one amount. */
+export function optionTotal(price: OptionPrice): { total: number | null; missing: string[]; itemized: boolean } {
+  const lines = price.lines ?? [];
+  if (!lines.length) return { total: price.amount, missing: [], itemized: false };
+  const missing = lines.filter((l) => l.unitPrice === null).map((l) => l.label);
+  const total = cents(lines.reduce((sum, l) => sum + l.qty * (l.unitPrice ?? 0), 0));
+  return { total: missing.length ? null : total, missing, itemized: true };
+}
+
+/** Sets each itemized option's amount to its lines' total, so the saved document always adds up. */
+export function settleTotals<T extends DeliverableData>(kind: DeliverableKind, data: T): T {
+  if (kind !== "proposal") return data;
+  const copy = structuredClone(data) as Proposal;
+  for (const o of copy.options) {
+    const { total, itemized } = optionTotal(o.price);
+    if (itemized) o.price.amount = total;
+  }
+  return copy as unknown as T;
+}
+
 /** Every number in a piece of text, written the way people write prices ("$2,140.50"). */
 export function numbersIn(text: string): number[] {
   return [...text.matchAll(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g)].map((m) => Number(m[0].replace(/,/g, "")));
@@ -363,7 +433,11 @@ export function applyPriceProvenance(kind: DeliverableKind, data: DeliverableDat
   const known = (n: number | null) => n !== null && [...allowed].some((a) => Math.abs(a - n) < 0.005);
   const copy = structuredClone(data);
   if (kind === "proposal") {
-    for (const o of (copy as Proposal).options) if (!known(o.price.amount)) o.price.amount = null;
+    for (const o of (copy as Proposal).options) {
+      if (!known(o.price.amount)) o.price.amount = null;
+      // Discounts are written "-$150" or "($150)": the number itself is what has to match.
+      for (const l of o.price.lines ?? []) if (l.unitPrice !== null && !known(Math.abs(l.unitPrice))) l.unitPrice = null;
+    }
   } else if (kind === "estimate") {
     for (const l of (copy as Estimate).lineItems) if (!known(l.unitPrice)) l.unitPrice = null;
   }
@@ -374,7 +448,7 @@ export function applyPriceProvenance(kind: DeliverableKind, data: DeliverableDat
 
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+export const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 const priceOrGap = (n: number | null) => (n === null ? `<span class="missing">Add price</span>` : esc(money(n)));
 const list = (items: string[]) => {
   const filled = items.filter((i) => i.trim());
@@ -395,6 +469,24 @@ function photoSrc(photos: Photos | undefined, id: string | undefined): string | 
   return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) || /^\/p\/[A-Za-z0-9_-]{32}\/[0-9a-f-]{36}$/i.test(src) ? src : null;
 }
 
+const lineMoney = (l: PriceLine) => (l.unitPrice === null ? null : l.qty * l.unitPrice);
+
+/** An option's price: the breakdown table with its total, or the one price. */
+function priceBlock(price: OptionPrice): string {
+  const note = price.note.trim() ? ` <span class="note">${esc(price.note)}</span>` : "";
+  const { total, itemized } = optionTotal(price);
+  if (!itemized) return `<p class="price">${priceOrGap(price.amount)}${note}</p>`;
+  const rows = (price.lines ?? [])
+    .map((l) => {
+      const each = l.qty !== 1 && l.unitPrice !== null ? `<div class="note">${l.qty} × ${esc(money(l.unitPrice))}</div>` : "";
+      const amount = lineMoney(l);
+      return `<tr><td>${esc(l.label)}${each}</td><td class="num">${amount === null ? priceOrGap(null) : esc(money(amount))}</td></tr>`;
+    })
+    .join("");
+  return `<table class="breakdown"><tbody>${rows}</tbody></table>
+  <p class="price"><span class="total-label">Total</span> ${priceOrGap(total)}${note}</p>`;
+}
+
 function proposalBody(p: Proposal, photos?: Photos): string {
   const single = p.options.length === 1;
   const cards = p.options
@@ -405,7 +497,7 @@ function proposalBody(p: Proposal, photos?: Photos): string {
   ${para(o.summary)}
   ${list(o.highlights)}
   ${o.bestFor.trim() ? `<p class="best"><strong>Best for:</strong> ${esc(o.bestFor)}</p>` : ""}
-  <p class="price">${priceOrGap(o.price.amount)}${o.price.note.trim() ? ` <span class="note">${esc(o.price.note)}</span>` : ""}</p>
+  ${priceBlock(o.price)}
 </article>`;
     })
     .join("\n");
@@ -461,6 +553,7 @@ header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px
 .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
 .option{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;break-inside:avoid}
 .option h2{margin-top:0}.option-photo{display:block;width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px}.single .option-photo{height:260px}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
+.breakdown{width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:14px}.breakdown td{border-bottom:1px solid var(--line);padding:5px 0;vertical-align:top}.breakdown .num{text-align:right;white-space:nowrap;padding-left:10px}.total-label{font-family:"Wix Madefor Text",system-ui,sans-serif;font-size:14px;font-weight:600;color:var(--ink);margin-right:4px}
 .missing{background:#fff1c9;color:#7a5a00;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:600}
 .day{break-inside:avoid}.items{padding-left:18px}
 .cover{margin:18px 0 6px}.cover img,.day-photo{display:block;width:100%;object-fit:cover;border-radius:12px}

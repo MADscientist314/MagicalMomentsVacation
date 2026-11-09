@@ -44,7 +44,7 @@ export const PICTURE_KEYS = new Set(["photo", "coverPhoto"]);
 export const ROW_TEMPLATES: Record<string, unknown> = {
   items: { time: null, text: "" },
   days: { title: "", items: [] },
-  options: { name: "", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "" } },
+  options: { name: "", summary: "", highlights: [], bestFor: "", price: { amount: null, note: "", lines: [] } },
   lineItems: { label: "", qty: 1, unit: "", unitPrice: null, note: "" },
   sections: { heading: "", checklist: [] },
 };
@@ -70,4 +70,12 @@ export function toPrice(input: string): number | null {
   if (!cleaned) return null;
   const n = Number(cleaned);
   return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** A breakdown line's price as typed; a discount can be "-150", "-$150" or "($150)". */
+export function toLinePrice(input: string): number | null {
+  const trimmed = input.trim();
+  const negative = /^-|^\(.*\)$/.test(trimmed);
+  const n = toPrice(trimmed.replace(/^-|[()]/g, ""));
+  return n === null ? null : negative && n !== 0 ? -n : n;
 }

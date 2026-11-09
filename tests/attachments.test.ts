@@ -74,7 +74,8 @@ describe("readAttachment", () => {
   it("explains the files it can't read", async () => {
     await expect(readAttachment(file("x", "email.msg"), 50_000)).rejects.toThrow(/Outlook .msg/);
     await expect(readAttachment(file("x", "plan.docx"), 50_000)).rejects.toThrow(/Word/);
-    await expect(readAttachment(file("x", "IMG_1.HEIC", "image/heic"), 50_000)).rejects.toThrow(/pictures/);
+    // Pictures are read by the assistant; one the browser can't open (a HEIC photo in Chrome) says what to do.
+    await expect(readAttachment(file("x", "IMG_1.HEIC", "image/heic"), 50_000)).rejects.toThrow(/HEIC/);
     await expect(readAttachment(file("", "empty.pdf"), 50_000)).rejects.toBeInstanceOf(AttachError);
   });
 });
@@ -89,7 +90,9 @@ describe("attachment helpers", () => {
 
   it("knows which files it can read", () => {
     expect(isReadableFile({ name: "a.PDF", type: "" })).toBe(true);
-    expect(isReadableFile({ name: "clip.png", type: "image/png" })).toBe(false);
+    expect(isReadableFile({ name: "clip.png", type: "image/png" })).toBe(true);
+    expect(isReadableFile({ name: "Screenshot 2026-11-08 at 9.14.22 PM.png", type: "" })).toBe(true);
+    expect(isReadableFile({ name: "notes.docx", type: "" })).toBe(false);
   });
 
   it("words the notice about removed numbers", () => {
