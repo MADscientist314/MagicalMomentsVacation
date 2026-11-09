@@ -1,7 +1,7 @@
 // Reads the text out of a screenshot of a supplier's page (a Mac screenshot, a picture pasted from the
 // clipboard, a phone photo of a printout) by sending it to the assistant. The picture is shrunk and,
 // if it's tall, cut into overlapping slices first, so small print stays readable. Nothing is saved.
-import { MAX_QUOTE_IMAGES, MAX_QUOTE_IMAGE_BYTES, QUOTE_TILE_PX } from "../../shared/quotes";
+import { MAX_QUOTE_IMAGES, MAX_QUOTE_IMAGE_BYTES, MAX_QUOTE_TOTAL_BYTES, QUOTE_TILE_PX } from "../../shared/quotes";
 import { renderPdfPages } from "./pdfText";
 
 export class ImageReadError extends Error {}
@@ -62,10 +62,13 @@ function toBase64(blob: Blob): Promise<string> {
   });
 }
 
-async function canvasJpeg(canvas: HTMLCanvasElement): Promise<string> {
-  for (const quality of [0.9, 0.8, 0.65]) {
+/** How big each of `count` slices may be, so all of them together fit in one request. */
+export const sliceBudget = (count: number) => Math.min(MAX_QUOTE_IMAGE_BYTES, Math.floor(MAX_QUOTE_TOTAL_BYTES / Math.max(1, count)));
+
+async function canvasJpeg(canvas: HTMLCanvasElement, maxBytes: number): Promise<string> {
+  for (const quality of [0.9, 0.8, 0.65, 0.5]) {
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    if (blob && blob.size <= MAX_QUOTE_IMAGE_BYTES) return toBase64(blob);
+    if (blob && blob.size <= maxBytes) return toBase64(blob);
   }
   throw new ImageReadError("That picture is too big to read — try a smaller screenshot.");
 }
@@ -75,8 +78,9 @@ export async function slicesOf(source: CanvasImageSource, width: number, height:
   const scale = fitScale(width, height);
   const w = Math.max(1, Math.round(width * scale));
   const h = Math.max(1, Math.round(height * scale));
+  const tops = sliceTops(h);
   const slices: string[] = [];
-  for (const top of sliceTops(h)) {
+  for (const top of tops) {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = Math.min(QUOTE_TILE_PX, h);
@@ -86,7 +90,7 @@ export async function slicesOf(source: CanvasImageSource, width: number, height:
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(source, 0, top / scale, width, canvas.height / scale, 0, 0, w, canvas.height);
-    slices.push(await canvasJpeg(canvas));
+    slices.push(await canvasJpeg(canvas, sliceBudget(tops.length)));
   }
   return slices;
 }
@@ -115,6 +119,6 @@ export async function readImageText(file: Blob & { name: string }): Promise<stri
 export async function readScannedPdf(data: Uint8Array): Promise<{ text: string; pagesRead: number; totalPages: number }> {
   const { canvases, totalPages } = await renderPdfPages(data, MAX_QUOTE_IMAGES, QUOTE_TILE_PX);
   const slices: string[] = [];
-  for (const canvas of canvases) slices.push(await canvasJpeg(canvas));
+  for (const canvas of canvases) slices.push(await canvasJpeg(canvas, sliceBudget(canvases.length)));
   return { text: await readSlices(slices), pagesRead: canvases.length, totalPages };
 }

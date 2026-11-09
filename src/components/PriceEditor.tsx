@@ -180,7 +180,7 @@ function QuoteFill({ option, onFilled, onCancel }: { option?: string; onFilled(p
   };
 
   return (
-    <div className="quote-fill">
+    <div className="field quote-fill">
       <div className="field-head">
         <span className="field-label">The quote{option?.trim() ? ` for ${option.trim()}` : ""}</span>
         <AttachButton attacher={attacher} disabled={working} />

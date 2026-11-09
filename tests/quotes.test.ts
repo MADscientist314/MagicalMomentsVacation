@@ -19,7 +19,8 @@ import { addDeliverable, appendMessages, createConversation, getDeliverable, get
 import { EventParser, type ServerEvent } from "../shared/sse";
 import { missingPrices } from "../src/lib/deliverableFiles";
 import { toLinePrice } from "../src/lib/editorHelpers";
-import { fitScale, sliceTops } from "../src/lib/imageText";
+import { fitScale, sliceBudget, sliceTops } from "../src/lib/imageText";
+import { MAX_QUOTE_IMAGES, MAX_QUOTE_IMAGE_BYTES, MAX_QUOTE_TOTAL_BYTES } from "../shared/quotes";
 import { fakeD1 } from "./helpers/fakeD1";
 import { fakeClaude, textEvents } from "./helpers/fakeClaude";
 
@@ -132,6 +133,11 @@ describe("slicing a tall screenshot", () => {
     const scale = fitScale(1400, 40_000);
     expect(sliceTops(Math.round(40_000 * scale)).length).toBeLessThanOrEqual(10);
   });
+
+  it("shares the size limit out between the slices", () => {
+    expect(sliceBudget(1)).toBe(MAX_QUOTE_IMAGE_BYTES);
+    for (let n = 1; n <= MAX_QUOTE_IMAGES; n++) expect(sliceBudget(n) * n).toBeLessThanOrEqual(MAX_QUOTE_TOTAL_BYTES);
+  });
 });
 
 const PNG = btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52));
@@ -163,6 +169,12 @@ describe("/api/read-image", () => {
     expect((await handleReadImage(post("read-image", { images: [{ type: "image/jpeg", data: PNG }] }), env, deps)).status).toBe(400);
     const many = Array.from({ length: 11 }, () => ({ type: "image/png", data: PNG }));
     expect((await handleReadImage(post("read-image", { images: many }), env, deps)).status).toBe(400);
+    // Each slice is small enough, but not all four together (just over 12 MB). The first 20 characters
+    // are the JPEG's first 15 bytes, so the rest carries on without padding.
+    const big = { type: "image/jpeg", data: JPEG.slice(0, 20) + "A".repeat(4_010_000 - 20) };
+    const tooMuch = await handleReadImage(post("read-image", { images: [big, big, big, big] }), env, deps);
+    expect(tooMuch.status).toBe(400);
+    expect(((await tooMuch.json()) as { error: string }).error).toMatch(/too big to read at once/);
     expect(fake.calls).toHaveLength(0);
   });
 
