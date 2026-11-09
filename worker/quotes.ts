@@ -5,7 +5,7 @@ import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/m
 import { MAX_MESSAGE } from "../shared/conversations";
 import { applyPriceProvenance, numbersIn, validateDeliverable, type OptionPrice, type Proposal } from "../shared/deliverables";
 import { findSensitive, maskContacts, redactSensitive, SENSITIVE_MESSAGES } from "../shared/guard";
-import { MAX_QUOTE_IMAGES, MAX_QUOTE_IMAGE_BYTES, NO_TEXT, QUOTE_IMAGE_TYPES, type QuoteImageType } from "../shared/quotes";
+import { MAX_QUOTE_IMAGES, MAX_QUOTE_IMAGE_BYTES, MAX_QUOTE_TOTAL_BYTES, NO_TEXT, QUOTE_IMAGE_TYPES, type QuoteImageType } from "../shared/quotes";
 import { baseParams, defaultClient, type ClaudeClient } from "./claude";
 import { checkBreakdowns } from "./deliverables";
 import { buildDeliverableSystem } from "./prompt";
@@ -71,10 +71,13 @@ export async function handleReadImage(request: Request, env: Env, deps: QuoteDep
   if (!Array.isArray(images) || !images.length) return error(BAD_REQUEST, 400);
   if (images.length > MAX_QUOTE_IMAGES) return error(`That's more than ${MAX_QUOTE_IMAGES} pictures at once — send fewer.`, 400);
   const blocks: { type: "image"; source: { type: "base64"; media_type: QuoteImageType; data: string } }[] = [];
+  let total = 0;
   for (const image of images) {
     const { type, data } = (image ?? {}) as Record<string, unknown>;
     if (!isImageType(type) || typeof data !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return error(BAD_REQUEST, 400);
     if ((data.length * 3) / 4 > MAX_QUOTE_IMAGE_BYTES) return error("That picture is too big to read — try a smaller screenshot.", 400);
+    total += (data.length * 3) / 4;
+    if (total > MAX_QUOTE_TOTAL_BYTES) return error("Those pictures are too big to read at once — send fewer.", 400);
     const head = decodeBase64Head(data);
     if (!head || !looksLike(type, head)) return error("That doesn't look like a picture I can read (PNG, JPEG or WebP).", 400);
     blocks.push({ type: "image", source: { type: "base64", media_type: type, data } });

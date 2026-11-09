@@ -11,3 +11,5 @@ export const QUOTE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as co
 export type QuoteImageType = (typeof QUOTE_IMAGE_TYPES)[number];
 /** What Claude answers when a picture has no text in it. */
 export const NO_TEXT = "NO_TEXT";
+/** All the slices of one read together, decoded: the browser shares this out between them. */
+export const MAX_QUOTE_TOTAL_BYTES = 12_000_000;
