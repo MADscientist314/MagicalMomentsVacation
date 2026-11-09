@@ -1,7 +1,7 @@
 // Small fetch helpers for saved trips, chats, deliverables, drafts, images and trip files.
 import type { ActiveTrip, Booking } from "../../shared/bookings";
 import type { Conversation, ConversationKind, ConversationWithHistory, DeliverableRecord } from "../../shared/conversations";
-import type { DeliverableData, DeliverableKind } from "../../shared/deliverables";
+import type { DeliverableData, DeliverableKind, OptionPrice } from "../../shared/deliverables";
 import type { TripFile } from "../../shared/files";
 import type { ShareInfo } from "../../shared/shares";
 import type { SavedDraft, SavedDraftMeta } from "../../shared/drafts";
@@ -54,6 +54,9 @@ export const saveDeliverableEdit = (id: string, data: DeliverableData) =>
 /** Puts this version on the trip's link for its kind (a new link, or the same one moved here), for 30 more days. */
 export const shareDeliverable = (id: string) => call<ShareInfo>(`/api/deliverables/${id}/share`, send("POST"));
 export const stopSharing = (id: string) => call<{ ok: true }>(`/api/deliverables/${id}/share`, send("DELETE"));
+/** One option's price breakdown, read from a quote's text (screenshots arrive already read). */
+export const fillFromQuote = (text: string, option: string) =>
+  call<{ price: OptionPrice; warning: string | null }>("/api/quote-lines", send("POST", { text, option }));
 
 // Active trips: booking a trip, and its key dates. Each change answers with the trip's booking.
 export const listActiveTrips = () => call<ActiveTrip[]>("/api/bookings");

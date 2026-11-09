@@ -21,6 +21,9 @@ export const TRIP_FIELD_LIMITS: Record<string, number> = {
   summary: 2_000,
 };
 
+/** Starts the message that carries the quotes she gave with "Make the proposal". */
+export const QUOTES_NOTE = "Quotes and prices for the proposal (from my suppliers):";
+
 /** Starts the note the server adds when trip details are edited after planning. */
 export const DETAILS_CHANGED = "Trip details changed — use these from now on:";
 

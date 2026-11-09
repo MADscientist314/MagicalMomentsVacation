@@ -43,10 +43,10 @@ export function useAttach(value: string, onChange: (value: string) => void, limi
   return { reading, message, attach, dismiss: () => setMessage(null) };
 }
 
-/** The paperclip: pick a PDF, saved email, web page or text file. */
+/** The paperclip: pick a screenshot or photo, a PDF, a saved email, a web page or a text file. */
 export function AttachButton({ attacher, disabled }: { attacher: Attacher; disabled?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
-  const label = "Attach a PDF or saved email";
+  const label = "Attach a screenshot, PDF or saved email";
   return (
     <>
       <input

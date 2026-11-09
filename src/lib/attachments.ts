@@ -1,15 +1,26 @@
-// Turns a file Jillian attaches (a supplier's PDF itinerary, a saved email, a web page) into text for
-// the message box. Card, SSN and passport numbers are taken out before the text ever reaches the box.
+// Turns a file Jillian attaches (a supplier's PDF itinerary, a saved email, a web page, a screenshot of a
+// quote) into text for the message box. Card, SSN and passport numbers are taken out before the text
+// ever reaches the box. Screenshots and scanned PDFs are read by the assistant; everything else is read
+// right here in the browser.
 import { redactSensitive, type SensitiveKind } from "../../shared/guard";
 import { looksLikeEmail, parseEml } from "./emailFile";
+import { ImageReadError, readImageText, readScannedPdf } from "./imageText";
 import { PdfError, pdfToText } from "./pdfText";
 import { cleanPastedText, htmlToText, looksLikeHtml } from "./plainText";
 
-export const ATTACH_ACCEPT = ".pdf,.eml,.mht,.mhtml,.html,.htm,.txt,application/pdf,message/rfc822,text/html,text/plain";
+export const ATTACH_ACCEPT =
+  ".pdf,.eml,.mht,.mhtml,.html,.htm,.txt,.png,.jpg,.jpeg,.webp,.gif,.heic,.heif,application/pdf,message/rfc822,text/html,text/plain,image/*";
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 export const MAX_PDF_PAGES = 40;
 
 export class AttachError extends Error {}
+
+/** A PDF of pictures of pages: no text layer to read in the browser. */
+class ScannedPdf extends AttachError {
+  constructor() {
+    super("That PDF looks like a scan (pictures of pages), so there's no text in it I can read. Ask the supplier for the original PDF, or paste the text in.");
+  }
+}
 
 export interface Attachment {
   /** "[Attached: name]", the file's text, then "[End of name]". */
@@ -18,7 +29,9 @@ export interface Attachment {
   notice: string | null;
 }
 
-type Kind = "pdf" | "eml" | "html" | "text";
+type Kind = "pdf" | "eml" | "html" | "text" | "image";
+
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "heic", "heif", "tif", "tiff", "bmp"];
 
 const extension = (name: string) => /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase() ?? "";
 
@@ -28,11 +41,26 @@ function readableKind(name: string, type: string): Kind | null {
   if (ext === "eml" || ext === "mht" || ext === "mhtml" || type === "message/rfc822") return "eml";
   if (ext === "html" || ext === "htm" || type === "text/html") return "html";
   if (ext === "txt" || ext === "text" || type === "text/plain") return "text";
+  if (type.startsWith("image/") || IMAGE_EXTENSIONS.includes(ext)) return "image";
   return null;
 }
 
-/** True for the files she can attach (so a paste of a PDF attaches it, but a pasted picture doesn't). */
+/** True for the files she can attach (so a paste of a PDF or a screenshot attaches it). */
 export const isReadableFile = (file: { name: string; type: string }) => readableKind(file.name, file.type) !== null;
+export const isPictureFile = (file: { name: string; type: string }) => readableKind(file.name, file.type) === "image";
+
+/**
+ * The files to attach from a paste, or none when it's really text: Word, Excel and Numbers put a
+ * picture of what was copied on the clipboard next to the text itself, and the text is what she wants.
+ */
+export function filesToAttach(clipboard: Pick<DataTransfer, "files" | "getData">): File[] {
+  const files = [...clipboard.files];
+  if (!files.length || !files.every(isReadableFile)) return [];
+  if (!files.every(isPictureFile)) return files;
+  const htmlText = clipboard.getData("text/html").replace(/<(style|script)[\s\S]*?<\/\1>/gi, "").replace(/<[^>]*>/g, "").replace(/&nbsp;|\s/g, "");
+  const text = clipboard.getData("text/plain").trim();
+  return htmlText || text.includes("\n") || text.length > 200 ? [] : files;
+}
 
 function kindOf(name: string, type: string): Kind {
   const kind = readableKind(name, type);
@@ -44,10 +72,7 @@ function kindOf(name: string, type: string): Kind {
   if (["doc", "docx", "pages", "rtf", "odt"].includes(ext)) {
     throw new AttachError("I can't open Word or Pages files yet. Save it as a PDF and attach that, or paste the text in.");
   }
-  if (type.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "heic", "heif", "webp", "tif", "tiff"].includes(ext)) {
-    throw new AttachError("I can't read pictures here. If it's a screenshot of an itinerary, attach the PDF or paste the text instead.");
-  }
-  throw new AttachError("I can read PDFs, saved emails (.eml), web pages (.html) and text files. Paste the text in instead.");
+  throw new AttachError("I can read PDFs, screenshots and photos, saved emails (.eml), web pages (.html) and text files. Paste the text in instead.");
 }
 
 const NAMES: Record<SensitiveKind, [string, string]> = {
@@ -67,6 +92,9 @@ export function redactionNotice(removed: Record<SensitiveKind, number>): string 
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Said under every screenshot or scan, since the assistant can misread a blurry figure. */
+export const READ_FROM_PICTURE = "I read the text from the picture. Check each price against the supplier's page before it goes to the family.";
 
 export const attachmentBlock = (name: string, text: string, detail?: string) =>
   `[Attached: ${name}${detail ? ` (${detail})` : ""}]\n${text.trim()}\n[End of ${name}]`;
@@ -122,9 +150,7 @@ async function pdfPages(bytes: Uint8Array): Promise<{ pages: { text: string; rem
     throw err;
   }
   // A scan has no text layer: at most a page number or a stamp on each page.
-  if (read.pages.join("").replace(/\s/g, "").length < 15 * Math.max(1, read.pages.length)) {
-    throw new AttachError("That PDF looks like a scan (pictures of pages), so there's no text in it I can read. Ask the supplier for the original PDF, or paste the text in.");
-  }
+  if (read.pages.join("").replace(/\s/g, "").length < 15 * Math.max(1, read.pages.length)) throw new ScannedPdf();
   return { pages: read.pages.map((p) => redactSensitive(p)), totalPages: read.totalPages };
 }
 
@@ -134,8 +160,29 @@ const addCounts = (a: Record<SensitiveKind, number>, b: Record<SensitiveKind, nu
   passport: a.passport + b.passport,
 });
 
+/** A scan's pages, drawn here and read by the assistant (only where there's a page to draw on). */
+async function readScan(name: string, bytes: Uint8Array, room: number): Promise<Attachment> {
+  let read: Awaited<ReturnType<typeof readScannedPdf>>;
+  try {
+    read = await readScannedPdf(bytes);
+  } catch (err) {
+    if (err instanceof ImageReadError || err instanceof PdfError) throw new AttachError(err.message);
+    throw err;
+  }
+  const notes = [READ_FROM_PICTURE];
+  if (read.totalPages > read.pagesRead) notes.push(`I read the first ${read.pagesRead} of its ${read.totalPages} pages.`);
+  return finish(name, read.text, room, notes, undefined, "scanned, read by the assistant");
+}
+
 async function readPdf(name: string, bytes: Uint8Array, room: number): Promise<Attachment> {
-  const { pages, totalPages } = await pdfPages(bytes);
+  let text: Awaited<ReturnType<typeof pdfPages>>;
+  try {
+    text = await pdfPages(bytes);
+  } catch (err) {
+    if (err instanceof ScannedPdf && typeof document !== "undefined") return readScan(name, bytes, room);
+    throw err;
+  }
+  const { pages, totalPages } = text;
   const build = (n: number) =>
     attachmentBlock(
       name,
@@ -183,17 +230,39 @@ function finish(
   room: number,
   notes: string[] = [],
   alreadyRemoved = { card: 0, ssn: 0, passport: 0 },
+  detail?: string,
 ): Attachment {
   const clean = redactSensitive(text);
   if (!clean.text.trim()) throw new AttachError("I couldn't find any text in that file.");
-  const frame = attachmentBlock(name, "").length;
+  const frame = attachmentBlock(name, "", detail).length;
   if (room - frame < 200) throw new AttachError(NO_ROOM);
   const fitted = fit(clean.text.trim(), room - frame);
   const removed = redactionNotice(addCounts(clean.removed, alreadyRemoved));
   return {
-    block: attachmentBlock(name, fitted.text),
+    block: attachmentBlock(name, fitted.text, detail),
     notice: [removed, ...notes, fitted.cut ? "It was too long to fit here, so the end was left out." : null].filter(Boolean).join(" ") || null,
   };
+}
+
+/**
+ * A picture pasted from the clipboard arrives as "image.png" (Chrome) or with no name at all; call it
+ * what it is, with the time, so two pastes can be told apart.
+ */
+export function pictureName(name: string, at = new Date()): string {
+  if (name && !/^image\.(png|jpe?g|gif|webp|tiff?)$/i.test(name)) return name;
+  return `Pasted screenshot ${at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`;
+}
+
+async function readPicture(file: Blob & { name: string }, room: number): Promise<Attachment> {
+  if (room - attachmentBlock(file.name, "", "screenshot, read by the assistant").length < 200) throw new AttachError(NO_ROOM);
+  let text: string;
+  try {
+    text = await readImageText(file);
+  } catch (err) {
+    if (err instanceof ImageReadError) throw new AttachError(err.message);
+    throw err;
+  }
+  return finish(pictureName(file.name), text, room, [READ_FROM_PICTURE], undefined, "screenshot, read by the assistant");
 }
 
 /** Reads one attached file into a block of at most `room` characters. */
@@ -201,6 +270,7 @@ export async function readAttachment(file: Blob & { name: string }, room: number
   if (file.size > MAX_ATTACHMENT_BYTES) throw new AttachError("That file is over 25 MB, which is too big to read here.");
   if (!file.size) throw new AttachError("That file is empty.");
   const kind = kindOf(file.name, file.type);
+  if (kind === "image") return readPicture(file, room);
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (kind === "pdf") return readPdf(file.name, bytes, room);
   if (kind === "eml" || (kind === "text" && looksLikeEmail(bytes))) return readEmailFile(file.name, bytes, room);

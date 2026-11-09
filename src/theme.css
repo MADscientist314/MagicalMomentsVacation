@@ -1923,3 +1923,163 @@ a.btn-primary {
   color: var(--purple-dark);
   margin-bottom: 10px;
 }
+
+/* ---------- an option's price breakdown (Nov 9: quotes from screenshots) ---------- */
+.price-lines {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.price-line {
+  display: grid;
+  grid-template-columns: 64px auto 120px auto minmax(0, 1fr) 32px;
+  gap: 6px 8px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.price-line .line-label {
+  grid-column: 1 / 6;
+}
+
+.price-line .line-remove {
+  justify-self: end;
+}
+
+.price-line input {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.price-line .line-label {
+  font-weight: 500;
+}
+
+.price-line input::placeholder {
+  color: #9a9f9f;
+  font-weight: 400;
+}
+
+.price-line .line-price::placeholder {
+  color: #7a5a00;
+  font-weight: 600;
+}
+
+.line-op {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.price-line .num {
+  text-align: right;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--purple-dark);
+}
+
+.price-editor .gap {
+  display: inline-block;
+  margin-left: 8px;
+  background: #fff1c9;
+  color: #7a5a00;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.price-line .subtotal .gap {
+  margin-left: 0;
+}
+
+.price-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.price-total {
+  margin: 0;
+  font-size: 15px;
+  color: var(--purple-dark);
+}
+
+.price-total strong {
+  font-size: 17px;
+}
+
+.price-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.price-editor > .message {
+  margin: 10px 0 0;
+}
+
+.quote-fill {
+  margin-top: 10px;
+  border-top: 1px dashed var(--lavender-line);
+  padding-top: 10px;
+}
+
+.quote-fill .proposal-actions {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .price-line {
+    grid-template-columns: 52px auto 96px auto minmax(0, 1fr) 32px;
+  }
+}
+
+.field-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-tools .btn-attach,
+.field-tools .btn-mic {
+  width: 36px;
+  height: 36px;
+}
+
+.muted-note.small {
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.email-button {
+  margin-top: 10px;
+}
+
+.email-subject {
+  margin: 4px 0 10px;
+}
+
+.email-reply .bubble-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.email-reply .bubble-actions a.btn-quiet {
+  text-decoration: none;
+}

@@ -1,4 +1,4 @@
-import type { DeliverableData, DeliverableKind, Estimate, Proposal } from "../../shared/deliverables";
+import { optionTotal, type DeliverableData, type DeliverableKind, type Estimate, type Proposal } from "../../shared/deliverables";
 
 /** "Whitfield family" → "Whitfield-family", for downloaded file names. */
 export const fileStem = (title: string, fallback: string) =>
@@ -10,7 +10,7 @@ export function downloadName(title: string, kind: DeliverableKind, version: numb
 
 /** What still says "Add price", so Jillian is warned before sending it to a client. */
 export function missingPrices(kind: DeliverableKind, data: DeliverableData): string[] {
-  if (kind === "proposal") return (data as Proposal).options.filter((o) => o.price.amount === null).map((o) => o.name);
+  if (kind === "proposal") return (data as Proposal).options.filter((o) => optionTotal(o.price).total === null).map((o) => o.name);
   if (kind === "estimate") return (data as Estimate).lineItems.filter((l) => l.unitPrice === null).map((l) => l.label);
   return [];
 }

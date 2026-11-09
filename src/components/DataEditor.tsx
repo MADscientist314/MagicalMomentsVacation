@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { LIST_LIMITS } from "../../shared/deliverables";
+import { LIST_LIMITS, type OptionPrice } from "../../shared/deliverables";
 import { emptyLike, humanize, PICTURE_KEYS, ROW_TEMPLATES, toPrice } from "../lib/editorHelpers";
+import { PriceEditor } from "./PriceEditor";
 
 const STRING_LISTS = new Set(["highlights", "nextSteps", "verifyNotes", "tips", "notes", "checklist"]);
 const LONG_TEXT = new Set(["intro", "summary", "recommendation", "text"]);
@@ -11,11 +12,21 @@ interface Props {
   value: unknown;
   onChange(value: unknown): void;
   keyName?: string;
+  /** The name of the row this field belongs to (a proposal option's name, for its price). */
+  rowName?: string;
 }
 
+const isOptionPrice = (x: unknown): x is OptionPrice =>
+  typeof x === "object" && x !== null && "amount" in x && "note" in x && !Array.isArray(x);
+
 /** Edits any deliverable's data: text, lists, prices and repeating rows. */
-export function DataEditor({ value, onChange, keyName = "" }: Props) {
+export function DataEditor({ value, onChange, keyName = "", rowName }: Props) {
   const label = humanize(keyName);
+
+  // A proposal option's price: one amount, or a breakdown that adds itself up.
+  if (keyName === "price" && isOptionPrice(value)) {
+    return <PriceEditor value={value} onChange={onChange} option={rowName} />;
+  }
 
   if (STRING_LISTS.has(keyName) && Array.isArray(value)) {
     return (
@@ -85,8 +96,15 @@ export function DataEditor({ value, onChange, keyName = "" }: Props) {
 
   if (value && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>).filter(([k]) => !PICTURE_KEYS.has(k));
+    const name = (value as Record<string, unknown>).name;
     const fields = entries.map(([k, v]) => (
-      <DataEditor key={k} keyName={k} value={v} onChange={(nv) => onChange({ ...(value as object), [k]: nv })} />
+      <DataEditor
+        key={k}
+        keyName={k}
+        value={v}
+        rowName={typeof name === "string" ? name : undefined}
+        onChange={(nv) => onChange({ ...(value as object), [k]: nv })}
+      />
     ));
     return keyName ? (
       <fieldset className="editor-group">

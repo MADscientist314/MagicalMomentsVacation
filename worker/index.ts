@@ -5,6 +5,7 @@ import { handleDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
 import { handleDrafts } from "./drafts";
 import { handleImages } from "./images";
+import { handleQuoteLines, handleReadImage } from "./quotes";
 import { handleSharePage } from "./shares";
 
 const SIGNED_OUT = () => Response.json({ error: "Sign in again to keep going." }, { status: 401 });
@@ -31,6 +32,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   if (area === "bookings") return handleActiveTrips(request, env);
   if (area === "drafts") return handleDrafts(request, env, rest);
   if (area === "images") return handleImages(request, env, rest);
+  if (area === "read-image") return post ? handleReadImage(request, env) : Response.json({ error: "Use POST." }, { status: 405 });
+  if (area === "quote-lines") return post ? handleQuoteLines(request, env) : Response.json({ error: "Use POST." }, { status: 405 });
   return Response.json({ error: "not found" }, { status: 404 });
 }
 

@@ -96,3 +96,39 @@ export async function pdfToText(data: Uint8Array, maxPages: number): Promise<{ p
     await task.destroy();
   }
 }
+
+/**
+ * Draws each page (up to `maxPages`) on a white canvas whose longer side is `longEdge` pixels, for
+ * reading a scan. Browser only.
+ */
+export async function renderPdfPages(
+  data: Uint8Array,
+  maxPages: number,
+  longEdge: number,
+): Promise<{ canvases: HTMLCanvasElement[]; totalPages: number }> {
+  const pdfjs = await loadPdfJs();
+  const task = pdfjs.getDocument({ data, verbosity: 0, enableXfa: false });
+  try {
+    const doc = await task.promise;
+    const canvases: HTMLCanvasElement[] = [];
+    for (let n = 1; n <= Math.min(doc.numPages, maxPages); n++) {
+      const page = await doc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: longEdge / Math.max(base.width, base.height) });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      await page.render({ canvas, viewport, background: "#ffffff" }).promise;
+      canvases.push(canvas);
+      page.cleanup();
+    }
+    return { canvases, totalPages: doc.numPages };
+  } catch (err) {
+    const name = (err as Error | null)?.name;
+    if (name === "PasswordException") throw new PdfError(MESSAGES.password);
+    if (name === "InvalidPDFException" || name === "FormatError") throw new PdfError(MESSAGES.broken);
+    throw err;
+  } finally {
+    await task.destroy();
+  }
+}

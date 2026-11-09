@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type TextareaHTMLAttributes } from "react";
 import { redactSensitive } from "../../shared/guard";
-import { isReadableFile, redactionNotice } from "../lib/attachments";
+import { filesToAttach, redactionNotice } from "../lib/attachments";
 import { pastedText } from "../lib/plainText";
 
 type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "maxLength" | "onPaste" | "onDrop"> & {
@@ -45,8 +45,8 @@ export function TextBox({ value, onChange, limit, onFiles, maxHeight = 420, clas
   }, [value, maxHeight]);
 
   const paste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const files = [...e.clipboardData.files];
-    if (onFiles && files.length && files.every(isReadableFile)) {
+    const files = onFiles ? filesToAttach(e.clipboardData) : [];
+    if (onFiles && files.length) {
       e.preventDefault();
       onFiles(files);
       return;
