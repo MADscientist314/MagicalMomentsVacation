@@ -22,8 +22,7 @@ How everything should sound, whether it's an email, a post or a reply to an inqu
 
 ## Signature block (use exactly)
 
-Jillian Jochum
-Magical Moments Vacations
+Jillian Jochum with Magical Moments Vacations
 jillian.jochum@mmvagent.com
 
 <!-- TODO(Jillian): add a phone number to the signature if you want one in client emails. -->

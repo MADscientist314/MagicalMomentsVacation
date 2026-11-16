@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { IconSparkles } from "@tabler/icons-react";
 import { TOOLS } from "../../shared/tools";
-import { AttachField } from "./AttachField";
-import { TextBox } from "./TextBox";
+import { AttachField, TalkField } from "./AttachField";
 
 const PLANNER = TOOLS["adventure-planner"];
 
@@ -47,6 +46,9 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
         if (f.attach) {
           return <AttachField key={f.id} id={id} field={f} value={value} rows={5} className="field-material" onChange={(v) => set(f.id, v)} />;
         }
+        if (f.kind === "textarea") {
+          return <TalkField key={f.id} id={id} field={f} value={value} rows={3} onChange={(v) => set(f.id, v)} />;
+        }
         return (
           <label key={f.id} className="field" htmlFor={id}>
             <span className="field-label">
@@ -62,8 +64,6 @@ export function TripDetailsForm({ initial, submitLabel, busy, error, onSubmit, o
                   <option key={o}>{o}</option>
                 ))}
               </select>
-            ) : f.kind === "textarea" ? (
-              <TextBox id={id} rows={3} value={value} limit={f.maxLength} placeholder={f.placeholder} onChange={(v) => set(f.id, v)} />
             ) : (
               <input
                 id={id}

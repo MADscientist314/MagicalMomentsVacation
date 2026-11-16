@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useRef, useState } from "react";
+import { IconArrowBackUp, IconPlus, IconTrash } from "@tabler/icons-react";
 import { LIST_LIMITS, type OptionPrice } from "../../shared/deliverables";
 import { emptyLike, humanize, PICTURE_KEYS, ROW_TEMPLATES, toPrice } from "../lib/editorHelpers";
 import { PriceEditor } from "./PriceEditor";
@@ -41,29 +41,7 @@ export function DataEditor({ value, onChange, keyName = "", rowName }: Props) {
   }
 
   if (Array.isArray(value)) {
-    // A proposal keeps at least one option (and at most four); an itinerary at least one day.
-    const { min, max } = LIST_LIMITS[keyName] ?? { min: 0, max: Infinity };
-    const template = value.length ? value[0] : ROW_TEMPLATES[keyName];
-    return (
-      <fieldset className="editor-group">
-        <legend>{label}</legend>
-        {value.map((item, i) => (
-          <div key={i} className="editor-row">
-            <DataEditor value={item} onChange={(v) => onChange(value.map((old, j) => (j === i ? v : old)))} />
-            {value.length > min && (
-              <button type="button" className="btn-quiet" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-                <IconTrash size={14} aria-hidden /> Remove
-              </button>
-            )}
-          </div>
-        ))}
-        {template !== undefined && value.length < max && (
-          <button type="button" className="btn-quiet" onClick={() => onChange([...value, emptyLike(template)])}>
-            <IconPlus size={14} aria-hidden /> Add {value.length ? "another" : "one"}
-          </button>
-        )}
-      </fieldset>
-    );
+    return <ListEditor keyName={keyName} value={value} onChange={onChange} />;
   }
 
   if (PRICES.has(keyName)) {
@@ -142,5 +120,98 @@ function PriceField({ label, value, onChange }: { label: string; value: number |
         onBlur={() => setDraft(null)}
       />
     </label>
+  );
+}
+
+/** Rows that get their own card with a numbered heading and a Remove button at the top (Nov 15 review). */
+const ROW_NAMES: Record<string, string> = { options: "Option", days: "Day", lineItems: "Line", sections: "Section" };
+
+const rowTitle = (item: unknown): string => {
+  if (typeof item !== "object" || item === null) return "";
+  const r = item as Record<string, unknown>;
+  const t = [r.name, r.title, r.heading, r.label].find((x) => typeof x === "string" && x.trim());
+  return typeof t === "string" ? t.trim() : "";
+};
+
+/**
+ * A repeating list (options, days, activities…). Each row keeps its own key, so after a Remove nothing a row
+ * was holding (a price being typed, a quote's Undo) moves onto the row below it. A removed row can be put back.
+ */
+function ListEditor({ keyName, value, onChange }: { keyName: string; value: unknown[]; onChange(value: unknown): void }) {
+  const label = humanize(keyName);
+  const { min, max } = LIST_LIMITS[keyName] ?? { min: 0, max: Infinity };
+  const template = value.length ? value[0] : ROW_TEMPLATES[keyName];
+  const rowName = ROW_NAMES[keyName];
+  const keys = useRef<number[]>([]);
+  const nextKey = useRef(0);
+  const [removed, setRemoved] = useState<{ index: number; item: unknown; key: number; title: string } | null>(null);
+  // Keep one key per row: a list that grew (Add, a new version) gets new keys at the end.
+  while (keys.current.length < value.length) keys.current.push(nextKey.current++);
+  if (keys.current.length > value.length) keys.current = keys.current.slice(0, value.length);
+
+  const remove = (i: number) => {
+    const key = keys.current[i];
+    keys.current = keys.current.filter((_, j) => j !== i);
+    setRemoved({ index: i, item: value[i], key, title: rowName ? `${rowName} ${i + 1}${rowTitle(value[i]) ? ` (${rowTitle(value[i])})` : ""}` : "that row" });
+    onChange(value.filter((_, j) => j !== i));
+  };
+  const undo = () => {
+    if (!removed) return;
+    const at = Math.min(removed.index, value.length);
+    keys.current = [...keys.current.slice(0, at), removed.key, ...keys.current.slice(at)];
+    onChange([...value.slice(0, at), removed.item, ...value.slice(at)]);
+    setRemoved(null);
+  };
+  const add = () => {
+    setRemoved(null);
+    onChange([...value, emptyLike(template)]);
+  };
+  const canRemove = value.length > min;
+  const set = (i: number) => (v: unknown) => onChange(value.map((old, j) => (j === i ? v : old)));
+
+  return (
+    <fieldset className={`editor-group${rowName ? " editor-cards" : ""}`}>
+      <legend>{label}</legend>
+      {value.map((item, i) =>
+        rowName ? (
+          <section key={keys.current[i]} className="editor-card" aria-label={`${rowName} ${i + 1}`}>
+            <div className="editor-card-head">
+              <span className="editor-card-title">
+                {rowName} {i + 1}
+                {rowTitle(item) && <span className="editor-card-name">: {rowTitle(item)}</span>}
+              </span>
+              {canRemove && (
+                <button type="button" className="btn-quiet btn-remove" onClick={() => remove(i)}>
+                  <IconTrash size={14} aria-hidden /> Remove {rowName.toLowerCase()} {i + 1}
+                </button>
+              )}
+            </div>
+            <DataEditor value={item} onChange={set(i)} />
+          </section>
+        ) : (
+          <div key={keys.current[i]} className="editor-row">
+            <DataEditor value={item} onChange={set(i)} />
+            {canRemove && (
+              <button type="button" className="btn-quiet" onClick={() => remove(i)}>
+                <IconTrash size={14} aria-hidden /> Remove
+              </button>
+            )}
+          </div>
+        ),
+      )}
+      {removed && (
+        <p className="message message-info removed-note" role="status">
+          Removed {removed.title}.{" "}
+          <button type="button" className="link-button" onClick={undo}>
+            <IconArrowBackUp size={14} aria-hidden /> Put it back
+          </button>
+        </p>
+      )}
+      {template !== undefined && value.length < max && (
+        <button type="button" className="btn-quiet" onClick={add}>
+          <IconPlus size={14} aria-hidden /> Add {value.length ? `another${rowName ? ` ${rowName.toLowerCase()}` : ""}` : "one"}
+        </button>
+      )}
+    </fieldset>
   );
 }

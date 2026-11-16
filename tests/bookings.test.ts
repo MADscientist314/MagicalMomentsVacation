@@ -3,6 +3,7 @@ import {
   addDays,
   daysBetween,
   defaultReminders,
+  dueSoon,
   formatDay,
   fromToday,
   guessTripDays,
@@ -364,5 +365,18 @@ describe("what's due this week", () => {
     expect(text).not.toContain("Home family");
     expect(text).toContain("typical timing, not the booking's rules");
     expect(askAboutTrips("Anything due?", [], TODAY)).toContain("- No booked trips yet.");
+  });
+});
+
+describe("dueSoon", () => {
+  const today = "2027-03-01";
+  it("is true from today through 14 days out, for dates not done", () => {
+    expect(dueSoon({ due: "2027-03-01", done: false }, today)).toBe(true);
+    expect(dueSoon({ due: "2027-03-15", done: false }, today)).toBe(true);
+    expect(dueSoon({ due: "2027-03-16", done: false }, today)).toBe(false);
+  });
+  it("is false once done or overdue (overdue has its own color)", () => {
+    expect(dueSoon({ due: "2027-03-05", done: true }, today)).toBe(false);
+    expect(dueSoon({ due: "2027-02-28", done: false }, today)).toBe(false);
   });
 });

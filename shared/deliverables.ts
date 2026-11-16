@@ -506,12 +506,20 @@ ${p.recommendation.trim() ? `<section><h2>${single ? "Why it's a great fit" : "M
 ${p.nextSteps.length ? `<section><h2>Next steps</h2>${list(p.nextSteps)}</section>` : ""}`;
 }
 
+/** Times longer than this (in characters) go on their own line above the activity. */
+const LONG_TIME = 14;
+
 function itineraryBody(i: Itinerary, photos?: Photos): string {
   const days = i.days
     .map((d) => {
       const src = photoSrc(photos, d.photo);
       return `<section class="day"><h2>${esc(d.title)}</h2>${src ? `<img class="day-photo" src="${src}" alt="">` : ""}<ul class="items">${d.items
-        .map((it) => `<li>${it.time ? `<span class="time">${esc(it.time)}</span>` : ""}${esc(it.text)}</li>`)
+        .map((it) => {
+          // A short time ("9:00 AM") sits in its own column; a long one ("Christmas party at Magic Kingdom") gets its own line.
+          const time = (it.time ?? "").trim().replace(/:$/, "");
+          if (!time) return `<li>${esc(it.text)}</li>`;
+          return `<li class="timed${time.length > LONG_TIME ? " long-time" : ""}"><span class="time">${esc(time)}</span><span>${esc(it.text)}</span></li>`;
+        })
         .join("")}</ul></section>`;
     })
     .join("\n");
@@ -548,16 +556,19 @@ const STYLE = `
 .doc{max-width:820px;margin:0 auto;padding:40px 32px}
 .brand{font:italic 500 15px "Fraunces",Georgia,serif;color:var(--purple);letter-spacing:.02em}
 h1,h2{font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:500;color:var(--purple)}
-h1{font-size:32px;margin:6px 0 10px}h2{font-size:21px;margin:22px 0 8px}
+h1,h2{line-height:1.25;text-wrap:balance}h1{font-size:32px;margin:6px 0 10px}h2{font-size:21px;margin:22px 0 8px}
 header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px}
 .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
 .option{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;break-inside:avoid}
 .option h2{margin-top:0}.option-photo{display:block;width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px}.single .option-photo{height:260px}.price{font-weight:600;font-size:18px;color:var(--purple)}.note{font-weight:400;font-size:13px;color:#6b6f6f}
 .breakdown{width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:14px}.breakdown td{border-bottom:1px solid var(--line);padding:5px 0;vertical-align:top}.breakdown .num{text-align:right;white-space:nowrap;padding-left:10px}.total-label{font-family:"Wix Madefor Text",system-ui,sans-serif;font-size:14px;font-weight:600;color:var(--ink);margin-right:4px}
 .missing{background:#fff1c9;color:#7a5a00;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:600}
-.day{break-inside:avoid}.items{padding-left:18px}
+.day{break-inside:avoid;margin-top:26px}.day+.day{border-top:1px solid var(--line);padding-top:4px}.day h2{margin:14px 0 6px}
+.items{list-style:none;padding-left:0;margin:0}.items li{position:relative;padding-left:18px;margin:3px 0;line-height:1.45}
+.items li::before{content:"";position:absolute;left:3px;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--purple)}
+.items li.timed{display:grid;grid-template-columns:92px minmax(0,1fr);column-gap:10px}.items li.long-time{display:block}.long-time .time{display:block}
 .cover{margin:18px 0 6px}.cover img,.day-photo{display:block;width:100%;object-fit:cover;border-radius:12px}
-.cover img{max-height:380px}.day-photo{max-height:260px;margin:4px 0 10px}.time{display:inline-block;min-width:84px;font-weight:600;color:var(--purple)}
+.cover img{max-height:380px}.day-photo{max-height:260px;margin:4px 0 10px}.time{font-weight:600;color:var(--purple)}
 table.estimate{width:100%;border-collapse:collapse;margin-top:18px;background:#fff}
 .estimate th,.estimate td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
 .estimate .num{text-align:right;white-space:nowrap}.estimate tfoot td{font-weight:700;border-bottom:none}

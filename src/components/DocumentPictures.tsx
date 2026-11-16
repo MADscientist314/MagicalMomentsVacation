@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { IconPhotoPlus, IconSparkles, IconTrash, IconUser } from "@tabler/icons-react";
+import { IconPhoto, IconPhotoPlus, IconPhotoUp, IconSparkles, IconTrash, IconUser } from "@tabler/icons-react";
 import { MAX_DIRECTION, MAX_REFERENCE_PHOTOS, type ImageMeta } from "../../shared/images";
 import type { Itinerary, Proposal } from "../../shared/deliverables";
 import { generateImage, imageUrl, listImages, uploadImage } from "../lib/api";
@@ -52,6 +52,10 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
   const [working, setWorking] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInput = useRef<HTMLInputElement>(null);
+  // Swapping one picture (Nov 15 review): her own photo straight into a slot, or one from the trip's gallery.
+  const slotInput = useRef<HTMLInputElement>(null);
+  const [uploadSlot, setUploadSlot] = useState<Slot | null>(null);
+  const [picking, setPicking] = useState<string | null>(null);
 
   useEffect(() => {
     // Everything in the trip's gallery: the family's photos and pictures made on the trip page.
@@ -108,6 +112,25 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
     }
   };
 
+  /** Puts her own photo in one slot (it also joins the trip's photos). */
+  const placeUpload = async (slot: Slot, files: FileList | null) => {
+    const file = files?.[0];
+    if (slotInput.current) slotInput.current.value = "";
+    if (!file) return;
+    const key = slotKey(slot);
+    setWorking((w) => ({ ...w, [key]: true }));
+    setErrors(({ [key]: _old, ...rest }) => rest);
+    try {
+      const meta = await uploadImage(owner, await shrinkPhoto(file));
+      setFamily((list) => [meta, ...list]);
+      onChange((d) => withPhoto(kind, d, slot, meta.id));
+    } catch (e) {
+      setErrors((all) => ({ ...all, [key]: (e as Error).message }));
+    } finally {
+      setWorking(({ [key]: _done, ...rest }) => rest);
+    }
+  };
+
   const toggle = (id: string) =>
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length < MAX_REFERENCE_PHOTOS ? [...c, id] : c));
 
@@ -119,7 +142,7 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
       <h3>Pictures</h3>
       <p className="muted-note">
         {kind === "itinerary" ? "A picture for each day, made from the plan (about 3¢ each)." : "A picture for each option (about 3¢ each)."} They
-        show the places, not people. To put the family in, pick their photos, or say below who to show. You can also place a photo as it is.
+        show the places, not people. To put the family in, pick their photos, or say below who to show. To swap one picture, use “Swap for my photo” or “Pick from trip photos” beside it.
       </p>
 
       <div className="field">
@@ -172,7 +195,7 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
               <div className="picture-slot-body">
                 <strong>{label}</strong>
                 {working[key] ? (
-                  <p className="muted-note">Painting… (20–40 seconds)</p>
+                  <p className="muted-note">Working on it… (a photo takes a few seconds, a new picture 20–40)</p>
                 ) : (
                   <div className="image-actions">
                     {canMake(slot) ? (
@@ -187,11 +210,50 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
                         <IconUser size={15} aria-hidden /> Use the picked photo
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      disabled={busy}
+                      onClick={() => {
+                        setUploadSlot(slot);
+                        slotInput.current?.click();
+                      }}
+                    >
+                      <IconPhotoUp size={15} aria-hidden /> {id ? "Swap for my photo" : "Use my photo"}
+                    </button>
+                    {family.length > 0 && (
+                      <button
+                        type="button"
+                        className={`btn-quiet${picking === key ? " active" : ""}`}
+                        aria-expanded={picking === key}
+                        onClick={() => setPicking((p) => (p === key ? null : key))}
+                      >
+                        <IconPhoto size={15} aria-hidden /> Pick from trip photos
+                      </button>
+                    )}
                     {id && (
                       <button type="button" className="btn-quiet" onClick={() => onChange((d) => withPhoto(kind, d, slot, undefined))}>
                         <IconTrash size={15} aria-hidden /> Remove
                       </button>
                     )}
+                  </div>
+                )}
+                {picking === key && (
+                  <div className="photo-strip slot-picker" role="group" aria-label={`Pick a picture for ${label}`}>
+                    {family.map((p) => (
+                      <div key={p.id} className={p.id === id ? "photo-thumb chosen" : "photo-thumb"}>
+                        <button
+                          type="button"
+                          aria-label="Put this picture here"
+                          onClick={() => {
+                            onChange((d) => withPhoto(kind, d, slot, p.id));
+                            setPicking(null);
+                          }}
+                        >
+                          <img src={imageUrl(p.id)} alt="" loading="lazy" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {errors[key] && <p className="message message-error">{errors[key]}</p>}
@@ -200,6 +262,13 @@ export function DocumentPictures({ tripId, kind, deliverableId, savedCount, doc,
           );
         })}
       </ul>
+      <input
+        ref={slotInput}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => uploadSlot !== null && void placeUpload(uploadSlot, e.target.files)}
+      />
     </section>
   );
 }
