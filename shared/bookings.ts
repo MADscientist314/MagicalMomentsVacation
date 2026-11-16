@@ -45,6 +45,15 @@ export function fromToday(day: string, today: string): string {
   return n > 0 ? `in ${n} days` : `${-n} days ago`;
 }
 
+/** Key dates this many days away or fewer turn amber (Nov 15 review: "within the next two weeks"). */
+export const SOON_DAYS = 14;
+
+/** A date that isn't done, isn't past, and is due within SOON_DAYS. */
+export function dueSoon(date: { due: string; done: boolean }, today: string): boolean {
+  if (date.done || date.due < today) return false;
+  return daysBetween(today, date.due) <= SOON_DAYS;
+}
+
 /** A reminder's day: `daysBefore` arrival, or today when that has already passed (a trip booked late). */
 export function reminderDue(arrival: string, daysBefore: number, today: string): string {
   const due = addDays(arrival, -daysBefore);

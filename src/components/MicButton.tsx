@@ -13,6 +13,9 @@ export function MicButton({ onSpeech, disabled }: { onSpeech(text: string): void
   const [listening, setListening] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  // The latest onSpeech, so words heard later in a long listen join the box as it is now, not as it was at the start.
+  const latest = useRef(onSpeech);
+  latest.current = onSpeech;
 
   useEffect(() => () => recognition.current?.abort(), []);
   // Sending (or anything else that disables the mic) ends listening, so words don't keep arriving.
@@ -32,7 +35,7 @@ export function MicButton({ onSpeech, disabled }: { onSpeech(text: string): void
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) heard += e.results[i][0].transcript;
       }
-      if (heard.trim()) onSpeech(heard);
+      if (heard.trim()) latest.current(heard);
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {

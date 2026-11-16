@@ -2,6 +2,7 @@ import { useState } from "react";
 import { IconCalendarCheck, IconCheck, IconPencil, IconPlus, IconTrash, IconX } from "@tabler/icons-react";
 import {
   daysBetween,
+  dueSoon,
   formatDay,
   fromToday,
   guessTripDays,
@@ -99,6 +100,7 @@ function KeyDateRow({
   const [due, setDue] = useState(date.due);
   const fail = (e: Error) => onError(e.message);
   const overdue = !date.done && date.due < today;
+  const soon = dueSoon(date, today);
 
   if (editing) {
     return (
@@ -138,7 +140,7 @@ function KeyDateRow({
   }
   const box = `key-date-${date.id}`;
   return (
-    <li className={`key-date${date.done ? " done" : ""}${overdue ? " overdue" : ""}`}>
+    <li className={`key-date${date.done ? " done" : ""}${overdue ? " overdue" : ""}${soon ? " soon" : ""}`}>
       <input
         id={box}
         type="checkbox"
@@ -239,7 +241,8 @@ export function KeyDatesCard({
       </form>
       {error && <p className="message message-error">{error}</p>}
       <p className="muted-note">
-        The 60, 30 and 7-day reminders are typical timing, not the booking's rules. Check each against the booking.
+        Amber means due within 2 weeks, red means overdue. The 60, 30 and 7-day reminders are typical timing, not the booking's rules. Check each
+        against the booking.
       </p>
       {confirming ? (
         <span className="confirm">

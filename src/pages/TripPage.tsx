@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { IconArrowLeft, IconCalendarCheck, IconEdit, IconPin, IconPinnedOff, IconSparkles } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowUp, IconCalendarCheck, IconEdit, IconPin, IconPinnedOff, IconSparkles } from "@tabler/icons-react";
 import type { ConversationWithHistory } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { Composer } from "../components/Composer";
@@ -38,6 +38,16 @@ export function TripPage({ id }: { id: string }) {
   }, [id]);
 
   useEffect(refresh, [refresh]);
+
+  // A long plan pushes the toolbar out of view; it stays at the top of the window, with a Back to top button (Nov 15 review).
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 400);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (error && !trip) {
     return (
@@ -83,7 +93,12 @@ export function TripPage({ id }: { id: string }) {
         </div>
       </header>
       <main className="page trip-page">
-        <div className="trip-toolbar">
+        <div className={`trip-toolbar${scrolled ? " stuck" : ""}`}>
+          {scrolled && (
+            <strong className="toolbar-title" title={trip.title}>
+              {trip.title}
+            </strong>
+          )}
           <button
             type="button"
             className="btn-quiet"
@@ -96,12 +111,30 @@ export function TripPage({ id }: { id: string }) {
             {trip.pinned ? <IconPinnedOff size={16} aria-hidden /> : <IconPin size={16} aria-hidden />}
             {trip.pinned ? "Unpin" : "Pin to the top"}
           </button>
-          <button type="button" className="btn-quiet" onClick={() => setEditing((e) => !e)}>
+          <button
+            type="button"
+            className="btn-quiet"
+            onClick={() => {
+              if (!editing) toTop();
+              setEditing((e) => !e);
+            }}
+          >
             <IconEdit size={16} aria-hidden /> Edit trip details
           </button>
-          <button type="button" className={`btn-quiet${trip.booking ? " active" : ""}`} aria-expanded={booking} onClick={() => setBooking((b) => !b)}>
+          <button type="button" className={`btn-quiet${trip.booking ? " active" : ""}`}
+            aria-expanded={booking}
+            onClick={() => {
+              if (!booking) toTop();
+              setBooking((b) => !b);
+            }}
+          >
             <IconCalendarCheck size={16} aria-hidden /> {trip.booking ? "Booked · change dates" : "Mark as booked"}
           </button>
+          {scrolled && (
+            <button type="button" className="btn-quiet to-top" onClick={toTop}>
+              <IconArrowUp size={16} aria-hidden /> Back to top
+            </button>
+          )}
         </div>
         {booking && (
           <BookingForm

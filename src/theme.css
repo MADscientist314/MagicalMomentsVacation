@@ -848,6 +848,43 @@ a.btn-primary {
   border-color: var(--purple);
 }
 
+/* All trips: each trip's stage at a glance, by color and a tag (Nov 15 review). */
+.trip-card.stage-planning {
+  border-left: 5px solid var(--gold-deep);
+}
+.trip-card.stage-booked {
+  border-left: 5px solid #2f7d4f;
+  background: #f3faf5;
+}
+.trip-card.stage-home {
+  border-left: 5px solid #a9a9b3;
+}
+.stage-tag {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stage-tag.planning {
+  background: #fff1c9;
+  color: #7a5a00;
+}
+.stage-tag.booked {
+  background: #dcf1e3;
+  color: #1f5c38;
+}
+.stage-tag.home {
+  background: #ececf0;
+  color: #55555f;
+}
+.stage-heading .count {
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
 .trip-link {
   display: flex;
   flex-wrap: wrap;
@@ -923,8 +960,36 @@ a.btn-primary {
 .trip-toolbar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-bottom: 14px;
+  /* Stays at the top of the window on a long plan, so Mark as booked is always in reach (Nov 15 review). */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 0;
+}
+.trip-toolbar.stuck {
+  background: var(--lavender);
+  box-shadow: 0 6px 10px -8px rgba(44, 51, 51, 0.35);
+  margin-left: -12px;
+  margin-right: -12px;
+  padding: 8px 12px;
+}
+.toolbar-title {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--purple-dark);
+}
+.trip-toolbar .to-top {
+  margin-left: auto;
 }
 
 .trip-form {
@@ -945,8 +1010,8 @@ a.btn-primary {
   /* Documents and cards stay in view beside a long plan, scrolling on their own if they're taller than the window. */
   .trip-side {
     position: sticky;
-    top: 16px;
-    max-height: calc(100vh - 32px);
+    top: 68px;
+    max-height: calc(100vh - 84px);
     overflow-y: auto;
   }
 }
@@ -1300,6 +1365,50 @@ a.btn-primary {
   border-bottom: 1px dashed var(--lavender-line);
   padding-bottom: 8px;
   margin-bottom: 10px;
+}
+
+/* Options, days, lines and sections each get a card, so it's clear where one ends and the next starts (Nov 15 review). */
+.editor-card {
+  background: #fff;
+  border: 2px solid var(--lavender-deep);
+  border-radius: 10px;
+  margin: 0 0 14px;
+  overflow: hidden;
+}
+.editor-card > .editor-object {
+  padding: 10px 12px 2px;
+}
+.editor-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--lavender);
+  border-bottom: 1px solid var(--lavender-deep);
+  padding: 6px 8px 6px 12px;
+}
+.editor-card-title {
+  font-weight: 700;
+  color: var(--purple-dark);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-card-name {
+  font-weight: 500;
+}
+.btn-remove {
+  color: var(--danger);
+  border-color: #e7b9b9;
+  background: #fff;
+  flex: none;
+}
+.btn-remove:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+.removed-note {
+  margin: 0 0 10px;
 }
 
 .editor .field {
@@ -1864,6 +1973,24 @@ a.btn-primary {
   color: #a3341f;
   font-weight: 600;
 }
+/* Due within two weeks: amber, so it draws her eye before it's overdue (red). Nov 15 review. */
+.key-date.soon,
+.due-item.soon {
+  background: #fff6dc;
+  border-radius: 6px;
+  box-shadow: -6px 0 0 #fff6dc, 6px 0 0 #fff6dc;
+}
+.key-date.soon .muted-note,
+.due-item.soon .muted-note,
+.trip-next .soon {
+  color: #8a5a00;
+  font-weight: 600;
+}
+.key-date.overdue {
+  background: #fdeeea;
+  border-radius: 6px;
+  box-shadow: -6px 0 0 #fdeeea, 6px 0 0 #fdeeea;
+}
 .key-date-actions {
   grid-area: actions;
   display: inline-flex;
@@ -2082,4 +2209,9 @@ a.btn-primary {
 
 .email-reply .bubble-actions a.btn-quiet {
   text-decoration: none;
+}
+
+/* Picking a trip photo for one picture slot. */
+.slot-picker {
+  margin-top: 8px;
 }

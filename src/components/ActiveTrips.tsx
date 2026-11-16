@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { IconPlaneDeparture, IconSparkles } from "@tabler/icons-react";
-import { formatDay, fromToday, localDay, type ActiveTrip } from "../../shared/bookings";
+import { dueSoon, formatDay, fromToday, localDay, type ActiveTrip } from "../../shared/bookings";
 import { MAX_MESSAGE } from "../../shared/conversations";
 import { listActiveTrips, updateKeyDate } from "../lib/api";
 import { askAboutTrips, dueThisWeek, notOver } from "../lib/activeTrips";
@@ -71,7 +71,7 @@ export function ActiveTrips() {
                   </span>
                 </li>
               ) : (
-                <li key={item.date.id} className={`due-item${item.overdue ? " overdue" : ""}`}>
+                <li key={item.date.id} className={`due-item${item.overdue ? " overdue" : dueSoon(item.date, today) ? " soon" : ""}`}>
                   <input type="checkbox" aria-label={`Done: ${item.date.label}`} onChange={() => tick(item.trip.id, item.date.id)} />
                   <span className="key-date-day">{formatDay(item.day, today)}</span>
                   <span>
@@ -136,7 +136,13 @@ export function ActiveTrips() {
                   </span>
                   {next.length > 0 && (
                     <span className="muted-note trip-next">
-                      Next: {next.map((d) => `${d.label.replace(/\s*\(.*\)$/, "")}, ${formatDay(d.due, today)}`).join(" · ")}
+                      Next:{" "}
+                      {next.map((d, i) => (
+                        <span key={d.id} className={dueSoon(d, today) ? "soon" : undefined}>
+                          {i > 0 && " · "}
+                          {`${d.label.replace(/\s*\(.*\)$/, "")}, ${formatDay(d.due, today)}`}
+                        </span>
+                      ))}
                     </span>
                   )}
                 </a>

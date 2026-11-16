@@ -1,7 +1,6 @@
 import { IconSparkles } from "@tabler/icons-react";
 import type { ToolDef } from "../../shared/tools";
-import { AttachField } from "./AttachField";
-import { TextBox } from "./TextBox";
+import { AttachField, TalkField } from "./AttachField";
 
 interface Props {
   tool: ToolDef;
@@ -29,6 +28,19 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
         if (f.kind === "textarea" && f.attach) {
           return (
             <AttachField key={f.id} id={id} field={f} value={value} rows={8} className={`field-${f.id}`} onChange={(v) => onChange(f.id, v)} />
+          );
+        }
+        if (f.kind === "textarea") {
+          return (
+            <TalkField
+              key={f.id}
+              id={id}
+              field={f}
+              value={value}
+              rows={f.maxLength > 5_000 ? 8 : 4}
+              className={`field-${f.id}`}
+              onChange={(v) => onChange(f.id, v)}
+            />
           );
         }
         if (f.kind === "choice") {
@@ -68,16 +80,6 @@ export function ToolForm({ tool, values, onChange, onSubmit, busy, error, notice
                   <option key={o}>{o}</option>
                 ))}
               </select>
-            ) : f.kind === "textarea" ? (
-              <TextBox
-                id={id}
-                rows={f.maxLength > 5_000 ? 8 : 4}
-                value={value}
-                required={f.required}
-                limit={f.maxLength}
-                placeholder={f.placeholder}
-                onChange={(v) => onChange(f.id, v)}
-              />
             ) : (
               <input
                 id={id}

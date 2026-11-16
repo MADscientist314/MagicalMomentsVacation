@@ -318,6 +318,6 @@ describe("brand pieces from the brains", () => {
   });
 
   it("pulls her signature block", () => {
-    expect(extractSignature(BRAINS["reference/voice"])).toBe("Jillian Jochum\nMagical Moments Vacations\njillian.jochum@mmvagent.com");
+    expect(extractSignature(BRAINS["reference/voice"])).toBe("Jillian Jochum with Magical Moments Vacations\njillian.jochum@mmvagent.com");
   });
 });

@@ -197,6 +197,32 @@ describe("renderDeliverableHtml", () => {
     expect(html).toContain("Day 1 — Arrival");
     expect(html).toContain("3:00 PM");
   });
+
+  it("gives a long time label its own line, so it never runs into the activity (Nov 15 review)", () => {
+    const html = renderDeliverableHtml(
+      "itinerary",
+      {
+        title: "Rivera itinerary",
+        intro: "",
+        days: [
+          {
+            title: "Day 3 — Mickey's Very Merry Christmas Party at Magic Kingdom",
+            items: [
+              { time: "9:00 AM", text: "Rope drop" },
+              { time: "Mickey's Very Merry Christmas Party:", text: "Parade at 8:30" },
+              { time: null, text: "Rest at the hotel" },
+            ],
+          },
+        ],
+        tips: [],
+        verifyNotes: [],
+      },
+      { ...BRAND, mode: "client" },
+    );
+    expect(html).toContain(`<li class="timed"><span class="time">9:00 AM</span><span>Rope drop</span></li>`);
+    expect(html).toContain(`<li class="timed long-time"><span class="time">Mickey&#39;s Very Merry Christmas Party</span><span>Parade at 8:30</span></li>`);
+    expect(html).toContain("<li>Rest at the hotel</li>");
+  });
 });
 
 describe("pictures in an itinerary", () => {

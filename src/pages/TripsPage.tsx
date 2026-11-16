@@ -1,21 +1,55 @@
 import { useEffect, useState } from "react";
 import { IconPin, IconPinnedOff, IconPlus, IconTrash } from "@tabler/icons-react";
+import { formatDay, fromToday, localDay, type ActiveTrip } from "../../shared/bookings";
 import type { Conversation } from "../../shared/conversations";
 import { CastleAtDusk } from "../art/CastleAtDusk";
 import { ActiveTrips } from "../components/ActiveTrips";
 import { HomeButton } from "../components/HomeButton";
-import { deleteConversation, listConversations, updateConversation } from "../lib/api";
+import { deleteConversation, listActiveTrips, listConversations, updateConversation } from "../lib/api";
 import { ago } from "../lib/ago";
 import { clearHandoff } from "../lib/handoff";
 
-function TripCard({ trip, onChanged, onError }: { trip: Conversation; onChanged(): void; onError(message: string): void }) {
+/** Where a trip stands: still being planned, booked, or the family is back home. */
+type Stage = "planning" | "booked" | "home";
+
+function stageOf(booked: ActiveTrip | undefined, today: string): Stage {
+  if (!booked) return "planning";
+  return (booked.booking.departure ?? booked.booking.arrival) >= today ? "booked" : "home";
+}
+
+function StageTag({ stage, booked, today }: { stage: Stage; booked?: ActiveTrip; today: string }) {
+  if (stage === "planning") return <span className="stage-tag planning">Planning</span>;
+  if (stage === "home" || !booked) return <span className="stage-tag home">Back home</span>;
+  const arrival = booked.booking.arrival;
+  return (
+    <span className="stage-tag booked">
+      Booked · {arrival <= today ? "traveling now" : `arrives ${formatDay(arrival, today)} (${fromToday(arrival, today)})`}
+    </span>
+  );
+}
+
+function TripCard({
+  trip,
+  booked,
+  today,
+  onChanged,
+  onError,
+}: {
+  trip: Conversation;
+  booked?: ActiveTrip;
+  today: string;
+  onChanged(): void;
+  onError(message: string): void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const fail = (e: Error) => onError(e.message);
   const where = [trip.details.destination, trip.details.dates].filter(Boolean).join(" · ");
+  const stage = stageOf(booked, today);
   return (
-    <li className="trip-card">
+    <li className={`trip-card stage-${stage}`}>
       <a className="trip-link" href={`#/trips/${trip.id}`}>
         <strong>{trip.title}</strong>
+        <StageTag stage={stage} booked={booked} today={today} />
         {where && <span>{where}</span>}
         <span className="muted-note">updated {ago(trip.updated_at)}</span>
       </a>
@@ -54,11 +88,18 @@ export function TripsPage({ tab }: { tab: "all" | "active" }) {
   const [trips, setTrips] = useState<Conversation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // Booked trips by id, so each card shows its stage (Nov 15 review); a failure here just leaves them all "Planning".
+  const [booked, setBooked] = useState<Map<string, ActiveTrip>>(new Map());
+  const today = localDay();
 
-  const load = () =>
-    listConversations("trip")
+  const load = () => {
+    listActiveTrips()
+      .then((list) => setBooked(new Map(list.map((t) => [t.id, t]))))
+      .catch(() => setBooked(new Map()));
+    return listConversations("trip")
       .then(setTrips)
       .catch((e: Error) => setError(e.message));
+  };
 
   useEffect(() => {
     void load();
@@ -66,7 +107,14 @@ export function TripsPage({ tab }: { tab: "all" | "active" }) {
 
   const shown = (trips ?? []).filter((t) => t.title.toLowerCase().includes(search.trim().toLowerCase()));
   const pinned = shown.filter((t) => t.pinned);
-  const recent = shown.filter((t) => !t.pinned);
+  const unpinned = shown.filter((t) => !t.pinned);
+  const stage = (t: Conversation) => stageOf(booked.get(t.id), today);
+  const groups: { key: Stage; heading: string; trips: Conversation[] }[] = [
+    { key: "planning", heading: "Still planning", trips: unpinned.filter((t) => stage(t) === "planning") },
+    { key: "booked", heading: "Booked", trips: unpinned.filter((t) => stage(t) === "booked") },
+    { key: "home", heading: "Back home", trips: unpinned.filter((t) => stage(t) === "home") },
+  ];
+  const card = (t: Conversation) => <TripCard key={t.id} trip={t} booked={booked.get(t.id)} today={today} onChanged={load} onError={setError} />;
 
   return (
     <>
@@ -115,23 +163,19 @@ export function TripsPage({ tab }: { tab: "all" | "active" }) {
             {pinned.length > 0 && (
               <section>
                 <h2 className="list-heading">📌 Pinned</h2>
-                <ul className="trip-list">
-                  {pinned.map((t) => (
-                    <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />
-                  ))}
-                </ul>
+                <ul className="trip-list">{pinned.map(card)}</ul>
               </section>
             )}
-            {recent.length > 0 && (
-              <section>
-                <h2 className="list-heading">Recent trips</h2>
-                <ul className="trip-list">
-                  {recent.map((t) => (
-                    <TripCard key={t.id} trip={t} onChanged={load} onError={setError} />
-                  ))}
-                </ul>
-              </section>
-            )}
+            {groups
+              .filter((g) => g.trips.length > 0)
+              .map((g) => (
+                <section key={g.key}>
+                  <h2 className={`list-heading stage-heading ${g.key}`}>
+                    {g.heading} <span className="count">({g.trips.length})</span>
+                  </h2>
+                  <ul className="trip-list">{g.trips.map(card)}</ul>
+                </section>
+              ))}
           </>
         )}
       </main>
