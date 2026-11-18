@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { handleConversations, type ConversationDeps } from "../worker/conversations";
-import { handleDeliverable } from "../worker/deliverables";
+import { handleDeliverable, handleReviseDeliverable } from "../worker/deliverables";
 import { extractFooter, extractSignature } from "../worker/prompt";
 import { BRAINS } from "../worker/brains";
-import { addDeliverable, addImage, appendMessages, createConversation, getDeliverable, listDeliverables, tryLock } from "../worker/store";
+import { addDeliverable, addImage, appendMessages, createConversation, getDeliverable, getMessages, listDeliverables, tryLock } from "../worker/store";
 import { EventParser, type ServerEvent } from "../shared/sse";
 import type { Itinerary, Proposal } from "../shared/deliverables";
 import { fakeD1 } from "./helpers/fakeD1";
@@ -335,5 +335,53 @@ describe("brand pieces from the brains", () => {
 
   it("pulls her signature block", () => {
     expect(extractSignature(BRAINS["reference/voice"])).toBe("Jillian Jochum with Magical Moments Vacations\njillian.jochum@mmvagent.com");
+  });
+});
+
+describe("changing a saved document with the assistant (John, Nov 17)", () => {
+  const PHOTO = "0b0b0b0b-1111-2222-3333-444455556666";
+  const option = (name: string, amount: number | null, photo?: string) => ({ name, summary: "", highlights: [], bestFor: "", price: { amount, note: "" }, ...(photo ? { photo } : {}) });
+  const V1: Proposal = { title: "Your trip", intro: "", options: [option("Portofino Bay", 3450, PHOTO), option("Hard Rock", 2980)], recommendation: "", nextSteps: [], verifyNotes: [] };
+
+  async function revise(id: string, ask: unknown, d: ConversationDeps) {
+    const req = new Request(`https://app.test/api/deliverables/${id}/revise`, { method: "POST", body: JSON.stringify({ ask }) });
+    const res = await handleReviseDeliverable(req, env, id, d);
+    if (!res.headers.get("content-type")?.includes("event-stream")) return { res, events: [] as ServerEvent[] };
+    const events = new EventParser().push(await res.text());
+    await Promise.all(pending);
+    return { res, events };
+  }
+
+  it("saves the change as the next version, keeps her prices and pictures, and notes it in the trip chat", async () => {
+    const c = await plannedTrip("Portofino Bay is $3,450 and Hard Rock is $2,980");
+    const v1 = await addDeliverable(env.DB, c.id, "proposal", V1, 4);
+    // The assistant swaps the recommendation and invents a price for Hard Rock.
+    const changed = { ...V1, options: [option("Portofino Bay", 3450), option("Hard Rock", 2799)], recommendation: "Hard Rock suits this family best." };
+    const { fake, d } = deps({ events: json(changed) });
+    const { events } = await revise(v1.id, "Recommend Hard Rock instead", d);
+    expect(events.map((e) => e.event)).toEqual(["deliverable", "done"]);
+    expect(events[0].data).toMatchObject({ kind: "proposal", version: 2 });
+    const sent = JSON.stringify(fake.calls[0].messages);
+    expect(sent).toContain("Recommend Hard Rock instead");
+    expect(sent).toContain("version 1");
+    expect(sent).not.toContain(PHOTO);
+    const v2 = (await getDeliverable(env.DB, (events[0].data as { id: string }).id))?.data as Proposal;
+    expect(v2.recommendation).toBe("Hard Rock suits this family best.");
+    expect(v2.options.map((o) => o.price.amount)).toEqual([3450, null]);
+    expect(v2.options[0].photo).toBe(PHOTO);
+    const chat = await getMessages(env.DB, c.id);
+    expect(chat.at(-2)?.content).toBe("[Change to proposal v1] Recommend Hard Rock instead");
+    expect(chat.at(-1)?.content).toContain("proposal v2");
+    expect(fake.calls[0].output_config).toMatchObject({ format: { type: "json_schema" } });
+  });
+
+  it("turns away an empty ask, a card number and an unknown document, without calling the assistant", async () => {
+    const c = await plannedTrip();
+    const v1 = await addDeliverable(env.DB, c.id, "proposal", V1, 4);
+    const { fake, d } = deps();
+    expect((await revise(v1.id, "  ", d)).res.status).toBe(400);
+    expect((await revise(v1.id, "Card 4111 1111 1111 1111", d)).res.status).toBe(400);
+    expect((await revise("nope", "Fix it", d)).res.status).toBe(404);
+    expect(fake.calls).toHaveLength(0);
   });
 });

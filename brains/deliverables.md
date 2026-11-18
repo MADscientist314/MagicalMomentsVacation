@@ -11,6 +11,7 @@ Use `references/voice.md` for tone, `references/business.md` for her services an
 - An attachment marked "(screenshot, read by the assistant)" or "(scanned, read by the assistant)" is text read from a picture of a supplier's page, so a figure in it can be misread. When you use one of its amounts, add a `verifyNotes` line such as "Prices for Portofino Bay were read from a screenshot: check them against the supplier's quote." An amount written as [unreadable] is `null`.
 - If Jillian pasted or attached a supplier itinerary, build from it: its days, hotels and inclusions, in her words, not the supplier's.
 - Use the latest version of anything that changed during the conversation (dates, party, the current day-by-day plan).
+- A message starting `[Change to proposal v3]` (or another document) is a change Jillian made to a saved document. Later versions of that document keep it unless she says otherwise.
 - **Head count:** count who's going one person at a time, from the latest party in the conversation, and never add someone who isn't named or numbered ("Pat + 3 kids, Sam + 2 kids" is 7). Use that total for every count (tickets, people, the price note), and add a `verifyNotes` line with it and how you counted, such as "Party of 7 (Pat + 3 kids, Sam + 2 kids): confirm."
 - Plain text only in every field: no markdown, no emoji.
 

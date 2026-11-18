@@ -1322,6 +1322,128 @@ a.btn-primary {
   margin: 6px 0 0;
 }
 
+/* ---------- document panel (beside the trip chat, or the whole window) ---------- */
+:root {
+  --doc-panel-w: clamp(560px, 50vw, 860px);
+  /* No sticky top bar in this app, so the panel runs from the top of the window. */
+  --topbar-h: 0px;
+}
+
+.doc-panel {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: var(--doc-panel-w);
+  max-width: 100vw;
+  background: var(--cream);
+  border-left: 1px solid var(--lavender-line);
+  box-shadow: -10px 0 30px -18px rgba(31, 37, 96, 0.45);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.doc-panel.wide {
+  width: 100vw;
+  border-left: none;
+}
+
+.doc-panel > .modal-body {
+  overflow-y: auto;
+}
+
+.doc-panel > .modal-body .editor {
+  overflow: visible;
+}
+
+.doc-panel > .review-layout {
+  overflow: hidden;
+}
+
+.doc-panel > .review-layout .editor {
+  overflow-y: auto;
+}
+
+.doc-panel-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.revise-box {
+  border: 1px solid var(--lavender-line);
+  background: var(--lavender);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.revise-box .field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revise-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.revise-sparkles svg {
+  display: block;
+  width: 48px;
+  height: 24px;
+}
+
+/* Wide screens: the trip moves left so the chat stays readable beside the open document. */
+@media (min-width: 1100px) {
+  body.doc-panel-open .page.trip-page {
+    margin-left: 24px;
+    margin-right: calc(var(--doc-panel-w) + 16px);
+    max-width: none;
+  }
+  body.doc-panel-open .hero {
+    margin-left: 24px;
+    margin-right: calc(var(--doc-panel-w) + 16px);
+  }
+  body.doc-panel-open .trip-page .trip-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.doc-panel-open .trip-page .trip-side {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .doc-panel {
+    width: 100vw;
+    border-left: none;
+  }
+  .doc-panel .doc-panel-width {
+    display: none;
+  }
+  .doc-panel > .review-layout {
+    display: block;
+    overflow-y: auto;
+  }
+  .doc-panel > .review-layout .doc-frame {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .doc-panel {
+    padding: 12px;
+  }
+}
+
 /* ---------- deliverable window ---------- */
 .modal-backdrop {
   position: fixed;
@@ -2310,4 +2432,16 @@ a.btn-primary {
     background: #fff;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   }
+}
+
+.doc-change-note {
+  align-self: center;
+  max-width: 90%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: #fff;
+  border: 1px solid var(--lavender-line);
+  border-radius: 999px;
+  padding: 4px 12px;
 }

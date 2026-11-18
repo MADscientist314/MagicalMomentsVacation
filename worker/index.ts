@@ -1,7 +1,7 @@
 import { handleLogin, handleLogout, hasValidSession, sessionCookie } from "./auth";
 import { handleActiveTrips } from "./bookings";
 import { handleConversations } from "./conversations";
-import { handleDeliverable } from "./deliverables";
+import { handleDeliverable, handleReviseDeliverable } from "./deliverables";
 import { handleDraft } from "./draft";
 import { handleDrafts } from "./drafts";
 import { handleImages } from "./images";
@@ -27,6 +27,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   if (area === "draft") return post ? handleDraft(request, env) : Response.json({ error: "Use POST." }, { status: 405 });
   if (area === "conversations") {
     return handleConversations(request, env, rest, { waitUntil: (work) => ctx.waitUntil(work) });
+  }
+  if (area === "deliverables" && rest.length === 2 && rest[1] === "revise") {
+    return handleReviseDeliverable(request, env, rest[0], { waitUntil: (work) => ctx.waitUntil(work) });
   }
   if (area === "deliverables") return handleDeliverable(request, env, rest);
   if (area === "bookings") return handleActiveTrips(request, env);

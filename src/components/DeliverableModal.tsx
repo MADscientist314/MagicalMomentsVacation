@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { IconDeviceFloppy, IconDownload, IconLink, IconPrinter, IconX } from "@tabler/icons-react";
+import { IconArrowsMaximize, IconArrowsMinimize, IconDeviceFloppy, IconDownload, IconLink, IconPrinter, IconX } from "@tabler/icons-react";
 import type { DeliverableRecord } from "../../shared/conversations";
 import {
   DELIVERABLE_LABELS,
@@ -20,6 +20,7 @@ import { downloadName, missingPrices } from "../lib/deliverableFiles";
 import { saveBlob } from "../lib/download";
 import { DataEditor } from "./DataEditor";
 import { DocumentPictures } from "./DocumentPictures";
+import { ReviseBox } from "./ReviseBox";
 
 const toDataUrl = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
@@ -37,6 +38,17 @@ interface Props {
   /** Called after Jillian saves edits as a new version. */
   onSaved(): void;
 }
+
+/** Side: beside the trip chat. Wide: the whole window, with the editor and the preview side by side. */
+type Width = "side" | "wide";
+const WIDTH_KEY = "vv.docPanelWidth";
+const savedWidth = (): Width => {
+  try {
+    return localStorage.getItem(WIDTH_KEY) === "wide" ? "wide" : "side";
+  } catch {
+    return "side";
+  }
+};
 
 type Pending = "html" | "print" | "share" | null;
 
@@ -57,6 +69,24 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
   const [stopping, setStopping] = useState(false);
   // Pictures are put into the page as data: URLs, so the HTML file and the PDF carry them ("" while loading).
   const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [width, setWidth] = useState<Width>(savedWidth);
+  const [revised, setRevised] = useState<string | null>(null);
+  const toggleWidth = () =>
+    setWidth((w) => {
+      const next = w === "side" ? "wide" : "side";
+      try {
+        localStorage.setItem(WIDTH_KEY, next);
+      } catch {
+        /* a private window: it just isn't remembered */
+      }
+      return next;
+    });
+
+  // The trip page makes room for the panel beside the chat while it's open (wide screens only, in CSS).
+  useEffect(() => {
+    document.body.classList.toggle("doc-panel-open", width === "side");
+    return () => document.body.classList.remove("doc-panel-open");
+  }, [width]);
   const photoIds = record && data ? documentPhotoIds(record.kind, data) : [];
 
   useEffect(() => {
@@ -100,9 +130,12 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
 
   if (!record || !data || !html) {
     return createPortal(
-      <div className="modal-backdrop" role="dialog" aria-modal="true">
-        <div className="modal">{error ? <p className="message message-error">{error}</p> : <p>Opening…</p>}</div>
-      </div>,
+      <aside className={`doc-panel ${width}`} role="dialog" aria-modal="false" aria-label="Document">
+        {error ? <p className="message message-error">{error}</p> : <p>Opening…</p>}
+        <button type="button" className="btn-quiet doc-panel-close" aria-label="Close" onClick={onClose}>
+          <IconX size={16} aria-hidden />
+        </button>
+      </aside>,
       document.body,
     );
   }
@@ -192,10 +225,15 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
     if (dirty) void save();
   };
 
-  // On the body, so it covers the whole page: the trip's side column (where it's opened) is its own layer.
+  // On the body, so it sits over the page beside the trip chat: the trip's side column is its own layer.
   return createPortal(
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`${DELIVERABLE_LABELS[record.kind]} version ${record.version}`}>
-      <div className="modal">
+    <aside
+      className={`doc-panel ${width}`}
+      role="dialog"
+      aria-modal="false"
+      aria-label={`${DELIVERABLE_LABELS[record.kind]} version ${record.version}`}
+      onKeyDown={(e) => e.key === "Escape" && close()}
+    >
         <div className="modal-head">
           <h2>
             {DELIVERABLE_LABELS[record.kind]} · v{record.version}
@@ -204,7 +242,7 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
           <div className="modal-actions">
             <div className="tabs" role="tablist">
               <button type="button" role="tab" aria-selected={tab === "review"} className={tab === "review" ? "active" : ""} onClick={() => setTab("review")}>
-                Review &amp; edit
+                {width === "wide" ? "Review & edit" : "Edit"}
               </button>
               <button type="button" role="tab" aria-selected={tab === "client"} className={tab === "client" ? "active" : ""} onClick={() => setTab("client")}>
                 Client copy
@@ -230,11 +268,32 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
             >
               <IconLink size={16} aria-hidden /> {sharing ? "Sharing…" : share?.deliverableId === record.id && !dirty ? (copied ? "Copied" : "Copy link") : "Share link"}
             </button>
+            <button
+              type="button"
+              className="btn-quiet doc-panel-width"
+              aria-label={width === "side" ? "Expand to the whole window" : "Back beside the chat"}
+              title={width === "side" ? "Expand to the whole window" : "Back beside the chat"}
+              onClick={toggleWidth}
+            >
+              {width === "side" ? <IconArrowsMaximize size={16} aria-hidden /> : <IconArrowsMinimize size={16} aria-hidden />}
+            </button>
             <button type="button" className="btn-quiet" aria-label="Close" onClick={close}>
               <IconX size={16} aria-hidden />
             </button>
           </div>
         </div>
+
+        <ReviseBox
+          kind={record.kind}
+          disabled={sharing}
+          prepare={async () => (dirty ? await save() : record.id)}
+          onRevised={(newId, version) => {
+            setRevised(`Changed and saved as v${version}. The earlier version is still in the list.`);
+            setCurrentId(newId);
+            onSaved();
+          }}
+        />
+        {revised && <p className="message message-info" role="status">{revised}</p>}
 
         {error && <p className="message message-error">{error}</p>}
         {closing && (
@@ -305,7 +364,7 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
         )}
 
         {tab === "review" ? (
-          <div className="modal-body review-layout">
+          <div className={`modal-body${width === "wide" ? " review-layout" : ""}`}>
             <div className="editor">
               {HAS_PICTURES(record.kind) && (
                 <DocumentPictures
@@ -331,15 +390,14 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
                 }}
               />
             </div>
-            <iframe title="Preview" className="doc-frame" sandbox="" srcDoc={html.review} />
+            {width === "wide" && <iframe title="Preview" className="doc-frame" sandbox="" srcDoc={html.review} />}
           </div>
         ) : (
           <div className="modal-body">
             <iframe title="Client copy" className="doc-frame full" sandbox="" srcDoc={html.client} />
           </div>
         )}
-      </div>
-    </div>,
+    </aside>,
     document.body,
   );
 }
