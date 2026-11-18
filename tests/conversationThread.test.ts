@@ -50,3 +50,17 @@ describe("her messages", () => {
     expect(html).not.toContain("END");
   });
 });
+
+describe("changes made to a saved document", () => {
+  it("shows a quiet note instead of a chat bubble, and hides the short Done reply", () => {
+    const html = render([
+      { role: "user", content: "Plan it" },
+      { role: "assistant", content: PLAN },
+      { role: "user", content: "[Change to proposal v2] Taxes are in the total" },
+      { role: "assistant", content: "Done: that change is saved as proposal v3." },
+    ]);
+    expect(html).toContain('class="doc-change-note"');
+    expect(html).toContain("Changed proposal v2: Taxes are in the total");
+    expect(html).not.toContain("Done: that change");
+  });
+});

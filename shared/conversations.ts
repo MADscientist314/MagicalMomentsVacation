@@ -22,6 +22,8 @@ export const TRIP_FIELD_LIMITS: Record<string, number> = {
 };
 
 /** Starts the message that carries the quotes she gave with "Make the proposal". */
+/** Starts the trip-chat note for a change made to a saved document from its panel, so later versions keep it. */
+export const DOC_CHANGE = "[Change to ";
 export const QUOTES_NOTE = "Quotes and prices for the proposal (from my suppliers):";
 
 /** Starts the note the server adds when trip details are edited after planning. */

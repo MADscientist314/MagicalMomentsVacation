@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { DOC_CHANGE } from "../../shared/conversations";
 import { splitDraft, splitSubject } from "../../shared/sections";
 import type { ChatState, ChatTurn } from "../lib/chatState";
 import { renderMarkdown } from "../lib/markdown";
@@ -149,6 +150,8 @@ export function ConversationThread({ state, mode }: { state: ChatState; mode: "t
     <div className="thread" aria-live="polite">
       {state.turns.map((t, i) => {
         const last = i === state.turns.length - 1;
+        // The short "Done" after a document change says nothing the note above it doesn't.
+        if (t.role === "assistant" && i > 0 && state.turns[i - 1].role === "user" && state.turns[i - 1].content.startsWith(DOC_CHANGE)) return null;
         if (t.role === "user") {
           if (mode === "trip" && i === 0 && t.content.startsWith("**Client:**")) {
             return (
@@ -156,6 +159,15 @@ export function ConversationThread({ state, mode }: { state: ChatState; mode: "t
                 <summary>Trip details sent to the planner</summary>
                 <Markdown md={t.content} />
               </details>
+            );
+          }
+          // A change she made to a saved document from its panel: a quiet line, not a chat bubble.
+          if (t.content.startsWith(DOC_CHANGE)) {
+            const [what, ...rest] = t.content.slice(DOC_CHANGE.length).split("] ");
+            return (
+              <p key={i} className="doc-change-note">
+                Changed {what}: {rest.join("] ")}
+              </p>
             );
           }
           return <UserBubble key={i} text={t.content} />;
