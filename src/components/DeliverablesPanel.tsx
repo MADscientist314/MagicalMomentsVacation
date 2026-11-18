@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { IconFileText, IconMail, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
+import { IconMail, IconPlayerStopFilled, IconSparkles } from "@tabler/icons-react";
 import { MAX_MESSAGE, type DeliverableMeta } from "../../shared/conversations";
 import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, EXTRAS_TOPICS, type DeliverableKind, type ExtrasTopic, type Proposal } from "../../shared/deliverables";
 import { getDeliverable, shareDeliverable } from "../lib/api";
@@ -9,6 +9,7 @@ import { streamPost } from "../lib/streamDraft";
 import { sendToThread } from "../lib/threadStore";
 import { AttachButton, AttachStatus, useAttach } from "./AttachButton";
 import { DeliverableModal } from "./DeliverableModal";
+import { DocList } from "./DocList";
 import { MicButton } from "./MicButton";
 import { Sparkles } from "./Sparkles";
 import { TextBox } from "./TextBox";
@@ -37,9 +38,6 @@ type Chooser = "proposal" | "extras" | "email";
 
 const longDay = (ms: number) => new Date(ms).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
-const when = (ms: number) =>
-  new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-
 export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, threadBusy, hasMaterial, onChanged }: Props) {
   const [making, setMaking] = useState<DeliverableKind | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +54,8 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
   const [topics, setTopics] = useState<ExtrasTopic[]>(["packing"]);
   const [extrasAsk, setExtrasAsk] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  // A new proposal or itinerary keeps the last version's pictures unless she wants a fresh start (John, Nov 17).
+  const [keepPictures, setKeepPictures] = useState(true);
   const controller = useRef<AbortController | null>(null);
 
   const busy = making !== null || threadBusy || drafting;
@@ -69,7 +69,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
     controller.current = abort;
     void streamPost(
       `/api/conversations/${tripId}/deliverables`,
-      { kind, ...extra },
+      { kind, ...(kind === "proposal" || kind === "itinerary" ? { keepPictures } : {}), ...extra },
       {
         text: () => {},
         status: () => {},
@@ -164,6 +164,12 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
               </button>
             ))}
           </div>
+          {(latest.proposal || latest.itinerary) && (
+            <label className="check-row keep-pictures">
+              <input type="checkbox" checked={keepPictures} disabled={busy} onChange={(e) => setKeepPictures(e.target.checked)} />
+              <span>New versions keep the pictures you already made</span>
+            </label>
+          )}
           {(latest.proposal || latest.itinerary || latest.estimate || latest.extras) && (
             <button
               type="button"
@@ -363,21 +369,7 @@ export function DeliverablesPanel({ tripId, tripTitle, deliverables, planned, th
             </p>
           )}
 
-          {deliverables.length > 0 && (
-            <ul className="doc-list">
-              {deliverables.map((d) => (
-                <li key={d.id}>
-                  <button type="button" className="doc-link" onClick={() => setOpenId(d.id)}>
-                    <IconFileText size={16} aria-hidden />
-                    <span>
-                      {DELIVERABLE_LABELS[d.kind]} · v{d.version}
-                    </span>
-                    <span className="muted-note">{when(d.created_at)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {deliverables.length > 0 && <DocList deliverables={deliverables} onOpen={setOpenId} onChanged={onChanged} disabled={busy} />}
         </>
       )}
 

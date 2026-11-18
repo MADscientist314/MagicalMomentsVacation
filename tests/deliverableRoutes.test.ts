@@ -138,6 +138,22 @@ describe("generating a deliverable", () => {
     expect(saved.options.map((o) => o.name)).toEqual(["Portofino Bay"]);
   });
 
+  it("keeps the last version's pictures in a new one, unless she asks for a fresh start", async () => {
+    const c = await plannedTrip();
+    await addDeliverable(env.DB, c.id, "itinerary", { ...ITINERARY, coverPhoto: "img-cover", days: [{ ...ITINERARY.days[0], photo: "img-day1" }] }, 3);
+    const { d } = deps({ events: json(ITINERARY) }, { events: json(ITINERARY) });
+    const kept = await generate(c.id, "itinerary", d);
+    const v2 = (await getDeliverable(env.DB, (kept.events[0].data as { id: string }).id))?.data as Itinerary;
+    expect(v2.coverPhoto).toBe("img-cover");
+    expect(v2.days[0].photo).toBe("img-day1");
+    const req = new Request(`https://app.test/api/conversations/${c.id}/deliverables`, { method: "POST", body: JSON.stringify({ kind: "itinerary", keepPictures: false }) });
+    const fresh = new EventParser().push(await (await handleConversations(req, env, [c.id, "deliverables"], d)).text());
+    await Promise.all(pending);
+    const v3 = (await getDeliverable(env.DB, (fresh[0].data as { id: string }).id))?.data as Itinerary;
+    expect(v3.coverPhoto).toBeUndefined();
+    expect(v3.days[0].photo).toBeUndefined();
+  });
+
   it("makes extras from the topics she picked and her own words, as their own document", async () => {
     const c = await plannedTrip();
     const extras = {

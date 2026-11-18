@@ -335,3 +335,29 @@ describe("extras (packing list and the like)", () => {
     expect(JSON.stringify(DELIVERABLE_SCHEMAS.extras)).toContain("checklist");
   });
 });
+
+describe("pictures across versions (John, Nov 17)", () => {
+  it("keeps the cover, options by name and days by title or place", async () => {
+    const { carryPictures } = await import("../shared/deliverables");
+    const prev = {
+      title: "t", intro: "", recommendation: "", nextSteps: [], verifyNotes: [], coverPhoto: "img-cover",
+      options: [
+        { name: "Portofino Bay", summary: "", highlights: [], bestFor: "", price: { amount: 1, note: "" }, photo: "img-port" },
+        { name: "Hard Rock", summary: "", highlights: [], bestFor: "", price: { amount: 1, note: "" }, photo: "img-hr" },
+      ],
+    } as Proposal;
+    const next = { ...prev, coverPhoto: undefined, options: [
+      { name: "Hard Rock Hotel", summary: "", highlights: [], bestFor: "", price: { amount: 2, note: "" } },
+      { name: "portofino bay", summary: "", highlights: [], bestFor: "", price: { amount: 2, note: "" } },
+    ] } as unknown as Proposal;
+    const kept = carryPictures("proposal", prev, next);
+    expect(kept.coverPhoto).toBe("img-cover");
+    expect(kept.options.map((o) => o.photo)).toEqual([undefined, "img-port"]);
+
+    const plan = (titles: string[], photos: (string | undefined)[]) => ({ title: "p", intro: "", tips: [], verifyNotes: [], days: titles.map((title, i) => ({ title, items: [], ...(photos[i] ? { photo: photos[i] } : {}) })) });
+    const before = plan(["Day 1 — Arrival", "Day 2 — Magic Kingdom", "Day 3 — Pool day"], ["a", "b", "c"]);
+    const after = carryPictures("itinerary", before, plan(["Day 1 — Arrival and swim", "Day 2 — Pool day", "Day 3 — Epcot", "Day 4 — Home"], []));
+    expect(after.days.map((d) => d.photo)).toEqual(["a", "c", undefined, undefined]);
+    expect(carryPictures("estimate", before as never, { title: "e" } as never)).toEqual({ title: "e" });
+  });
+});

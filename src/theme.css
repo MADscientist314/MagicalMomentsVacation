@@ -1132,6 +1132,78 @@ a.btn-primary {
   border-color: var(--purple);
 }
 
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.doc-row .doc-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-delete {
+  flex: none;
+  color: var(--ink-soft);
+}
+
+.doc-delete:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.doc-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--lavender-line);
+  border-radius: 8px;
+  background: #fff;
+  width: 100%;
+  margin: 0;
+}
+
+.doc-confirm > span {
+  flex: 1 1 100%;
+}
+
+.doc-older {
+  margin: 6px 0 0 4px;
+  font-size: 14px;
+}
+
+.doc-older summary {
+  cursor: pointer;
+  color: var(--purple-dark);
+  padding: 4px 0;
+}
+
+.doc-older .doc-list {
+  margin-top: 6px;
+}
+
+.doc-older > .btn-quiet {
+  margin-top: 6px;
+}
+
+.check-row.keep-pictures {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 4px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.check-row.keep-pictures input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+}
+
 /* ---------- trip files ---------- */
 .trip-files h2 {
   font-size: 20px;
@@ -2214,4 +2286,28 @@ a.btn-primary {
 /* Picking a trip photo for one picture slot. */
 .slot-picker {
   margin-top: 8px;
+}
+
+/* On a phone the toolbar wraps to several rows, so it stays in the page and Back to top floats instead. */
+@media (max-width: 720px) {
+  .trip-toolbar,
+  .trip-toolbar.stuck {
+    position: static;
+    background: none;
+    box-shadow: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 8px 0;
+  }
+  .trip-toolbar .toolbar-title {
+    display: none;
+  }
+  .trip-toolbar .to-top {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  }
 }

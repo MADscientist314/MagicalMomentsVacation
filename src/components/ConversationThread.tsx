@@ -121,15 +121,29 @@ function TripReply({ turn, current, busy }: { turn: ChatTurn; current: boolean; 
   );
 }
 
+/** Within a screen's reach of the end of the page. */
+function nearBottom(): boolean {
+  const doc = document.documentElement;
+  return doc.scrollHeight - (window.scrollY + window.innerHeight) < 240;
+}
+
 export function ConversationThread({ state, mode }: { state: ChatState; mode: "trip" | "chat" }) {
   const bottom = useRef<HTMLDivElement>(null);
   const busy = state.phase !== "idle";
   // The newest reply that contains a day-by-day plan is the one to copy into Travefy.
   const currentPlan = mode === "trip" ? state.turns.findLastIndex((t) => t.role === "assistant" && DAY_PLAN.test(t.content)) : -1;
 
+  // Follow the conversation only when she's already at the bottom or has just sent something, so a reply
+  // finishing never drags her away from what she's reading (John, Nov 17: "struggling with the scrolling").
+  const shown = useRef(0);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [state.turns.length, state.phase]);
+    const before = shown.current;
+    shown.current = state.turns.length;
+    if (!state.turns.length) return;
+    const opening = before === 0;
+    const justSent = !opening && state.turns.length > before && state.turns[state.turns.length - 1].role === "user";
+    if (opening ? mode === "chat" : justSent || nearBottom()) bottom.current?.scrollIntoView({ block: "end", behavior: opening ? "auto" : "smooth" });
+  }, [state.turns, state.phase, mode]);
 
   return (
     <div className="thread" aria-live="polite">
