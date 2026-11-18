@@ -147,3 +147,18 @@ describe("the family's page", () => {
     expect((await call(`/api/deliverables/${v1.id}/share`)).status).toBe(401);
   });
 });
+
+describe("deleting a saved version", () => {
+  it("deletes one version, stops a link that showed it, and keeps the others", async () => {
+    const { c, v1 } = await trip();
+    const v2 = await store.addDeliverable(env.DB, c.id, "itinerary", PLAN, 3);
+    const s = await share(v1.id);
+    const res = await api("DELETE", v1.id);
+    expect(res.status).toBe(200);
+    expect((await api("GET", v1.id)).status).toBe(404);
+    expect((await page(s.path)).status).toBe(404);
+    expect((await store.listDeliverables(env.DB, c.id)).map((d) => d.id)).toEqual([v2.id]);
+    expect((await api("DELETE", v1.id)).status).toBe(404);
+  });
+
+});

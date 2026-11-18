@@ -52,6 +52,7 @@ export const getDeliverable = (id: string) => call<DeliverableRecord>(`/api/deli
 export const saveDeliverableEdit = (id: string, data: DeliverableData) =>
   call<{ id: string; kind: DeliverableKind; version: number }>(`/api/deliverables/${id}/edit`, send("POST", { data }));
 /** Puts this version on the trip's link for its kind (a new link, or the same one moved here), for 30 more days. */
+export const deleteDeliverable = (id: string) => call<{ ok: true }>(`/api/deliverables/${id}`, send("DELETE"));
 export const shareDeliverable = (id: string) => call<ShareInfo>(`/api/deliverables/${id}/share`, send("POST"));
 export const stopSharing = (id: string) => call<{ ok: true }>(`/api/deliverables/${id}/share`, send("DELETE"));
 /** One option's price breakdown, read from a quote's text (screenshots arrive already read). */

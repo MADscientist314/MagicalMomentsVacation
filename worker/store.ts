@@ -145,6 +145,15 @@ export async function getDeliverable(
   return row ? { ...row, data: JSON.parse(row.data) } : null;
 }
 
+/** Deletes one saved version, and the family's link if it was showing that version. */
+export async function deleteDeliverable(db: D1Database, id: string): Promise<boolean> {
+  const [, r] = await db.batch([
+    db.prepare("DELETE FROM shares WHERE deliverable_id = ?").bind(id),
+    db.prepare("DELETE FROM deliverables WHERE id = ?").bind(id),
+  ]);
+  return r.meta.changes > 0;
+}
+
 export async function listDeliverables(db: D1Database, conversationId: string): Promise<DeliverableMeta[]> {
   const { results } = await db
     .prepare("SELECT id, kind, version, created_at FROM deliverables WHERE conversation_id = ? ORDER BY created_at DESC, version DESC")

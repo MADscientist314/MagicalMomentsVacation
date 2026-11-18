@@ -389,6 +389,48 @@ export function tidyDeliverable(kind: DeliverableKind, data: unknown): unknown {
   return d;
 }
 
+// ---------- pictures across versions ----------
+
+const sameName = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/^day\s*\d+\s*[—–:-]\s*/, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * A new version of a proposal or itinerary keeps the pictures of the last one (John, Nov 17: "keep them with
+ * revisions rather than have to redesign them"): the cover, each option's by its name, each day's by its
+ * title or else its place in the plan. Parts that are new get no picture; she can make one.
+ */
+export function carryPictures<T extends DeliverableData>(kind: DeliverableKind, previous: DeliverableData, next: T): T {
+  if (kind !== "proposal" && kind !== "itinerary") return next;
+  const prev = previous as Proposal | Itinerary;
+  const copy = structuredClone(next) as unknown as Proposal | Itinerary;
+  if (!copy.coverPhoto && prev.coverPhoto) copy.coverPhoto = prev.coverPhoto;
+  const before: { name: string; photo?: string }[] =
+    kind === "proposal" ? (prev as Proposal).options.map((o) => ({ name: o.name, photo: o.photo })) : (prev as Itinerary).days.map((d) => ({ name: d.title, photo: d.photo }));
+  const parts: { name: string; photo?: string }[] =
+    kind === "proposal" ? (copy as Proposal).options.map((o) => ({ name: o.name, photo: o.photo })) : (copy as Itinerary).days.map((d) => ({ name: d.title, photo: d.photo }));
+  const used = new Set(parts.map((p) => p.photo).filter(Boolean));
+  const photos = parts.map((p) => p.photo);
+  // First by name, then (days only) by place: day 3 keeps day 3's picture. Options are matched by name only.
+  parts.forEach((p, i) => {
+    if (photos[i]) return;
+    const match = before.find((b) => b.photo && !used.has(b.photo) && sameName(b.name) === sameName(p.name));
+    if (match?.photo) used.add((photos[i] = match.photo));
+  });
+  if (kind === "itinerary") {
+    parts.forEach((_, i) => {
+      const photo = before[i]?.photo;
+      if (!photos[i] && photo && !used.has(photo)) used.add((photos[i] = photo));
+    });
+  }
+  if (kind === "proposal") (copy as Proposal).options.forEach((o, i) => photos[i] && (o.photo = photos[i]));
+  else (copy as Itinerary).days.forEach((d, i) => photos[i] && (d.photo = photos[i]));
+  return copy as unknown as T;
+}
+
 // ---------- totals and price safety ----------
 
 export function estimateTotals(e: Estimate): { total: number; missing: string[] } {
@@ -428,6 +470,48 @@ export function numbersIn(text: string): number[] {
   return [...text.matchAll(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g)].map((m) => Number(m[0].replace(/,/g, "")));
 }
 
+/** A whole number of a price she gave (2 to 40 of them), when that's what an amount is. */
+function perUnit(amount: number, allowed: Set<number>): { qty: number; unitPrice: number } | null {
+  for (let qty = 2; qty <= 40; qty++) {
+    const unit = amount / qty;
+    if (unit >= 1 && [...allowed].some((a) => Math.abs(a - unit) < 0.005)) return { qty, unitPrice: cents(unit) };
+  }
+  return null;
+}
+
+/** Taxes, fees, port charges and the like: costs a quote often folds into its prices or total. */
+export const TAXES_AND_FEES = /\b(tax|taxes|fees?|port (?:charges|expenses|fees)|gratuit(?:y|ies)|surcharges?|service charges?)\b/i;
+
+/**
+ * Squares an option's tax and fee lines with the quote's own total, so she isn't asked to price taxes the
+ * quote already includes (John, Nov 17). Returns a note for the advisor about what changed, or null.
+ */
+export function reconcileTaxes(name: string, price: OptionPrice): string | null {
+  const lines = price.lines ?? [];
+  const quoted = price.amount;
+  if (!lines.length || quoted === null) return null;
+  const priced = cents(lines.reduce((sum, l) => sum + (l.unitPrice === null ? 0 : l.qty * l.unitPrice), 0));
+  const open = lines.filter((l) => l.unitPrice === null);
+  const isTax = (l: PriceLine) => TAXES_AND_FEES.test(l.label);
+  if (open.length && open.every(isTax) && Math.abs(priced - quoted) < 0.01) {
+    price.lines = lines.filter((l) => l.unitPrice !== null);
+    return `${name}: the quote's total already includes taxes and fees, so they aren't a separate line.`;
+  }
+  if (open.length === 1 && isTax(open[0]) && quoted - priced >= 0.01) {
+    open[0].qty = 1;
+    open[0].unitPrice = cents(quoted - priced);
+    return `${name}: "${open[0].label}" is set to ${money(open[0].unitPrice)}, the quote's total less its other lines. Check it against the quote.`;
+  }
+  if (!open.length && priced - quoted >= 0.01) {
+    const extra = lines.find((l) => isTax(l) && Math.abs(l.qty * (l.unitPrice ?? 0) - (priced - quoted)) < 0.01);
+    if (extra) {
+      price.lines = lines.filter((l) => l !== extra);
+      return `${name}: the quote's prices already include "${extra.label}", so it's no longer counted twice.`;
+    }
+  }
+  return null;
+}
+
 /** Blanks any price that Jillian didn't write herself, so it shows "Add price" instead. */
 export function applyPriceProvenance(kind: DeliverableKind, data: DeliverableData, allowed: Set<number>): DeliverableData {
   const known = (n: number | null) => n !== null && [...allowed].some((a) => Math.abs(a - n) < 0.005);
@@ -436,7 +520,15 @@ export function applyPriceProvenance(kind: DeliverableKind, data: DeliverableDat
     for (const o of (copy as Proposal).options) {
       if (!known(o.price.amount)) o.price.amount = null;
       // Discounts are written "-$150" or "($150)": the number itself is what has to match.
-      for (const l of o.price.lines ?? []) if (l.unitPrice !== null && !known(Math.abs(l.unitPrice))) l.unitPrice = null;
+      for (const l of o.price.lines ?? []) {
+        if (l.unitPrice === null || known(Math.abs(l.unitPrice))) continue;
+        // "Taxes and fees $412.36 per guest" copied as one line of $824.72: keep it as 2 × $412.36.
+        const per = l.qty === 1 ? perUnit(Math.abs(l.unitPrice), allowed) : null;
+        if (per) {
+          l.qty = per.qty;
+          l.unitPrice = Math.sign(l.unitPrice) * per.unitPrice;
+        } else l.unitPrice = null;
+      }
     }
   } else if (kind === "estimate") {
     for (const l of (copy as Estimate).lineItems) if (!known(l.unitPrice)) l.unitPrice = null;

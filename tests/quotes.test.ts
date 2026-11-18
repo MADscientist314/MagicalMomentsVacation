@@ -110,6 +110,34 @@ describe("an option's price breakdown", () => {
     expect(checkBreakdowns(proposal(option("Portofino", { ...PORTOFINO, amount: 2799.93 }))).verifyNotes).toEqual([]);
   });
 
+  it("doesn't ask for taxes the quote already includes (John, Nov 17)", () => {
+    const base = PORTOFINO.lines!;
+    // The quote's total matches the priced lines: the empty taxes line is already covered, so it goes.
+    const included = checkBreakdowns(proposal(option("Portofino", { ...PORTOFINO, amount: 2799.93, lines: [...base, { label: "Taxes and fees", qty: 1, unitPrice: null }] })));
+    expect(included.options[0].price.lines).toHaveLength(3);
+    expect(included.options[0].price.amount).toBe(2799.93);
+    expect(included.verifyNotes).toEqual(["Portofino: the quote's total already includes taxes and fees, so they aren't a separate line."]);
+    // One empty taxes line and a bigger total: the gap is the taxes, with a note to check.
+    const gap = checkBreakdowns(proposal(option("Portofino", { ...PORTOFINO, amount: 3012.4, lines: [...base, { label: "Taxes, fees and port expenses", qty: 1, unitPrice: null }] })));
+    expect(gap.options[0].price.lines![3]).toEqual({ label: "Taxes, fees and port expenses", qty: 1, unitPrice: 212.47 });
+    expect(gap.options[0].price.amount).toBe(3012.4);
+    expect(gap.verifyNotes[0]).toContain("$212.47, the quote's total less its other lines");
+    // A taxes line that the prices already include is no longer counted twice.
+    const twice = checkBreakdowns(proposal(option("Portofino", { ...PORTOFINO, amount: 2799.93, lines: [...base, { label: "Resort fee", qty: 3, unitPrice: 25 }] })));
+    expect(twice.options[0].price.lines).toHaveLength(3);
+    expect(twice.verifyNotes).toEqual(['Portofino: the quote\'s prices already include "Resort fee", so it\'s no longer counted twice.']);
+    // Anything else still gets the usual warning.
+    const other = checkBreakdowns(proposal(option("Portofino", { ...PORTOFINO, amount: 2799.93, lines: [...base, { label: "Travel insurance", qty: 1, unitPrice: null }] })));
+    expect(other.options[0].price.lines).toHaveLength(4);
+    expect(other.verifyNotes[0]).toContain("one line still needs a price");
+  });
+
+  it("keeps a per-guest amount the quote gave instead of blanking it", () => {
+    const multiplied = { ...PORTOFINO, lines: [...PORTOFINO.lines!, { label: "Taxes and fees", qty: 1, unitPrice: 824.72 }] };
+    const safe = applyPriceProvenance("proposal", proposal(option("Portofino", multiplied)), new Set([2140, 129.99, 250, 412.36])) as Proposal;
+    expect(safe.options[0].price.lines![3]).toEqual({ label: "Taxes and fees", qty: 2, unitPrice: 412.36 });
+  });
+
   it("reads a typed discount", () => {
     expect(toLinePrice("-$150")).toBe(-150);
     expect(toLinePrice("($1,250.50)")).toBe(-1250.5);

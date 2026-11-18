@@ -12,9 +12,12 @@ import {
   money,
   numbersIn,
   optionTotal,
+  carryPictures,
+  reconcileTaxes,
   settleTotals,
   tidyDeliverable,
   validateDeliverable,
+  type DeliverableData,
   type DeliverableKind,
   type Proposal,
 } from "../shared/deliverables";
@@ -78,6 +81,8 @@ function readQuotes(kind: DeliverableKind, body: Record<string, unknown>): strin
 export function checkBreakdowns(data: Proposal): Proposal {
   const copy = structuredClone(data);
   for (const o of copy.options) {
+    const squared = reconcileTaxes(o.name, o.price);
+    if (squared) copy.verifyNotes.push(squared);
     const { total, missing, itemized } = optionTotal(o.price);
     const quoted = o.price.amount;
     if (!itemized || quoted === null) continue;
@@ -104,6 +109,8 @@ export async function handleGenerateDeliverable(
   if (!body || convo.kind !== "trip" || !isKind(kind)) return error("That request didn't make sense — try again.", 400);
   // "one": a proposal for the trip as planned (say, from a supplier's itinerary), with no alternatives.
   const single = kind === "proposal" && body.options === "one";
+  // Pictures from the last version come along unless she asks for new ones.
+  const keepPictures = body.keepPictures !== false && (kind === "proposal" || kind === "itinerary");
   const ask = extraAsk(kind, body);
   if (ask instanceof Response) return ask;
   const quotes = readQuotes(kind, body);
@@ -161,7 +168,12 @@ export async function handleGenerateDeliverable(
       if (!checked.ok) throw new UserFacingError(NOT_RIGHT);
       if (single) (checked.data as Proposal).options.splice(1);
       const safe = applyPriceProvenance(kind, checked.data, allowed);
-      const data = kind === "proposal" ? checkBreakdowns(safe as Proposal) : safe;
+      let data = kind === "proposal" ? checkBreakdowns(safe as Proposal) : safe;
+      if (keepPictures) {
+        const last = (await store.listDeliverables(env.DB, convo.id)).filter((d) => d.kind === kind).sort((a, b) => b.version - a.version)[0];
+        const previous = last ? await store.getDeliverable(env.DB, last.id) : null;
+        if (previous) data = carryPictures(kind, previous.data as DeliverableData, data);
+      }
       const saved = await store.addDeliverable(env.DB, convo.id, kind, data, now());
       // The quotes join the trip's conversation, so a later proposal (or a question) can use them too.
       if (quotes) {
@@ -182,7 +194,7 @@ export async function handleGenerateDeliverable(
   });
 }
 
-/** /api/deliverables/:id (GET), /api/deliverables/:id/edit (POST) and /api/deliverables/:id/share (POST, DELETE). */
+/** /api/deliverables/:id (GET, DELETE), /api/deliverables/:id/edit (POST) and /api/deliverables/:id/share (POST, DELETE). */
 export async function handleDeliverable(
   request: Request,
   env: Env,
@@ -200,6 +212,12 @@ export async function handleDeliverable(
       signature: extractSignature(BRAINS["reference/voice"]),
       share: await shareFor(env, existing, now()),
     });
+  }
+
+  // Old drafts pile up (John and Jillian, Nov 17): any version can go. A link showing it stops working.
+  if (!action && request.method === "DELETE") {
+    await store.deleteDeliverable(env.DB, existing.id);
+    return Response.json({ ok: true });
   }
 
   if (action === "share") return handleShare(request, env, existing, now());
