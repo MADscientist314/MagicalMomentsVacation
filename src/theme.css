@@ -2287,3 +2287,27 @@ a.btn-primary {
 .slot-picker {
   margin-top: 8px;
 }
+
+/* On a phone the toolbar wraps to several rows, so it stays in the page and Back to top floats instead. */
+@media (max-width: 720px) {
+  .trip-toolbar,
+  .trip-toolbar.stuck {
+    position: static;
+    background: none;
+    box-shadow: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 8px 0;
+  }
+  .trip-toolbar .toolbar-title {
+    display: none;
+  }
+  .trip-toolbar .to-top {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  }
+}
