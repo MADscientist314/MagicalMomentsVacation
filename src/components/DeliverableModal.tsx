@@ -83,9 +83,13 @@ export function DeliverableModal({ id, tripId, tripTitle, onClose, onSaved }: Pr
     });
 
   // The trip page makes room for the panel beside the chat while it's open (wide screens only, in CSS).
+  // While it covers the trip (the whole window, or a smaller screen), the trip behind it doesn't scroll.
   useEffect(() => {
-    document.body.classList.toggle("doc-panel-open", width === "side");
-    return () => document.body.classList.remove("doc-panel-open");
+    const body = document.body.classList;
+    body.add("doc-panel-shown");
+    body.toggle("doc-panel-open", width === "side");
+    body.toggle("doc-panel-wide", width === "wide");
+    return () => body.remove("doc-panel-shown", "doc-panel-open", "doc-panel-wide");
   }, [width]);
   const photoIds = record && data ? documentPhotoIds(record.kind, data) : [];
 
