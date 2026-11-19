@@ -992,6 +992,20 @@ a.btn-primary {
   margin-left: auto;
 }
 
+/* Beside an open document the column is narrow: the stuck toolbar keeps to one row, icons only (their names
+   stay for screen readers and show on hover). */
+body.doc-panel-open .trip-toolbar.stuck {
+  flex-wrap: nowrap;
+}
+body.doc-panel-open .trip-toolbar.stuck .btn-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .trip-form {
   margin-bottom: 18px;
 }
@@ -1344,7 +1358,10 @@ a.btn-primary {
   flex-direction: column;
   padding: 14px 18px;
   gap: 10px;
-  overflow: hidden;
+  /* The whole panel scrolls as one page, wherever the pointer or finger is, and reaching its end never
+     carries on into the trip behind it (John, Nov 18). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .doc-panel.wide {
@@ -1352,20 +1369,29 @@ a.btn-primary {
   border-left: none;
 }
 
+/* Its title and buttons stay at the top while the rest scrolls. */
+.doc-panel > .modal-head {
+  position: sticky;
+  top: -14px;
+  z-index: 3;
+  margin: -14px -18px 0;
+  padding: 14px 18px 8px;
+  background: var(--cream);
+  border-bottom: 1px solid var(--lavender-line);
+}
+
 .doc-panel > .modal-body {
-  overflow-y: auto;
+  flex: none;
+  overflow: visible;
 }
 
 .doc-panel > .modal-body .editor {
   overflow: visible;
 }
 
-.doc-panel > .review-layout {
-  overflow: hidden;
-}
-
-.doc-panel > .review-layout .editor {
-  overflow-y: auto;
+.doc-panel > .modal-body > .doc-frame.full {
+  height: calc(100vh - var(--topbar-h) - 140px);
+  min-height: 420px;
 }
 
 .doc-panel-close {
@@ -1403,6 +1429,34 @@ a.btn-primary {
 
 /* Wide screens: the trip moves left so the chat stays readable beside the open document. */
 @media (min-width: 1100px) {
+  /* The whole window: the editor and the preview side by side, each scrolling on its own, and the trip
+     behind stays put. */
+  body.doc-panel-wide {
+    overflow: hidden;
+  }
+  .doc-panel.wide {
+    overflow: hidden;
+  }
+  .doc-panel.wide > .modal-head {
+    position: static;
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+  }
+  .doc-panel.wide > .modal-body {
+    flex: 1;
+    min-height: 0;
+  }
+  .doc-panel.wide > .modal-body > .doc-frame.full {
+    height: 100%;
+  }
+  .doc-panel.wide > .review-layout {
+    overflow: hidden;
+  }
+  .doc-panel.wide > .review-layout .editor {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   body.doc-panel-open .page.trip-page {
     margin-left: 24px;
     margin-right: calc(var(--doc-panel-w) + 16px);
@@ -1422,6 +1476,10 @@ a.btn-primary {
 }
 
 @media (max-width: 1099px) {
+  /* The panel covers the trip here, so the trip behind it doesn't scroll. */
+  body.doc-panel-shown {
+    overflow: hidden;
+  }
   .doc-panel {
     width: 100vw;
     border-left: none;
@@ -1431,7 +1489,6 @@ a.btn-primary {
   }
   .doc-panel > .review-layout {
     display: block;
-    overflow-y: auto;
   }
   .doc-panel > .review-layout .doc-frame {
     display: none;
@@ -1441,6 +1498,11 @@ a.btn-primary {
 @media (max-width: 720px) {
   .doc-panel {
     padding: 12px;
+  }
+  .doc-panel > .modal-head {
+    top: -12px;
+    margin: -12px -12px 0;
+    padding: 12px 12px 8px;
   }
 }
 
@@ -1547,6 +1609,8 @@ a.btn-primary {
   border-radius: 10px;
   padding: 10px 12px;
   margin: 0 0 12px;
+  /* A fieldset is otherwise as wide as its longest heading, which pushed the editor off a phone screen. */
+  min-width: 0;
 }
 
 .editor-group legend {

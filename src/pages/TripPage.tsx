@@ -102,6 +102,7 @@ export function TripPage({ id }: { id: string }) {
           <button
             type="button"
             className="btn-quiet"
+            title={trip.pinned ? "Unpin" : "Pin to the top"}
             onClick={() =>
               void updateConversation(id, { pinned: !trip.pinned })
                 .then(refresh)
@@ -109,30 +110,32 @@ export function TripPage({ id }: { id: string }) {
             }
           >
             {trip.pinned ? <IconPinnedOff size={16} aria-hidden /> : <IconPin size={16} aria-hidden />}
-            {trip.pinned ? "Unpin" : "Pin to the top"}
+            <span className="btn-label">{trip.pinned ? "Unpin" : "Pin to the top"}</span>
           </button>
           <button
             type="button"
             className="btn-quiet"
+            title="Edit trip details"
             onClick={() => {
               if (!editing) toTop();
               setEditing((e) => !e);
             }}
           >
-            <IconEdit size={16} aria-hidden /> Edit trip details
+            <IconEdit size={16} aria-hidden /> <span className="btn-label">Edit trip details</span>
           </button>
           <button type="button" className={`btn-quiet${trip.booking ? " active" : ""}`}
             aria-expanded={booking}
+            title={trip.booking ? "Booked · change dates" : "Mark as booked"}
             onClick={() => {
               if (!booking) toTop();
               setBooking((b) => !b);
             }}
           >
-            <IconCalendarCheck size={16} aria-hidden /> {trip.booking ? "Booked · change dates" : "Mark as booked"}
+            <IconCalendarCheck size={16} aria-hidden /> <span className="btn-label">{trip.booking ? "Booked · change dates" : "Mark as booked"}</span>
           </button>
           {scrolled && (
-            <button type="button" className="btn-quiet to-top" onClick={toTop}>
-              <IconArrowUp size={16} aria-hidden /> Back to top
+            <button type="button" className="btn-quiet to-top" title="Back to top" onClick={toTop}>
+              <IconArrowUp size={16} aria-hidden /> <span className="btn-label">Back to top</span>
             </button>
           )}
         </div>
